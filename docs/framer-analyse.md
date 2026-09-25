@@ -1,14 +1,20 @@
 # Marinor NTNU – analyse av Framer-nettsiden
 
-Grunnlag for å bygge en ny Marinor-nettside. Analysen er gjort 25.09.2026 direkte mot Framer-prosjektet
-(via Framer MCP): alle sider, alle kodekomponenter, alle hjelpefiler, farger og tekststiler.
+Grunnlag for å bygge en ny Marinor-nettside. Analysen er gjort 25.09.2026 i to runder:
+1. direkte mot Framer-prosjektet (via Framer MCP): alle sider, alle kodekomponenter, alle hjelpefiler, farger og tekststiler
+2. mot **den publiserte siden**: alle 13 sider er åpnet i en ekte nettleser (Chromium), skjermbilder er tatt i tre
+   bredder, og all tekst, alle bilder, lenker og meta-tagger er hentet ut og sammenlignet med koden.
+
+Alt råmateriale ligger i [`framer-export/`](../framer-export/README.md): original kildekode (TSX), alle bilder i full
+oppløsning, skjermbilder og den ferdige teksten fra hver side.
 
 - **Produksjon:** https://marinorntnu.no
 - **Staging:** https://cultural-table-666294.framer.app
 - **Språk på siden:** engelsk (all tekst under er gjengitt ordrett slik den vises i dag)
 
-> Innhold i `«…»` / kodeblokker er den teksten som faktisk vises på siden **etter** at
-> tekstoppdateringslaget (`CopyUpdates.tsx`, se 2.4) har byttet ut gammel tekst.
+> Tekst i kodeblokker er den teksten som faktisk vises på den publiserte siden (kontrollert 25.09.2026).
+> Der den publiserte siden viser eldre tekst enn koden, står det markert med **⚠ Live:**. Alle slike avvik
+> er samlet i kapittel 1.2.
 
 ---
 
@@ -26,26 +32,75 @@ Grunnlag for å bygge en ny Marinor-nettside. Analysen er gjort 25.09.2026 direk
   Sponsor, Join. Proteus og Team 2026 er «Coming soon».
 - Ingen CMS-samlinger. Alt innhold ligger i koden (standardverdier) og i props på canvas.
 - Tre URL-er har skrivefeil: `/competitions/njord-challange`, `/competitions/roboat`, `/want-to-spons-us`.
+- **Kontrollert mot den publiserte siden:** flere lister (statistikk, mål, fordeler, perks, tidslinjetekster) viser
+  eldre tekst enn koden (1.2). Fontene lastes ikke, bakgrunnen er hvit i stedet for lavendel, og SEO mangler (1.3).
+- Alt råmateriale ligger i `framer-export/`: kildekode, 37 bilder i full oppløsning, 39 skjermbilder og all tekst.
 
 ---
 
-## 1. Hvordan analysen er gjort, og hva jeg ikke fikk sett
+## 1. Hvordan analysen er gjort
 
-**Lest:** prosjektstruktur, XML for alle sider jeg fikk tilgang til, kildekoden til alle 39 kodekomponenter og 2
+### 1.1 Kilder
+
+**Lest i Framer:** prosjektstruktur, XML for alle sider jeg fikk tilgang til, kildekoden til alle 39 kodekomponenter og 2
 override-filer, pluss 5 skjulte hjelpefiler som ikke står i prosjektlisten (`HomeKit.tsx`, `AboutKit.tsx`,
 `SponsorKit.tsx`, `ArgusPhotos.tsx` og `CopyUpdates.tsx`). Jeg har også lest
 fargestiler, tekststiler og CMS (tom).
 
-**Begrensninger:**
-- `marinorntnu.no`, `framer.com` og `framerusercontent.com` er blokkert av nettverksregelen i dette skymiljøet, så
-  jeg har ikke sett den publiserte siden i nettleser, og jeg har ikke lastet ned bildene.
-- Framer MCP ga feil («Node is not a text node») på sidene **/competitions** og **/team/team-2026**. Innholdet der er
-  utledet fra koden: `/competitions` bruker med stor sannsynlighet `CompetitionsHub`, og kommentaren i
-  `ComingSoon.tsx` sier at den brukes for «Team 2026, Proteus …».
-- **Lister (arrays) som er lagret på canvas vises ikke i XML-en.** Der en side har lister (statistikk, team,
-  sponsorer, tidslinje osv.) har jeg dokumentert standardlistene fra koden. De er med stor sannsynlighet det som
-  vises, men en eldre liste kan ligge lagret på canvas.
-- SEO-innstillinger (title/description per side, favicon, OG-bilde) er ikke tilgjengelige via MCP.
+**Hentet fra den publiserte siden:**
+- Alle 13 sider rendret i Chromium i bredde 1440 (PC), 810 (nettbrett) og 390 (mobil), med scrolling gjennom hele siden
+  slik at alle bilder og animasjoner er lastet → 39 helsides skjermbilder.
+- Ferdig tekst, alle bilder (med alt-tekst og visningsstørrelse), alle lenker, overskrifter og meta-tagger per side.
+- Alle 37 bilder i original oppløsning, med EXIF-data (dato og kamera) der den finnes.
+- Original TSX-kildekode for alle 44 kodefiler, hentet fra Framers source maps (inkludert de 5 skjulte hjelpefilene).
+- `sitemap.xml`, `robots.txt` og Framers søkeindeks (all tekst per side).
+
+**Det Framer-verktøyet ikke kunne vise, og som nå er sjekket på den publiserte siden:** lister og bilder som er satt i
+panelet til høyre, og sidene `/competitions` og `/team/team-2026`. Det eneste jeg fortsatt ikke har sett, er selve
+Framer-innstillingene (Site Settings), men resultatet av dem (title, description, favicon osv.) er dokumentert i 1.3.
+
+### 1.2 Avvik: publisert side mot koden
+
+Mange lister på canvas er eldre enn standardverdiene i koden. `CopyUpdates` retter bare vanlige tekstfelt, ikke
+lister, så disse vises i gammel versjon. **Dette er det som faktisk står på siden i dag:**
+
+| Side | Hvor | Publisert (live) | Nyere tekst i koden |
+|---|---|---|---|
+| Home | Bildetekst i hero | «Float test in Trondheim harbour · 63.44° N · 10.42° E» (bildet er ikke en flytetest) | «Argus on Trondheim harbour» |
+| About | Stats 2–4 | «members – and we keep growing fast» · «students started it all» · «teams in the 2026 Njord Challenge – we were one of them» | «members in 2026» · «students started Marinor» · «…, Marinor included» |
+| Argus | Stat 4 | **100%** «designed, built and tested by students» | **4** «propellers, so Argus can turn 360 degrees while it moves forward» |
+| Argus | Tidslinje | 16 Nov: «Work starts in the workshop. The first hull slowly takes shape.» · 8 Mar: «The first float test in the harbour. Does it float? It does.» · 26 Apr: «Argus goes into the water with all sensors on board – ready for testing.» | se 7.5 |
+| Argus | Mål | 01 **A fully autonomous boat** – Build and test our first maritime platform that can navigate and do tasks on its own. · 02 **Stronger partnerships** – Work closer with the Department of Engineering Cybernetics and our industry partners. · 03 **A base for the future** – Lay the foundation for new projects in maritime autonomy, research and innovation. | se 6.4 |
+| Join | Grupper | Hardware: «Hulls, frame, power and electronics. Everything the software runs on.» · Economy: «Budget, sponsors and all the practical work that keeps the project running.» · PR: «Social media, photos, website and how we tell people what we are building.» | se 7.2 |
+| Join | Perks | **Hands-on vessel development** – You build and test real autonomous marine systems, not only theory on paper. · **Work across fields** – Robotics, automation and marine engineering in the same team, on the same boat. · **Meet the industry** – We work with academic departments and partners who follow what we do. | se 6.13 |
+| Sponsor | Stats 3–4 | «groups – from perception and control to hardware and PR» · «teams in the 2026 Njord Challenge – we were one of them» | uten tankestrek / «Marinor included» |
+| Sponsor | Fordeler | 01 **Reach future engineers** – Reach engaged and highly qualified future engineers from NTNU. · 02 **Shape us from the ground up** – Help shape and develop Marinor as a student organization from the ground up. · 03 **Back new technology** – Support the development of new technology and student-driven innovation. · 04 **Work on real projects** – Participate in professionally relevant projects and collaborations. · 05 **Positive brand exposure** – Gain positive brand exposure through Marinor's activities and competition participation. | se 6.12 |
+| Sponsor | Steg 2–3 | «We meet, talk about goals on both sides and agree on what the partnership looks like.» · «Follow the project from the workshop to the water – and to the competitions.» | se 6.12 |
+| Njord | Stat 4 | «teams signed up for the 2026 challenge – Marinor is one of them» | «…, Marinor among them» |
+| Njord | Kurs / jury | Cardinal marks: «Sea marks that tell you which side is safe to pass, just like in real shipping.» · The four tasks: «Most points come from what the boat actually does on the water during the week.» | kortere versjon |
+| RoboBoat | Stat 1 | **19th** «RoboBoat competition – that was the 2026 edition» | «RoboBoat competition was held in 2026» |
+
+Resten av teksten (alle overskrifter, ingresser, knapper og vanlige avsnitt) er **identisk** med det som står i
+kapittel 6. Sponsorlisten, Team 2025-listen og alle bildevalg stemmer med koden.
+
+### 1.3 Andre funn fra den publiserte siden
+- **Fontene lastes ikke.** Siden har ingen `@font-face` og `document.fonts` er tom. Koden ber om «Inter Display» og
+  «Switzer», men de er ikke lastet inn, så besøkende ser systemfonten sin: SF Pro på Mac/iPhone, Segoe UI på Windows,
+  Roboto på Android. Hero-tittelen på Argus («Meet Argus») har en kortere fontliste og faller tilbake til
+  Helvetica/Arial, så den ser annerledes ut enn resten.
+- **Bakgrunnen er hvit**, ikke lys lavendel (`#EEEBFD`) som koden forutsetter. Derfor vises lavendelringene rundt de
+  små overlappende bildene som synlige kanter, og hero-bildet på Home toner ut til lavendel og slutter i en hard kant mot hvitt.
+- **SEO:** alle 13 sider har tittelen «Marinor NTNU», tom `description`, tom `og:description` og **ikke noe
+  delingsbilde** (`og:image`). `lang="en"`, canonical-URL er satt, `robots.txt` tillater alt, og `sitemap.xml` har alle 13 sider.
+- **Favicon:** Marinor-kompasset på hvit bakgrunn (`logo/favicon.jpg`, 1845×1845). **Apple touch icon er Framers
+  standardikon** (lilla firkant med hvit form), ikke Marinor-logoen.
+- **Lav oppløsning:** teambildet som brukes stort på Home og Sponsor (`team-2025-group-photo-small-960px.webp`) er
+  bare 960 px bredt og vises opptil 1240 px bredt, så det blir uskarpt. Samme bilde finnes i 5587 px (`team-2025-group-photo.jpg`).
+- **Feil bilde i tidslinjen:** bildet brukt for «8 March 2026 – First time on the water» er ifølge EXIF tatt
+  **19.04.2026** (teamet samlet på bryggen), ikke ved flytetesten.
+- **Team 2026-siden:** `Marinor NTNU · Season 2026` / (lavendel) `Team 2026` / H1 `Coming soon` /
+  `Photos and info about Team 2026 are coming soon.` / blinkende «Announcement on the way» / knapp **Meet Team 2025**.
+- About-siden mangler maksbredde-rammen de andre sidene har, så innholdet går bredere (helt ut til 40 px fra kanten).
 
 ---
 
@@ -126,8 +181,8 @@ gamle setninger med ny tekst (en liste med ca. 170 par, gammel → ny). Konsekve
 | `/projects/proteus` | `ComingSoon` | Plassholder |
 | `/team` | `TeamHub` (header + 2 kort) | Ferdig |
 | `/team/team-2025` | `Team2025Showcase` + `ResponsivePhoto` | Ferdig |
-| `/team/team-2026` | (trolig `ComingSoon`) | Plassholder |
-| `/competitions` | (trolig `CompetitionsHub`) | Ferdig |
+| `/team/team-2026` | `ComingSoon` | Plassholder |
+| `/competitions` | `CompetitionsHub` | Ferdig |
 | `/competitions/njord-challange` ⚠ skrivefeil | `NjordChallenge` | Ferdig |
 | `/competitions/roboat` ⚠ skrivefeil | `RoboBoat` | Ferdig |
 | `/want-to-spons-us` ⚠ skrivefeil | `SponsorPage` | Ferdig |
@@ -168,6 +223,8 @@ Kantlinjer: `rgba(16,16,17,.07)` på kort, `rgba(16,16,17,.14–.16)` på skille
 Fotogradienter: typisk `rgba(10–12,12,16,…)` fra ~.4 øverst via ~.05 til ~.9 nederst.
 
 ### 4.2 Typografi
+> ⚠ På den publiserte siden lastes ingen av disse fontene (se 1.3). Besøkende ser systemfonten sin.
+
 | Rolle | Font | Detaljer |
 |---|---|---|
 | Display | **Inter Display** (700, noen steder 600) | Titler og tall, stram sporing |
@@ -261,7 +318,8 @@ Footeren har egne brudd: 979 / 759 / 639 / 479.
 
 ### 6.1 Home `/`
 1. **Hero** – fullbreddebilde av Argus (`okoPvPfG…`), høyde clamp(680 px, 100vh, 1000 px), mørk gradient oppe og til
-   venstre, overgang til sidefargen nederst. Oppe til høyre (bare desktop), i mono: «Argus on Trondheim harbour · 63.44° N · 10.42° E».
+   venstre, overgang til sidefargen nederst. Oppe til høyre (bare desktop), i mono: «Float test in Trondheim harbour · 63.44° N · 10.42° E»
+   (⚠ Live: bildeteksten stemmer ikke med bildet, koden foreslår «Argus on Trondheim harbour»).
    - Etikett: `Marinor NTNU · Trondheim`
    - H1 (hvit): `Where robotics meets the sea.` – «sea.» i lavendel med en håndtegnet bølgestrek under som tegnes inn.
    - Tekst: `We are a student organisation at NTNU that builds autonomous boats. Our first boat, Argus, sailed in the Njord Challenge in Trondheim in 2026.`
@@ -295,7 +353,7 @@ Footeren har egne brudd: 979 / 759 / 639 / 479.
    > Our members study robotics, automation, marine technology and other subjects. We work with the Department of Engineering Cybernetics.
    > Marinor was founded in 2025 and has more than 35 members.
    - «Founded by» (chips med initialer): **Kasper Tufte Langland**, **Johannes Embretsen Gunnarshaug**, **Oskar Fredrik Eliassen**, **Emil Mohr-Skogan**
-4. **Stats:** `2025` the year Marinor NTNU was founded in Trondheim · `35+` members in 2026 · `4` students started Marinor · `23` teams in the 2026 Njord Challenge, Marinor included
+4. **Stats:** `2025` the year Marinor NTNU was founded in Trondheim · `35+` members – and we keep growing fast · `4` students started it all · `23` teams in the 2026 Njord Challenge – we were one of them (⚠ Live, se 1.2)
 5. **Timeline** `#about-journey` – `Timeline` / `What we have done so far.` / `We started in 2025. Here is what we have done and what we plan next.` En «sticky» fremdriftslinje 2025 → 2028. Årstall i kjempestørrelse (76–150 px):
    - **2025** · «Founded» · *Marinor is founded* · `Four students start Marinor NTNU in Trondheim. The first members build the hulls for Argus in the workshop.` · bilde fra verkstedet · «See how we built Argus»
    - **2026** · «Njord Challenge» · *First Njord Challenge* · `We sail Argus in Njord: The Autonomous Ship Challenge in Trondheim, against university teams from several countries.` · Njord-bilde · «About Njord»
@@ -316,7 +374,7 @@ Footeren har egne brudd: 979 / 759 / 639 / 479.
 
 ### 6.4 Argus `/projects/argus`
 1. **Hero-kort** (min 740 px, radius 28, bilde med parallax): `Marinor NTNU · Project Argus` + tag `Autonomous Surface Vessel` / H1 `Meet Argus` (opptil 172 px) / `Our first autonomous boat. A catamaran built by students in Trondheim and tested in the harbour.` / **Open the interface** ↗ (https://gui.marinorntnu.no, ny fane) · **See the build ↓** (`#argus-journey`)
-2. **Stats:** `1st` autonomous surface vessel built by Marinor NTNU · `2` hulls in a stable catamaran design · `5` months from the first hull to launch day · `4` propellers, so Argus can turn 360 degrees while it moves forward
+2. **Stats:** `1st` autonomous surface vessel built by Marinor NTNU · `2` hulls in a stable catamaran design · `5` months from the first hull to launch day · `100%` designed, built and tested by students (⚠ Live. Koden har `4` propellers, so Argus can turn 360 degrees while it moves forward)
 3. **About Argus** – `The project` / `About Argus`
    > Argus is our first autonomous surface vessel. It finds its way on the water with no one at the wheel.
    > The hulls, electronics, sensors, control system and software all have to work together on one boat. Our members made every part of it.
@@ -325,7 +383,8 @@ Footeren har egne brudd: 979 / 759 / 639 / 479.
 5. **How Argus finds its way** `#argus-autonomy` (mørkt panel) – `Autonomy` / `How Argus finds its way` / `From what the sensors see to the signal that turns the propellers, in the order it happens on board.` Seks kort der et lys løper langs toppkanten (se 7.4), og en stiplet boks **5G to shore** med animerte signalstreker: `All data from Argus is sent to land over 5G, so we can follow its internal state and get important information while it sails.`
 6. **How we built it** `#argus-journey` – `The build` / `How we built it` / `The build, from the first hull in the workshop to the first test in the harbour.` En midtlinje fylles mens du scroller, og radene veksler mellom kort og bilde (se 7.5).
 7. **Galleri** – `Behind the scenes` / `Photos from the dock`. Masonry i 3 kolonner, bildetekst ved hover, lysboks (piltaster, Esc). Se 7.8.
-8. **Our goals** (3 kort med aksentkant øverst): Goal 01 **A fully autonomous boat** – Get Argus to solve all four Njord tasks on its own. · Goal 02 **More partners** – Work more with the Department of Engineering Cybernetics and with the companies that support us. · Goal 03 **Next projects** – Use what we learn from Argus when we build Proteus and the bigger boat.
+8. **Our goals** (3 kort med aksentkant øverst). ⚠ Live: Goal 01 **A fully autonomous boat** – Build and test our first maritime platform that can navigate and do tasks on its own. · Goal 02 **Stronger partnerships** – Work closer with the Department of Engineering Cybernetics and our industry partners. · Goal 03 **A base for the future** – Lay the foundation for new projects in maritime autonomy, research and innovation.
+   Nyere tekst i koden: **A fully autonomous boat** – Get Argus to solve all four Njord tasks on its own. · **More partners** – Work more with the Department of Engineering Cybernetics and with the companies that support us. · **Next projects** – Use what we learn from Argus when we build Proteus and the bigger boat.
 9. **CTA** (venstrestilt): `Project Argus` / `Open the Argus interface` / `Our GUI team built a web interface for following Argus while it sails. You can open it here.` / **Open the interface** ↗ · **Join Marinor**
 
 ### 6.5 Proteus `/projects/proteus` (plassholder)
@@ -341,10 +400,11 @@ Mørkt panel (min 680 px): `Marinor NTNU · Project Proteus` / (lavendel) `Proje
 - `Our groups`: rutenett med ett kort per gruppe (bilde, navn, «N members», navneliste). Se 7.1.
 - CTA: `Want to join the team?` / `We need students in robotics, automation, marine technology and other subjects.` / **Join Marinor**
 
-### 6.8 Team 2026 `/team/team-2026`
-Kunne ikke leses (MCP-feil). Trolig `ComingSoon`-plassholder. **Det finnes ingen data om Team 2026.**
+### 6.8 Team 2026 `/team/team-2026` (plassholder)
+`ComingSoon`: `Marinor NTNU · Season 2026` / (lavendel) `Team 2026` / H1 `Coming soon` / `Photos and info about Team 2026 are coming soon.` /
+blinkende «Announcement on the way» / **Meet Team 2025**. **Det finnes ingen data om Team 2026.**
 
-### 6.9 Competitions `/competitions` (utledet fra `CompetitionsHub`)
+### 6.9 Competitions `/competitions` (`CompetitionsHub`, bekreftet på publisert side)
 1. Intro: `Marinor NTNU · Competitions` / H1 `Pick a competition.` / `Read about Njord in Trondheim, where we sail Argus, or RoboBoat in Florida, where we want to go next.` Fakta: **2** competitions · **2** continents · **1** boat: Argus.
 2. Door-kort: **Njord** («We compete here», tagger «Trondheim · August · Njord NTNU») og **RoboBoat** («Next goal», tagger «Sarasota, FL · February · RoboNation», logo).
 3. `Side by side` / `Two competitions, one kind of boat.` – tabell:
@@ -360,7 +420,7 @@ Kunne ikke leses (MCP-feil). Trolig `ComingSoon`-plassholder. **Det finnes ingen
 
 ### 6.10 Njord Challenge `/competitions/njord-challange`
 1. **Hero-kort** (Njord-bilde): `Competitions · Njord` / H1 `The Njord Challenge` / `A student competition for autonomous boats, held every August in Trondheim. Teams from several countries bring boats they have built and let them sail on their own.` / glass-chips: Nyhavna, Trondheim · Five days in August · Student teams from many countries / **Njord's website** ↗ · **Meet Argus**
-2. **Stats:** `4` tasks on the water: manoeuvring, path finding, collision avoidance and docking · `5 days` of competition in Nyhavna, Trondheim · `2019` the year Njord was started by students at NTNU · `23` teams signed up for the 2026 challenge, Marinor among them
+2. **Stats:** `4` tasks on the water: manoeuvring, path finding, collision avoidance and docking · `5 days` of competition in Nyhavna, Trondheim · `2019` the year Njord was started by students at NTNU · `23` teams signed up for the 2026 challenge – Marinor is one of them
 3. `What it is` / `What Njord is.`
    > Njord: The Autonomous Ship Challenge is run by Njord NTNU, a student organisation started in Trondheim in 2019. Every August student teams come to Nyhavna in Trondheim.
    > Each team builds and runs its own autonomous boat. During the week the boats solve tasks on the water with no one steering. In 2025 eleven teams from eight countries took part, and Navier USN from Norway won.
@@ -370,15 +430,15 @@ Kunne ikke leses (MCP-feil). Trolig `ComingSoon`-plassholder. **Det finnes ingen
    - Task 02 **Path finding** – The boat has to read the sea markers and find its own way through the course, without help from the team.
    - Task 03 **Collision avoidance** – Another vessel crosses the path. The boat has to see it in time and go around it safely.
    - Task 04 **Docking** – The last task is to find the right spot at the dock and park the boat there on its own.
-5. `What is out on the course.` / `The course has the same kind of marks a boat meets at sea, and the boat has to read them.` – 01 **Buoys** – Floating markers that show where the course goes and where the boat must not sail. · 02 **Cardinal marks** – Sea marks that show which side is safe to pass. · 03 **AR tags** – Printed markers the boat reads with its camera to find the right dock or gate. · 04 **The Otter** – A small vessel from the organisers that moves across the course in the collision task.
-6. `How the teams are judged.` / `The jury also gives points for the report, the presentation and the inspection.` – 01 **The four tasks** – Most points come from what the boat does on the water during the week. · 02 **Technical report** – The team writes about the design and the choices behind the boat. · 03 **Team presentation** – Every team presents their work for the jury and the other teams. · 04 **Technical inspection** – The boat is checked against the rules for size, safety and power before it may sail. · 05 **Data and interface** – Teams show the data and the interface they use to follow the boat. · 06 **Special awards** – There are also prizes for team spirit, sportsmanship and best presentation.
+5. `What is out on the course.` / `The course has the same kind of marks a boat meets at sea, and the boat has to read them.` – 01 **Buoys** – Floating markers that show where the course goes and where the boat must not sail. · 02 **Cardinal marks** – Sea marks that tell you which side is safe to pass, just like in real shipping. · 03 **AR tags** – Printed markers the boat reads with its camera to find the right dock or gate. · 04 **The Otter** – A small vessel from the organisers that moves across the course in the collision task.
+6. `How the teams are judged.` / `The jury also gives points for the report, the presentation and the inspection.` – 01 **The four tasks** – Most points come from what the boat actually does on the water during the week. · 02 **Technical report** – The team writes about the design and the choices behind the boat. · 03 **Team presentation** – Every team presents their work for the jury and the other teams. · 04 **Technical inspection** – The boat is checked against the rules for size, safety and power before it may sail. · 05 **Data and interface** – Teams show the data and the interface they use to follow the boat. · 06 **Special awards** – There are also prizes for team spirit, sportsmanship and best presentation.
 7. Bilde (`4TVFbItx…`) + `Marinor and Njord` / `Marinor at Njord.` / `Marinor NTNU is on the team list for the Njord Challenge 2026. We built Argus for these four tasks: find the way, see what is around it, avoid other boats and dock.`
 8. `Links` / `Follow Njord online.` / `Rules, teams, results and news are on Njord's own website.` – stort mørkt kort + tre kort, se 9.
 9. CTA: `Njord Challenge` / `Want to know more about Njord?` / `The rules, the schedule and the team list are on Njord's website. You can also read how we built our boat.` / **Go to njordchallenge.com** · **Read about Argus**
 
 ### 6.11 RoboBoat `/competitions/roboat` (samme oppsett som Njord)
 1. Hero (RoboBoat-bilde, med logo i et hvitt kort oppe til høyre): `Competitions · RoboBoat` / H1 `RoboBoat` / `An international student competition in Florida. Teams build small autonomous boats and let them solve a course on the water, with no one steering.` / Sarasota, Florida · Every February · Run by RoboNation / **RoboBoat 2026** ↗ · **Meet Argus**
-2. Stats: `19th` RoboBoat competition was held in 2026 · `6 days` in February at Nathan Benderson Park in Florida · `25+` student teams from many countries took part in 2026 · `3` members is the smallest team allowed to sign up
+2. Stats: `19th` RoboBoat competition – that was the 2026 edition · `6 days` in February at Nathan Benderson Park in Florida · `25+` student teams from many countries took part in 2026 · `3` members is the smallest team allowed to sign up
 3. `What it is` / `What RoboBoat is.`
    > RoboBoat is run by RoboNation in the USA. Student teams from all over the world design, build and test their own autonomous surface vessel, and then bring it to Florida.
    > The tasks are based on work boats do at sea, like watching a coastline or keeping a port safe. The boats are judged on how they move, how they are built and what they carry on board.
@@ -393,10 +453,12 @@ Kunne ikke leses (MCP-feil). Trolig `ComingSoon`-plassholder. **Det finnes ingen
 ### 6.12 Sponsor `/want-to-spons-us`
 1. **Hero-kort** (min 760 px, teambilde): `Marinor NTNU · Partnerships` + glass-tag med grønn prikk «Open for partners» / H1 `Become our next partner.` / `We are looking for new sponsors and partners. If your company wants to support us, contact our Head of Sponsorship and Branding.` / **Contact us** (mailto) · **Why partner with us ↓**. Til høyre et glass-kontaktkort: «Get in touch» / **Head of Sponsorship and Branding** / andreas.furst@marinorntnu.no / «Copy email».
 2. Statement: `We want to work with companies that care about new **technology** and want to help **students** build it.`
-3. Stats: `2025` founded at NTNU in Trondheim · `35+` members from robotics, automation and marine technology · `7` groups, from perception and control to hardware and PR · `23` teams in the 2026 Njord Challenge, Marinor included
-4. `#sponsor-benefits` – `Why partner with Marinor` / `What you get as a partner.` / `This is what a partnership gives you.` – 5 kort (01 er et bredt fotokort med teambildet, 05 et fotokort med Argus): 01 **Meet students** – Get to know engineering students at NTNU before they graduate. · 02 **Help us early** – Marinor started in 2025, so partners have a real say in how we grow. · 03 **Support new technology** – Your support goes into boats that sail without anyone steering. · 04 **Work with us** – Give us problems from your company, or join our tests and projects. · 05 **Visibility** – Your logo on our website, our boat and our posts from competitions.
+3. Stats: `2025` founded at NTNU in Trondheim · `35+` members from robotics, automation and marine technology · `7` groups – from perception and control to hardware and PR · `23` teams in the 2026 Njord Challenge – we were one of them
+4. `#sponsor-benefits` – `Why partner with Marinor` / `What you get as a partner.` / `This is what a partnership gives you.` – 5 kort (01 er et bredt fotokort med teambildet, 05 et fotokort med Argus).
+   ⚠ Live (eldre liste): 01 **Reach future engineers** – Reach engaged and highly qualified future engineers from NTNU. · 02 **Shape us from the ground up** – Help shape and develop Marinor as a student organization from the ground up. · 03 **Back new technology** – Support the development of new technology and student-driven innovation. · 04 **Work on real projects** – Participate in professionally relevant projects and collaborations. · 05 **Positive brand exposure** – Gain positive brand exposure through Marinor's activities and competition participation.
+   Nyere tekst i koden: 01 **Meet students** – Get to know engineering students at NTNU before they graduate. · 02 **Help us early** – Marinor started in 2025, so partners have a real say in how we grow. · 03 **Support new technology** – Your support goes into boats that sail without anyone steering. · 04 **Work with us** – Give us problems from your company, or join our tests and projects. · 05 **Visibility** – Your logo on our website, our boat and our posts from competitions.
 5. `What you support` / `What your support pays for.` / `Materials, electronics, sensors and travel to competitions. Here is some of the work.` – festet horisontalt galleri på desktop (sveip-rad ellers), 8 kort: 01 Shaping the first hull · 02 Sanding and finishing · 03 First float test · 04 Wiring on the dock · 05 Sensors on board · 06 Testing in the harbour · 07 Argus on the water · 08 The team behind it
-6. `How it works` / `Three steps to a partnership.` – 01 **Send us an email** – Tell us a little about your company and what you are interested in. · 02 **We find the right fit** – We meet and agree on what the partnership should look like. · 03 **Build it together** – You follow the project and hear from us during the year and at competitions.
+6. `How it works` / `Three steps to a partnership.` – 01 **Send us an email** – Tell us a little about your company and what you are interested in. · 02 **We find the right fit** – We meet, talk about goals on both sides and agree on what the partnership looks like. · 03 **Build it together** – Follow the project from the workshop to the water – and to the competitions. (⚠ Live. Koden har kortere tekst i 02 og 03.)
 7. Sponsornivåer (lys versjon, `#our-sponsors`) med samme overskrift og tekst som på Home.
 8. CTA: `Let's talk` / `Get in touch.` / `Send us an email and we will answer. We can tell you more about Marinor and what a partnership could look like.` / stor e-postknapp + «Copy email»
 
@@ -406,7 +468,8 @@ Kunne ikke leses (MCP-feil). Trolig `ComingSoon`-plassholder. **Det finnes ingen
    - **Follow us on Instagram** ↗ · **Meet the team** → `/team/team-2025`
    - Bilde til høyre: gruppebildet fra 2025 med glass-tag «The 2025 crew»
 2. `Seven groups` / `Our groups.` / `These are our seven groups. Have a look, so you know which one to apply for.` – tabell med nummer, navn, beskrivelse og tagger (se 7.2)
-3. `What you get out of it.` – **You build real boats** – You work on a boat that goes in the water and enters competitions. · **You work across subjects** – Software, electronics and mechanics students work on the same boat. · **You meet companies** – Our sponsors and partners follow the project and meet the team.
+3. `What you get out of it.` – ⚠ Live: **Hands-on vessel development** – You build and test real autonomous marine systems, not only theory on paper. · **Work across fields** – Robotics, automation and marine engineering in the same team, on the same boat. · **Meet the industry** – We work with academic departments and partners who follow what we do.
+   Nyere tekst i koden: **You build real boats** – You work on a boat that goes in the water and enters competitions. · **You work across subjects** – Software, electronics and mechanics students work on the same boat. · **You meet companies** – Our sponsors and partners follow the project and meet the team.
 4. (Skjult: et «Ask us anything»-panel som kan slås på.)
 
 ---
@@ -425,7 +488,7 @@ Kunne ikke leses (MCP-feil). Trolig `ComingSoon`-plassholder. **Det finnes ingen
 | Economy | Jonas Aanensen | `6zm7txRmwqFrKATugJuXPjmKc.jpeg` |
 | PR | Marte Madslien Bakken | `t3K8fBiWn2DvrZOUrKPQgZMU6M.jpeg` |
 
-20 unike personer. Grunnleggere: Kasper Tufte Langland, Johannes Embretsen Gunnarshaug, Oskar Fredrik Eliassen, Emil Mohr-Skogan.
+20 unike personer (bekreftet på den publiserte siden). Grunnleggere: Kasper Tufte Langland, Johannes Embretsen Gunnarshaug, Oskar Fredrik Eliassen, Emil Mohr-Skogan.
 Kontakt for sponsorer: Head of Sponsorship and Branding, andreas.furst@marinorntnu.no. Navnet står ikke på siden, og e-postadressen hører ikke til noen på Team 2025-listen.
 
 ### 7.2 De sju gruppene (Join)
@@ -435,9 +498,11 @@ Kontakt for sponsorer: Head of Sponsorship and Branding, andreas.furst@marinornt
 | 02 | Autonomy | Planning and decision making, so the boat finds a safe route on its own. | Path planning · Algorithms · Simulation |
 | 03 | Control | Steering and thrust. Keeps the boat on the planned path in wind and waves. | Control theory · Modelling · Testing |
 | 04 | GUI | The interface where we follow the boat, read its data and send it commands. | Web · UX · Visualisation |
-| 05 | Hardware | Hulls, frame, power and electronics. | Electronics · CAD · Building |
-| 06 | Economy | Budget, sponsors, travel and other practical work. | Budget · Sponsors · Applications |
-| 07 | PR | Social media, photos and this website. | Content · Design · Web |
+| 05 | Hardware | Hulls, frame, power and electronics. Everything the software runs on. ⚠ Live | Electronics · CAD · Building |
+| 06 | Economy | Budget, sponsors and all the practical work that keeps the project running. ⚠ Live | Budget · Sponsors · Applications |
+| 07 | PR | Social media, photos, website and how we tell people what we are building. ⚠ Live | Content · Design · Web |
+
+Nyere tekst i koden: Hardware «Hulls, frame, power and electronics.» · Economy «Budget, sponsors, travel and other practical work.» · PR «Social media, photos and this website.»
 
 ### 7.3 Argus – om bord (gjeldende liste)
 1. **Two hulls** – Argus is a catamaran. The two hulls give a wide and stable platform for the sensors and electronics.
@@ -466,11 +531,15 @@ Kontakt for sponsorer: Head of Sponsorship and Branding, andreas.furst@marinornt
 ### 7.5 Argus – byggetidslinje
 | Dato | Tittel | Tekst | Bilde |
 |---|---|---|---|
-| 16 November 2025 | Shaping the hulls | Work starts in the workshop with the first hull. | `XCTH8UnFJpPlbZTWKyEdvdjsN1A.jpg` |
-| 8 January 2026 | Sanding and finishing | Long days of sanding, filling and painting to make the hulls smooth and watertight. | `sscihEc0vW6hGiMootkpCcppvtg.jpg` |
-| 8 March 2026 | First time on the water | The first float test in the harbour. It floats. | `4TVFbItxOj73jH3lRTCoPsZy9z4.jpg` |
-| 19 April 2026 | Putting it all together | Hulls, frame and electronics are joined together on the dock for the first time. | `Xt3NToRpvd0fFTDvicZcgFlrjiE.jpeg` |
-| 26 April 2026 | Launch day | Argus goes into the water with all sensors on board, ready for testing. | `iD5n7P5PmXPXewIrUMJsfhii2rQ.jpeg` |
+| 16 November 2025 | Shaping the hulls | Work starts in the workshop. The first hull slowly takes shape. | `argus/workshop-hull-2025-11-16.jpg` |
+| 8 January 2026 | Sanding and finishing | Long days of sanding, filling and painting to make the hulls smooth and watertight. | `argus/workshop-sanding-2026-01-08.jpg` |
+| 8 March 2026 | First time on the water | The first float test in the harbour. Does it float? It does. | `argus/dock-team-gathered-2026-04-19.jpg` ⚠ tatt 19. april |
+| 19 April 2026 | Putting it all together | Hulls, frame and electronics are joined together on the dock for the first time. | `argus/dock-wiring-electronics-DSCF6185.jpg` |
+| 26 April 2026 | Launch day | Argus goes into the water with all sensors on board – ready for testing. | `argus/argus-in-water-front-DSCF6216.jpg` |
+
+Tekstene over er de som vises live. Koden har litt kortere versjoner: «Work starts in the workshop with the first hull.»,
+«The first float test in the harbour. It floats.» og «…, ready for testing.» Det gamle hero-bildet
+`argus/float-test-towed-by-dinghy-old-hero.jpg` viser trolig den faktiske flytetesten (skrogene trekkes av en gummibåt).
 
 ### 7.6 Sponsorer
 | Nivå | Sponsor | Nettside | Logo |
@@ -500,34 +569,64 @@ Trondheim havn **63.44° N · 10.42° E**.
 
 ## 8. Bildebibliotek
 
-Alle bilder ligger på `https://framerusercontent.com/images/<id>` (Framers CDN). Beskrivelsene kommer fra
-kommentarene i koden (DSCF-numrene er kamerafilnavn).
+Alle bildene er lastet ned i original oppløsning til `framer-export/images/` (67 MB). Jeg har sett på hvert enkelt.
+Oversikt med Framer-URL og mål: `framer-export/images/manifest.json`. Original-URL er alltid
+`https://framerusercontent.com/images/<id>`.
 
-| ID | Motiv | Brukes på |
+### 8.1 Logo og ikoner
+| Fil | Mål | Hva det er |
 |---|---|---|
-| `okoPvPfG1Mc7SjtWCqN6BRlnKQ.jpeg` | DSCF6237 – Argus på vannet (**hovedbildet**, båten lavt i bildet med åpent vann over) | Home-hero, Argus-hero, door-kort, About, Njord, meny |
-| `iD5n7P5PmXPXewIrUMJsfhii2rQ.jpeg` | DSCF6216 – Argus i vannet / sjøsettingsdagen | Home («For companies»), Argus story, tidslinje, RoboBoat, About vision |
-| `Xt3NToRpvd0fFTDvicZcgFlrjiE.jpeg` | DSCF6185 – arbeid på bryggen (stående) | Argus story, 19 April, About |
-| `wE8Fd622sKOX4zZ47Yd5LTp9oo.jpeg` | DSCF6178 – sensorer på elektronikkboksen | Argus tech, About |
-| `e4K2lW5CTwePm1UXtq3SxHSsjM.jpeg` | DSCF6189 – på bryggen (stående) | About, Argus-galleri |
-| `2E7XId6Dx1tZgYXAEGufUkarzk.jpeg` | DSCF6206 – Argus senkes i vannet | Njord, Argus-galleri |
-| `8chMXzdhjcFqVfnM9pVnEK7Bis.jpeg` | DSCF6222 | Argus-galleri |
-| `wYxgqlESpg8tAsvJy8vgPrQSQGI.jpeg` | DSCF6226 | Argus-galleri |
-| `xPkG7WlvZAhgtjCo7wtwrNjhzE.jpeg` | DSCF6192 | Argus-galleri |
-| `XCTH8UnFJpPlbZTWKyEdvdjsN1A.jpg` | 16. nov 2025 – skrog i verkstedet | Home, tidslinjer, About |
-| `sscihEc0vW6hGiMootkpCcppvtg.jpg` | 8. jan 2026 – sliping | Tidslinje, About, Sponsor |
-| `4TVFbItxOj73jH3lRTCoPsZy9z4.jpg` | ⚠ merket både «8. mars – første flytetest» og «19. april – team på bryggen» | Tidslinje, About, Njord, Argus-galleri |
-| `CiY3EgLbeTY7Sd1n3pSqiTaJG10.jpg` | Flytetest i havna (gammelt hero-bilde) | Ubrukt |
-| `vejpeUPaXWhQEjooH4OycbpXan8.webp` | Team.jpg – nytt teambilde | Home, Sponsor-hero, Argus-galleri |
-| `fUF3HR5F9cbPVuyf7I6Qd6Ndug.jpeg` | Gruppebilde Team 2025 | Team-kort, Team 2025, Join |
-| `gVtb0YIZKv3qgIFUEzjyykwgHS8.png` | Njord-bilde (1238×617) | Njord, Home, About 2026, meny |
-| `aFSAiq4VrhmVHpI2PQY4CqkQ2g.png` | RoboBoat-bilde | RoboBoat-hero, Home, Competitions |
-| `TQPxBN7JTlcvM55CKZspxhPPM.png` | «Roboat bilde» | RoboBoat about |
-| `AWh67USU8Gbpps2zpfmK4qVcec.png` | RoboBoat | RoboBoat about |
-| `LrBmF25Tu6AkREtPrSt4ZFu3PhI.webp` | RoboBoat-logo (750×561) | Hero-logo, About 2027, meny |
-| Gruppebilder Team 2025 | se 7.1 | Team 2025 |
-| Sponsorlogoer | se 7.6 | Home, Sponsor |
-| Logoer | se 5.3 | Meny, footer |
+| `logo/logo-mark.png` (`BO2urvxg…`) | 352×331 | Logomerket: en sirkel med trådkors og en firespisset kompass-stjerne der to motstående spisser er fylt, alt i Marinor-lilla. Gjennomsiktig bakgrunn. |
+| `logo/logo-wordmark.png` (`7JK8ZyEU…`) | 368×56 | Ordmerke «**MARINOR** NTNU», kursiv, MARINOR i fet og NTNU i tynn skrift, lilla. Gjennomsiktig. Lav oppløsning. |
+| `logo/logo-stacked.png` (`6nCPTtU3…`) | 610×741 | Merket over «MARINOR / NTNU» (stående variant). Gjennomsiktig. |
+| `logo/favicon.jpg` (`xfYBqjDL…`) | 1845×1845 | Logomerket på hvit bakgrunn. Brukes som favicon. |
+| `logo/apple-touch-icon-framer-default.png` (`f3BE62cP…`) | 180×181 | ⚠ Framers standardikon (lilla firkant med hvit form), ikke Marinor. |
+
+### 8.2 Argus, verkstedet og bryggen
+| Fil | Mål | Motiv | Brukes |
+|---|---|---|---|
+| `argus/argus-on-water-DSCF6237.jpg` | 7728×5152 | Argus alene på vannet, sett skrått forfra, med refleks i vannet. Hvite doble skrog, svart elektronikkboks med LiDAR på toppen. **Hovedbildet.** | Home-hero, Argus-hero, prosjektkort, About, Njord |
+| `argus/argus-in-water-front-DSCF6216.jpg` | 7728×5152 | Argus på vannet rett forfra/skrått, GNSS-antenne og LiDAR godt synlig | Home («For companies»), Argus, sjøsettingsdag, About, RoboBoat |
+| `argus/argus-sensors-closeup-DSCF6178.jpg` | 7728×5152 | Nærbilde på bryggen: elektronikkboksen med LiDAR, GNSS-antenne, aluminiumsskinner, en hånd som skrur | Argus «What is on board», About |
+| `argus/dock-wiring-electronics-DSCF6185.jpg` | 5152×7728 (stående) | Tre personer jobber med den åpne elektronikkboksen (ledninger og kort) på bryggen under et tak | Argus, About, Sponsor |
+| `argus/dock-member-with-argus-DSCF6189.jpg` | 5152×7728 (stående) | Et medlem i oransje jakke sitter på huk ved Argus og smiler til kamera | About, Argus-galleri |
+| `argus/dock-lowering-argus-DSCF6206.jpg` | 7728×5152 | To personer senker Argus fra bryggekanten ned i vannet | Njord, Argus-galleri |
+| `argus/dock-working-on-argus-in-water-DSCF6222.jpg` | 5152×7728 (stående) | En person i oransje jakke lener seg ut og jobber med Argus som ligger i vannet ved bryggen | Argus-galleri |
+| `argus/dock-carrying-argus-DSCF6226.jpg` | 5152×7728 (stående) | To personer bærer Argus mellom seg langs kaia mot vannet, skyer og fjord i bakgrunnen | Argus-galleri |
+| `argus/dock-argus-ready-DSCF6192.jpg` | 5152×7728 (stående) | Argus står klar på bryggen, med kajakker og landgang i bakgrunnen | Argus-galleri |
+| `argus/dock-team-gathered-2026-04-19.jpg` | 5184×3456 | Rundt ti medlemmer samlet på bryggen under et tak, sjøen i bakgrunnen. EXIF: 19.04.2026, Canon EOS 1200D | ⚠ Brukt som «8 March – First time on the water». Også About, Njord, Argus-galleri |
+| `argus/workshop-hull-2025-11-16.jpg` | 4000×3000 | To personer i verkstedet former det første hvite skroget | Home, tidslinjer, About, Sponsor |
+| `argus/workshop-sanding-2026-01-08.jpg` | 4032×3024 | To personer med åndedrettsvern sliper et skrog med blå tape | Tidslinje, About, Sponsor |
+| `argus/float-test-towed-by-dinghy-old-hero.jpg` | 4000×1360 (PNG) | Panorama: skrogene flyter og trekkes av en person i en gummibåt. Trolig den ekte flytetesten | Ubrukt (gammelt hero-bilde) |
+
+### 8.3 Team
+| Fil | Mål | Motiv |
+|---|---|---|
+| `team/team-2025-group-photo.jpg` | 5587×3724 | Hele Team 2025 (rundt 20 personer) foran store tredører. EXIF: 17.04.2026, Fujifilm X-T5. Brukes på Team, Team 2025 og Join. |
+| `team/team-2025-group-photo-small-960px.webp` | 960×627 | Samme bilde i lav oppløsning. ⚠ Brukt stort på Home, Sponsor og i Argus-galleriet. |
+| `team/team-2025-leader.jpg` | 7728×5152 | Portrett av lederen (Kasper Tufte Langland) foran tredørene |
+| `team/team-2025-perception.jpg` | 6996×4664 | Perception, 5 personer |
+| `team/team-2025-autonomy.jpg` | 6965×4644 | Autonomy, 4 personer |
+| `team/team-2025-gui.jpg` | 5152×3435 | GUI, 2 personer |
+| `team/team-2025-hardware.jpg` | 7275×4850 | Hardware, **3 personer** (listen har 5 navn) |
+| `team/team-2025-economy.jpg` | 7728×5152 | Economy, 1 person |
+| `team/team-2025-pr.jpg` | 6558×4372 | PR, 1 person |
+
+Alle gruppebildene er tatt samme dag (17.04.2026) foran de samme tredørene, i svarte eller mørkeblå t-skjorter. Control har ikke eget bilde.
+
+### 8.4 Konkurranser
+| Fil | Mål | Motiv |
+|---|---|---|
+| `competitions/njord-all-teams-at-haven.png` | 2476×1234 | Alle lagene i Njord samlet foran bygget «HAVEN» i Nyhavna, med flagg (Tyrkia, USA, Norge, Portugal, Spania m.fl.) og båtene sine foran |
+| `competitions/roboboat-hero-boat-barka.png` | 2560×1707 | En svart autonom båt med navnet «Barka» på vannet, rød bøye og en kajakk i bakgrunnen. ⚠ Sjekk at bildet faktisk er fra RoboBoat |
+| `competitions/roboboat-course-lake.png` | 1260×802 | RoboBoat-banen: innsjø med bøyer, telt og palmer, en liten turkis båt |
+| `competitions/roboboat-team-boat-at-pontoon.png` | 1372×716 | En blå lagbåt ved en flytebrygge med en deltaker |
+| `competitions/roboboat-logo.webp` | 1500×1122 | RoboBoat-logo (blått flagg med robot-hodeskalle og lyn, «roboboat») |
+
+### 8.5 Sponsorlogoer
+`sponsors/kongsberg.png` (500×502, rødt Kongsberg-våpen og «KONGSBERG», den generelle Kongsberg-logoen, ikke en egen
+Discovery-logo) · `sponsors/dnv.png` (1280×549) · `sponsors/telenor.png` (926×265) · `sponsors/ntnu.png` (980×1313,
+stående) · `sponsors/frifond.png` (380×500, stående). Alle har gjennomsiktig bakgrunn.
 
 ---
 
@@ -563,7 +662,12 @@ kommentarene i koden (DSCF-numrene er kamerafilnavn).
 8. **Rester i Framer:** 36 ubrukte malkomponenter, malens tekststiler og farger, `Examples.tsx`, `HomeArgus.tsx`, samt
    `heroPlace`-feltet på Home, som ikke brukes.
 9. **Bare engelsk.** Hvis målgruppen også er norske bedrifter og nye studenter, kan det være aktuelt med en norsk versjon.
-10. **Ikke sett:** SEO-titler, metabeskrivelser, favicon og OG-bilder. Sjekk dem i Framer under Site Settings før bygging.
+10. **SEO mangler:** samme tittel på alle sider, ingen beskrivelse og ikke noe delingsbilde (se 1.3).
+11. **Fonter lastes ikke**, og **bakgrunnen er hvit** i stedet for lavendel (se 1.3). Den nye siden bør laste fontene sine selv.
+12. **Gamle lister på canvas** gir blandet tone på siden (se 1.2). Samme sted står det «we were one of them» og «Marinor included».
+13. **Bildekvalitet og bildevalg:** bruk høyoppløst teambilde, rett bildet i tidslinjen for 8. mars, bytt apple touch icon og
+    sjekk RoboBoat-bildet (se 8).
+14. **Hardware-bildet** viser 3 personer, mens listen har 5 navn.
 
 ---
 
@@ -597,5 +701,5 @@ Repoet (`claude/framer-website-analysis-5o84fj`) har allerede en påbegynt ny si
 3. **Språk:** bare engelsk som i dag, eller også norsk?
 4. **Hosting:** fortsatt Framer (koden kan limes inn som kodekomponenter) eller en statisk side (Vite) på eget domene?
 5. **Nytt innhold:** Team 2026, Proteus, Njord 2026-resultatet og ev. nye bilder.
-6. **Bilder:** skal den nye siden laste bildene rett fra `framerusercontent.com`, eller skal de lastes ned i repoet?
-   For å laste dem ned herfra må `framerusercontent.com` legges til i nettverkstilgangen for skymiljøet.
+6. **Tekst:** skal den nye siden bruke den nyeste teksten fra koden (kortere og enklere), eller det som står live i dag?
+   Anbefaling: den nyeste teksten, siden den er skrevet sist og er mest konsekvent.

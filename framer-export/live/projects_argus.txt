@@ -1,0 +1,212 @@
+About us
+Projects
+Team
+Competitions
+Sponsor us
+Join Marinor
+MARINOR NTNU · PROJECT ARGUS
+AUTONOMOUS SURFACE VESSEL
+Meet Argus
+
+Our first autonomous boat. A catamaran built by students in Trondheim and tested in the harbour.
+
+Open the interface
+See the build
+1st
+autonomous surface vessel built by Marinor NTNU
+2
+hulls in a stable catamaran design
+5
+months from the first hull to launch day
+100%
+designed, built and tested by students
+THE PROJECT
+About Argus
+
+Argus is our first autonomous surface vessel. It finds its way on the water with no one at the wheel.
+
+The hulls, electronics, sensors, control system and software all have to work together on one boat. Our members made every part of it.
+
+Tested in Trondheim harbour
+ON BOARD
+What is on board
+
+The sensors and hardware Argus uses to see, find its position and steer.
+
+SENSING
+Sensors mounted on top of the electronics case
+01
+Two hulls
+
+Argus is a catamaran. The two hulls give a wide and stable platform for the sensors and electronics.
+
+02
+Four propellers
+
+With four propellers Argus can turn a full 360 degrees while it keeps moving forward.
+
+03
+Kongsberg Seapath 130
+
+A GNSS-aided inertial navigation system. It combines multi-frequency GNSS receivers with gyroscopes and accelerometers, and gives Argus its position, heading, speed, roll and pitch.
+
+04
+Stereo depth camera
+
+Two lenses measure the distance to things in front of the boat. The images are also used to recognise what the objects are.
+
+05
+LiDAR
+
+Measures the distance to docks, buoys, boats and other obstacles around the boat.
+
+06
+Pixhawk flight controller
+
+Controls the motors. It calculates the PWM signal that sets the speed of each propeller.
+
+07
+5G link
+
+Sends all data from the boat to land, so we can follow its internal state while it sails.
+
+08
+Waterproof electronics case
+
+The computer, power and wiring are kept dry inside one sealed case.
+
+AUTONOMY
+How Argus finds its way
+
+From what the sensors see to the signal that turns the propellers, in the order it happens on board.
+
+01
+SEE
+Stereo camera and LiDAR
+
+The depth camera measures distance and recognises objects like buoys and boats. The LiDAR measures the distance to everything around the boat.
+
+02
+LOCATE
+Kongsberg Seapath 130
+
+GNSS receivers give the position and heading. Gyroscopes and accelerometers fill in between the satellite fixes and keep the estimate going if the signal drops out. Correction data over 5G makes the position more accurate.
+
+Seapath 130 at Kongsberg
+03
+MAP
+Cost map
+
+What the sensors find goes into a map of the water around the boat. Obstacles, and the water close to them, cost more to sail through.
+
+04
+DECIDE
+State machine
+
+Keeps track of what Argus is doing right now, for example following the course, going around another boat or docking, and switches when something changes.
+
+05
+PLAN
+Field D*
+
+The path planning algorithm finds the cheapest route across the cost map, and plans again when the map changes.
+
+06
+DRIVE
+Pixhawk
+
+The flight controller turns the plan into PWM signals for the four motors.
+
+5G to shore
+
+All data from Argus is sent to land over 5G, so we can follow its internal state and get important information while it sails.
+
+THE BUILD
+How we built it
+
+The build, from the first hull in the workshop to the first test in the harbour.
+
+16 NOVEMBER 2025
+Shaping the hulls
+
+Work starts in the workshop. The first hull slowly takes shape.
+
+8 JANUARY 2026
+Sanding and finishing
+
+Long days of sanding, filling and painting to make the hulls smooth and watertight.
+
+8 MARCH 2026
+First time on the water
+
+The first float test in the harbour. Does it float? It does.
+
+19 APRIL 2026
+Putting it all together
+
+Hulls, frame and electronics are joined together on the dock for the first time.
+
+26 APRIL 2026
+Launch day
+
+Argus goes into the water with all sensors on board – ready for testing.
+
+BEHIND THE SCENES
+Photos from the dock
+Wiring the electronics on the dock
+Last checks before launch
+Lowering Argus into the water
+Working on the hull
+Rolling Argus out to the harbour
+Ready on the dock
+The team behind Argus
+OUR GOALS
+Our goals
+Goal 01
+A fully autonomous boat
+
+Build and test our first maritime platform that can navigate and do tasks on its own.
+
+Goal 02
+Stronger partnerships
+
+Work closer with the Department of Engineering Cybernetics and our industry partners.
+
+Goal 03
+A base for the future
+
+Lay the foundation for new projects in maritime autonomy, research and innovation.
+
+PROJECT ARGUS
+Open the Argus interface
+
+Our GUI team built a web interface for following Argus while it sails. You can open it here.
+
+Open the interface
+Join Marinor
+
+A student organisation at NTNU in Trondheim that builds autonomous boats.
+
+marinorntnu@gmail.com
+Copy
+Høgskoleringen 1
+7034 Trondheim
+Instagram
+LinkedIn
+MARINOR
+Home
+About us
+Team
+Competitions
+OUR WORK
+Argus
+Proteus
+Njord Challenge
+RoboBoat
+GET INVOLVED
+Join the crew
+Sponsor us
+Email us
+© 2026 Marinor NTNU
+Org.nr. 936 064 809
+Back to top
