@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+<head>
+<title>Marinor NTNU</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Marinor NTNU is a student organisation in Trondheim that builds autonomous boats. Meet Argus, our first autonomous surface vessel.">
+<meta name="theme-color" content="#07060d">
+<link rel="stylesheet" href="/src/style.css">
+</head>
+<body>
+<canvas id="scene" aria-hidden="true"></canvas>
+<div class="grain" aria-hidden="true"></div>
+
+<!-- ============ Fixed interface ============ -->
+<header class="nav" id="nav">
+  <a class="brand" href="#top" aria-label="Marinor NTNU, back to top">
+    <svg class="brand-mark" viewBox="0 0 40 40" aria-hidden="true">
+      <circle cx="20" cy="20" r="18.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+      <path d="M8 25.5 Q 14 21 20 25.5 T 32 25.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+      <path d="M13 21 L20 9 L27 21 Z" fill="currentColor"/>
+    </svg>
+    <span class="brand-word">Marinor<small>NTNU</small></span>
+  </a>
+  <nav class="nav-links" aria-label="Sections">
+    <a href="#argus">Argus</a>
+    <a href="#mission">Njord</a>
+    <a href="#timeline">Timeline</a>
+    <a href="#crew">Crew</a>
+    <a href="#partners">Partners</a>
+  </nav>
+  <a class="nav-join" href="#join">Join Marinor</a>
+  <button class="nav-burger" id="burger" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="menu"><i></i><i></i></button>
+</header>
+
+<div class="menu" id="menu" hidden>
+  <nav aria-label="Menu">
+    <a href="#argus"><span>01</span>Argus</a>
+    <a href="#mission"><span>02</span>Njord</a>
+    <a href="#timeline"><span>03</span>Timeline</a>
+    <a href="#crew"><span>04</span>Crew</a>
+    <a href="#partners"><span>05</span>Partners</a>
+    <a href="#join"><span>06</span>Join</a>
+  </nav>
+</div>
+
+<aside class="hud" aria-hidden="true">
+  <div class="hud-frame"><i></i><i></i><i></i><i></i></div>
+  <div class="telemetry">
+    <div class="tl-row"><span>Mode</span><b id="t-mode">Cruise</b><em class="sim">Sim</em></div>
+    <div class="tl-row"><span>Pos</span><b id="t-pos">63.4400° N · 10.4200° E</b></div>
+    <div class="tl-row tl-small"><span>Hdg</span><b id="t-hdg">072°</b><span>Sog</span><b id="t-sog">1.8 kn</b></div>
+  </div>
+  <ol class="depth" id="depth">
+    <li data-target="top"><span>Surface</span></li>
+    <li data-target="argus"><span>Argus</span></li>
+    <li data-target="mission"><span>Njord</span></li>
+    <li data-target="timeline"><span>Timeline</span></li>
+    <li data-target="crew"><span>Crew</span></li>
+    <li data-target="partners"><span>Partners</span></li>
+    <li data-target="join"><span>Join</span></li>
+  </ol>
+  <div class="cursor" id="cursor"><i></i><b id="cursor-xy"></b></div>
+</aside>
+
+<main id="top">
+  <!-- ============ Hero ============ -->
+  <section class="hero" id="hero">
+    <div class="wrap hero-in">
+      <p class="eyebrow" data-scramble>Marinor NTNU · Trondheim</p>
+      <h1 class="hero-title">
+        <span class="line"><span>Boats that</span></span>
+        <span class="line"><span>steer</span></span>
+        <span class="line"><span class="outline">themselves</span></span>
+      </h1>
+      <div class="hero-foot">
+        <p class="lead">We are a student organisation at NTNU that builds autonomous boats. Our first boat, Argus, sailed the Njord Challenge in Trondheim in 2026.</p>
+        <div class="btns">
+          <a class="btn btn-solid" href="#argus">Meet Argus <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3.5 8.5 8 13l4.5-4.5"/></svg></a>
+          <a class="btn btn-line" href="#partners">Become a partner</a>
+        </div>
+      </div>
+    </div>
+    <div class="hero-scan" aria-hidden="true">
+      <p class="scan-title">Live scene</p>
+      <p class="scan-line"><span>Sensor</span><b>LiDAR sweep</b></p>
+      <p class="scan-line"><span>Returns</span><b id="scan-pts">0</b></p>
+      <p class="scan-line"><span>Sea state</span><b id="scan-sea">Calm</b></p>
+      <div class="scan-bars" id="scan-bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    </div>
+    <p class="scroll-cue" aria-hidden="true"><i></i>Scroll to inspect Argus</p>
+  </section>
+
+  <!-- ============ Argus ============ -->
+  <section class="pin argus" id="argus">
+    <div class="pin-stage">
+      <div class="wrap argus-in">
+        <div class="argus-copy">
+          <p class="eyebrow" data-scramble>The boat</p>
+          <h2 class="display">Argus</h2>
+          <p class="lead">Our first autonomous surface vessel. A catamaran that finds its way on the water with no one at the wheel, built by students and tested in Trondheim harbour.</p>
+          <dl class="facts">
+            <div><dt>Hulls</dt><dd>2</dd></div>
+            <div><dt>First hull to launch</dt><dd>5 mo</dd></div>
+            <div><dt>Launch day</dt><dd>26.04.26</dd></div>
+          </dl>
+        </div>
+        <div class="parts" id="parts">
+          <p class="parts-count"><b id="part-n">01</b> / 06 <span>on board</span></p>
+          <article class="part" data-part="0"><h3>Twin hulls</h3><p>A catamaran design gives Argus a wide and stable platform for sensors and electronics.</p></article>
+          <article class="part" data-part="1"><h3>3D LiDAR</h3><p>Scans the area around the boat to find docks, boats and other obstacles.</p></article>
+          <article class="part" data-part="2"><h3>Stereo camera</h3><p>Two lenses give Argus depth vision, so it can see and measure what is in front of it.</p></article>
+          <article class="part" data-part="3"><h3>Dual GNSS antennas</h3><p>Two satellite antennas tell Argus where it is and which way it is pointing.</p></article>
+          <article class="part" data-part="4"><h3>Waterproof electronics case</h3><p>The computer, power and wiring are kept dry inside one sealed case.</p></article>
+          <article class="part" data-part="5"><h3>Electric thrusters</h3><p>Thrusters under the hulls push the boat forward and let it turn on the spot.</p></article>
+        </div>
+      </div>
+      <svg class="callout" id="callout" aria-hidden="true"><polyline id="callout-line" points=""/><circle id="callout-dot" r="4"/></svg>
+    </div>
+  </section>
+
+  <!-- ============ Njord mission ============ -->
+  <section class="pin mission" id="mission">
+    <div class="pin-stage">
+      <div class="det-layer" id="det-layer" aria-hidden="true"></div>
+      <div class="wrap mission-in">
+        <div class="mission-copy">
+          <p class="eyebrow" data-scramble>Njord Challenge · Nyhavna</p>
+          <h2 class="display">Four tasks.<br>No one steering.</h2>
+          <p class="lead">At Njord the boats sail a course in the harbour and get one task at a time. The team is not allowed to steer. Scroll to run the course.</p>
+        </div>
+        <ol class="tasks" id="tasks">
+          <li><span class="task-no">A</span><div><h3>Manoeuvring</h3><p>Steer through a marked course and show that the boat controls its own movement.</p></div><i class="task-bar"><b></b></i></li>
+          <li><span class="task-no">B</span><div><h3>Path finding</h3><p>Read the sea marks and find the way through the course without help from the team.</p></div><i class="task-bar"><b></b></i></li>
+          <li><span class="task-no">C</span><div><h3>Collision avoidance</h3><p>Another vessel crosses the path. The boat has to see it in time and go around it.</p></div><i class="task-bar"><b></b></i></li>
+          <li><span class="task-no">D</span><div><h3>Docking</h3><p>Find the right spot at the dock and park there on its own.</p></div><i class="task-bar"><b></b></i></li>
+        </ol>
+        <p class="sim-note">Course and numbers are a simulation, not logged data from Argus.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ Timeline / coast ============ -->
+  <section class="pin timeline" id="timeline">
+    <div class="pin-stage">
+      <div class="city-layer" id="city-layer" aria-hidden="true"></div>
+      <div class="wrap timeline-in">
+        <div class="timeline-copy">
+          <p class="eyebrow" data-scramble>Timeline</p>
+          <h2 class="display">From Trondheim,<br>along the coast</h2>
+        </div>
+        <ol class="years" id="years">
+          <li><time>2025</time><h3>Marinor is founded</h3><p>Four students start Marinor NTNU in Trondheim. The first members build the hulls for Argus in the workshop.</p></li>
+          <li><time>2026</time><h3>First Njord Challenge</h3><p>We sail Argus in Njord: The Autonomous Ship Challenge in Trondheim, against university teams from several countries.</p></li>
+          <li><time>2027</time><h3>Win Njord, then RoboBoat</h3><p>We want to win the Njord Challenge. After that we want to enter RoboBoat in Florida.</p></li>
+          <li><time>2028</time><h3>A bigger boat</h3><p>We plan to start building a much bigger boat.</p></li>
+          <li><time>Later</time><h3>The whole coast</h3><p>A boat that sails the Norwegian coast on its own, from Kristiansand to Kirkenes, with a crew on board.</p></li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ Crew ============ -->
+  <section class="block crew" id="crew">
+    <div class="wrap">
+      <div class="block-head">
+        <p class="eyebrow" data-scramble>The crew</p>
+        <h2 class="display reveal-lines">Students from<br>seven groups</h2>
+        <p class="lead">Our members study robotics, automation, marine technology and other subjects at NTNU. We work with the Department of Engineering Cybernetics.</p>
+      </div>
+      <dl class="stats">
+        <div><dt>Members</dt><dd><span data-count="35">35</span>+</dd></div>
+        <div><dt>Groups</dt><dd><span data-count="7">7</span></dd></div>
+        <div><dt>Founded</dt><dd><span data-count="2025" data-from="1990">2025</span></dd></div>
+        <div><dt>Founders</dt><dd><span data-count="4">4</span></dd></div>
+      </dl>
+      <ul class="groups">
+        <li><h3>Perception</h3><p>LiDAR, cameras and the software that lets the boat understand what is around it.</p><span>Sensors · Computer vision · Data</span></li>
+        <li><h3>Autonomy</h3><p>Planning and decision making, so the boat finds a safe route on its own.</p><span>Path planning · Algorithms · Simulation</span></li>
+        <li><h3>Control</h3><p>Steering and thrust. Keeps the boat on the planned path in wind and waves.</p><span>Control theory · Modelling · Testing</span></li>
+        <li><h3>GUI</h3><p>The interface where we follow the boat, read its data and send it commands.</p><span>Web · UX · Visualisation</span></li>
+        <li><h3>Hardware</h3><p>Hulls, frame, power and electronics.</p><span>Electronics · CAD · Building</span></li>
+        <li><h3>Economy</h3><p>Budget, sponsors, travel and other practical work.</p><span>Budget · Sponsors · Applications</span></li>
+        <li><h3>PR</h3><p>Social media, photos and the website.</p><span>Content · Design · Web</span></li>
+      </ul>
+      <p class="founders"><span>Founded by</span> Kasper Tufte Langland, Johannes Embretsen Gunnarshaug, Oskar Fredrik Eliassen and Emil Mohr-Skogan</p>
+    </div>
+  </section>
+
+  <!-- ============ Photos ============ -->
+  <section class="block dock" id="dock" aria-label="Photos from the dock">
+    <div class="wrap block-head block-head--row">
+      <p class="eyebrow" data-scramble>From the dock</p>
+      <p class="dock-note">Build and test days in Trondheim, 2025 to 2026</p>
+    </div>
+    <div class="reel" id="reel">
+      <div class="reel-track">
+        <figure data-src="https://framerusercontent.com/images/XCTH8UnFJpPlbZTWKyEdvdjsN1A.jpg"><figcaption><time>16.11.25</time>Shaping the first hull</figcaption></figure>
+        <figure data-src="https://framerusercontent.com/images/sscihEc0vW6hGiMootkpCcppvtg.jpg"><figcaption><time>08.01.26</time>Sanding and finishing</figcaption></figure>
+        <figure data-src="https://framerusercontent.com/images/4TVFbItxOj73jH3lRTCoPsZy9z4.jpg"><figcaption><time>08.03.26</time>First float test</figcaption></figure>
+        <figure data-src="https://framerusercontent.com/images/Xt3NToRpvd0fFTDvicZcgFlrjiE.jpeg"><figcaption><time>19.04.26</time>Putting it together on the dock</figcaption></figure>
+        <figure data-src="https://framerusercontent.com/images/wE8Fd622sKOX4zZ47Yd5LTp9oo.jpeg"><figcaption><time>19.04.26</time>Sensors on the electronics case</figcaption></figure>
+        <figure data-src="https://framerusercontent.com/images/iD5n7P5PmXPXewIrUMJsfhii2rQ.jpeg"><figcaption><time>26.04.26</time>Launch day</figcaption></figure>
+        <figure data-src="https://framerusercontent.com/images/okoPvPfG1Mc7SjtWCqN6BRlnKQ.jpeg"><figcaption><time>2026</time>Argus in Trondheim harbour</figcaption></figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ Partners ============ -->
+  <section class="block partners" id="partners">
+    <div class="wrap">
+      <div class="block-head">
+        <p class="eyebrow" data-scramble>Partners</p>
+        <h2 class="display reveal-lines">Thanks to<br>our partners</h2>
+        <p class="lead">These companies and organisations support Marinor NTNU. Without them we could not build our boats or travel to competitions.</p>
+      </div>
+      <div class="tiers">
+        <div class="tier tier-gold"><p>Gold</p><a href="https://www.kongsberg.com/discovery/" target="_blank" rel="noopener noreferrer">Kongsberg Discovery</a></div>
+        <div class="tier tier-silver"><p>Silver</p><a href="https://www.dnv.com" target="_blank" rel="noopener noreferrer">DNV</a><a href="https://www.telenor.no" target="_blank" rel="noopener noreferrer">Telenor</a></div>
+        <div class="tier tier-bronze"><p>Bronze</p><a href="https://www.ntnu.no" target="_blank" rel="noopener noreferrer">NTNU</a><a href="https://frifond.no" target="_blank" rel="noopener noreferrer">Frifond</a></div>
+      </div>
+      <div class="partner-cta">
+        <div>
+          <h3>Become a partner</h3>
+          <p>We are looking for new sponsors and partners. Partners meet engineering students at NTNU, follow the project through the year and get their logo on the boat, the website and our posts from competitions.</p>
+        </div>
+        <div class="contact-card">
+          <p class="cc-role">Head of Sponsorship and Branding</p>
+          <p class="cc-mail" id="sponsor-mail">andreas.furst@marinorntnu.no</p>
+          <div class="btns">
+            <button class="btn btn-solid" type="button" data-copy="andreas.furst@marinorntnu.no">Copy email</button>
+            <a class="btn btn-line" href="mailto:andreas.furst@marinorntnu.no">Write an email</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ Join ============ -->
+  <section class="block join" id="join">
+    <div class="wrap join-in">
+      <p class="eyebrow" data-scramble>Recruitment</p>
+      <h2 class="join-title reveal-lines">Join<br><span class="outline">Marinor</span></h2>
+      <div class="join-status">
+        <p class="status"><i></i>We are not recruiting right now</p>
+        <p>We take in new members at set times. Follow us on Instagram, where we post when applications open. You do not need any boat experience.</p>
+        <div class="btns">
+          <a class="btn btn-solid" href="https://www.instagram.com/marinorntnu/" target="_blank" rel="noopener noreferrer">Follow on Instagram</a>
+          <a class="btn btn-line" href="https://www.linkedin.com/company/marinor-ntnu" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <div class="wrap footer-in">
+    <div class="f-brand">
+      <p class="f-word">Marinor<small>NTNU</small></p>
+      <p>A student organisation at NTNU in Trondheim that builds autonomous boats.</p>
+    </div>
+    <div class="f-col">
+      <p class="f-label">Contact</p>
+      <p class="f-mail">marinorntnu@gmail.com <button type="button" class="copy-mini" data-copy="marinorntnu@gmail.com">Copy</button></p>
+      <p>Høgskoleringen 1<br>7034 Trondheim</p>
+    </div>
+    <div class="f-col">
+      <p class="f-label">Follow</p>
+      <a href="https://www.instagram.com/marinorntnu/" target="_blank" rel="noopener noreferrer">Instagram</a>
+      <a href="https://www.linkedin.com/company/marinor-ntnu" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+    </div>
+    <div class="f-bottom">
+      <span>© <span id="year">2026</span> Marinor NTNU · Org.nr. 936 064 809</span>
+      <a href="#top">Back to top ↑</a>
+    </div>
+  </div>
+</footer>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>
