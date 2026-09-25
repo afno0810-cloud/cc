@@ -1861,3 +1861,8 @@ html.webgl [data-stage="photo"]:not(.is-formed) > img {
 html.webgl [data-stage="photo"]:not(.is-formed)::before {
     opacity: 0;
 }
+
+/* with the live 3D harbour the picture is real: no screen lines over it */
+html.has-scene .hero-scan {
+    display: none;
+}

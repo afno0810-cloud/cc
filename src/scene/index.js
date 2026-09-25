@@ -1,6 +1,7 @@
 import * as THREE from "three"
-import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js"
-import { createWater, createSky, createStars, createHills, createBeam, COLORS, MOON_DIR } from "./world/sea.js"
+import { createWater, createBeam, WAKE_N, RIPPLE_N } from "./world/sea.js"
+import { createSky, MOON } from "./world/sky.js"
+import { AIR } from "./world/air.js"
 import { waveHeight, waveSlope } from "./world/waves.js"
 import { createArgus, CUT_ALL_SOLID, CUT_ALL_CLOUD } from "./world/argus.js"
 import { createTitle3D } from "./world/title3d.js"
@@ -8,14 +9,19 @@ import { createGlobe, GLOBE_CENTER, GLOBE_R, PLACES } from "./world/globe.js"
 import { createPost } from "./post.js"
 import { createMotes } from "./world/motes.js"
 import { createPhotoCloud, PHOTO_CENTER } from "./world/photocloud.js"
+import { createSpray } from "./world/spray.js"
+import { createDrive } from "./drive.js"
 
 /* ================================================================
    The harbour behind every page.
 
-   One renderer, one scene: Trondheim harbour at night with Argus
-   floating in it and its LiDAR sweeping the water. Rendered in HDR with
-   bloom, and Argus is mirrored in the water. Sections can take over the
-   camera ("stages"), marked in the HTML:
+   One renderer, one scene: Trondheim harbour with Argus floating in it.
+   The sky is computed from the physics of the air, the sun goes down as
+   you scroll (afternoon at the top of a page, night at the bottom), the
+   water reflects everything around it, and the land, the city and the
+   things in the harbour (made with Higgsfield) sit in the haze of the
+   fjord. Rendered in HDR with bloom, sun rays and a lens flare.
+   Sections can take over the camera ("stages"), marked in the HTML:
 
    <section data-stage="hero">    the first screen: Argus up close, scanned in
                                   by its own LiDAR (data-view="home" | "argus",
@@ -25,8 +31,9 @@ import { createPhotoCloud, PHOTO_CENTER } from "./world/photocloud.js"
    <section data-stage="course">  Argus sails the Njord course
    <section data-stage="coast">   Norway as a point cloud, route along the coast
 
-   The Argus model is made with Higgsfield (Tripo, image → 3D) from our
-   own photos, and compressed with gltf-transform (meshopt + WebP).
+   The Argus model is made with Higgsfield (Tripo, four views → 3D) from
+   our own photos, and compressed with gltf-transform (meshopt + WebP).
+   <body data-sun="9"> sets the height of the sun (degrees) at the top of a page.
    ================================================================ */
 
 const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v))
@@ -35,16 +42,16 @@ const lerp = (a, b, t) => a + (b - a) * t
 const ease = (t) => 1 - Math.pow(1 - clamp(t), 3)
 
 /* Where the parts are on the Argus model (model units, centred model, bow = +x).
-   Measured on the Higgsfield mesh. a/e = camera angle and height that show the part. */
+   Measured on the Higgsfield mesh (Tripo, from four views made from our photos). a/e = camera angle and height that show the part. */
 export const PARTS = {
-    lidar: { label: "LiDAR", p: [0.07, 0.27, 0.0], a: 0.7, e: 4.6 },
-    gnss: { label: "Seapath 130 · GNSS", p: [-0.2, 0.09, 0.37], a: 2.0, e: 3.2 },
-    camera: { label: "Stereo depth camera", p: [0.28, 0.13, 0.02], a: 0.25, e: 2.2 },
-    case: { label: "Electronics case", p: [0.12, 0.13, -0.17], a: -1.2, e: 3 },
-    hull: { label: "Two hulls", p: [0.34, -0.06, -0.26], a: -0.6, e: 1.6 },
-    props: { label: "Four propellers", p: [-0.47, -0.25, 0.24], a: 2.7, e: 0.9 },
-    pixhawk: { label: "Pixhawk", p: [-0.02, 0.1, 0.06], a: -0.3, e: 5.5 },
-    link: { label: "5G link", p: [-0.1, 0.16, -0.05], a: -1.8, e: 5 },
+    lidar: { label: "LiDAR", p: [-0.07, 0.29, 0.0], a: 0.7, e: 4.6 },
+    gnss: { label: "Seapath 130 · GNSS", p: [-0.08, 0.2, 0.28], a: 2.0, e: 3.2 },
+    camera: { label: "Stereo depth camera", p: [0.1, 0.17, 0.0], a: 0.25, e: 2.2 },
+    case: { label: "Electronics case", p: [-0.06, 0.19, -0.12], a: -1.2, e: 3 },
+    hull: { label: "Two hulls", p: [0.3, -0.03, -0.27], a: -0.6, e: 1.6 },
+    props: { label: "Four propellers", p: [-0.46, -0.24, 0.25], a: 2.7, e: 0.9 },
+    pixhawk: { label: "Pixhawk", p: [-0.04, 0.2, 0.06], a: -0.3, e: 5.5 },
+    link: { label: "5G link", p: [-0.13, 0.22, -0.05], a: -1.8, e: 5 },
 }
 
 const emit = (name, detail) => window.dispatchEvent(new CustomEvent(name, { detail }))
@@ -70,36 +77,64 @@ export async function startScene({ reduced = false } = {}) {
     renderer.setPixelRatio(dpr)
     renderer.setSize(innerWidth, innerHeight, false)
     renderer.outputColorSpace = THREE.SRGBColorSpace
-    renderer.setClearColor(COLORS.abyss)
+    renderer.setClearColor(0x000000)
 
     const scene = new THREE.Scene()
-    scene.fog = new THREE.Fog(COLORS.horizon, 60, 380)
-    const camera = new THREE.PerspectiveCamera(38, innerWidth / innerHeight, 0.1, 2000)
+    const camera = new THREE.PerspectiveCamera(38, innerWidth / innerHeight, 0.5, 60000)
 
-    // ---- world ----
-    const sky = createSky()
-    const stars = createStars(lowPower ? 700 : 1600)
-    stars.material.uniforms.uPx.value = dpr
-    const water = createWater(lowPower ? 120 : 220)
-    const hills = createHills()
+    // ---- the sky, and the time of day ----
+    const sky = createSky(renderer, { lowPower })
+    sky.stars.material.uniforms.uPx.value = dpr
+    scene.add(sky.group)
+    const SUN_AZIMUTH = 204 // low in the south-west, over the hills west of the city: the boat is lit from the side
+    let sunTop = parseFloat(document.body.dataset.sun || "16")
+    let elev = sunTop
+    sky.setSun(elev, SUN_AZIMUTH)
+    sky.bake(true)
+    scene.environment = sky.env
+    scene.environmentIntensity = 1
+    AIR.uPano.value = sky.pano.texture
+    const sunLight = new THREE.DirectionalLight(0xffffff, 3)
+    const moonLight = new THREE.DirectionalLight(new THREE.Color(0.62, 0.7, 1.0), 0)
+    moonLight.position.copy(MOON).multiplyScalar(1000)
+    scene.add(sunLight, sunLight.target, moonLight)
+    let zenLum = 0.1
+    const lumOf = (c) => c.r * 0.2126 + c.g * 0.7152 + c.b * 0.0722
+    const zenC = new THREE.Color()
+
+    // ---- water ----
+    const water = createWater({ lowPower })
+    water.material.uniforms.uPano.value = sky.pano.texture
+    const wu = water.material.uniforms
     const beam = createBeam()
-    scene.add(sky, stars, water, hills, beam)
-    const motes = reduced ? null : createMotes(lowPower ? 260 : 600)
+    scene.add(water, beam)
+    const motes = reduced ? null : createMotes(lowPower ? 160 : 320)
     if (motes) scene.add(motes.points)
 
-    const pmrem = new THREE.PMREMGenerator(renderer)
-    scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture
-    scene.environmentIntensity = 0.55
-    const hemi = new THREE.HemisphereLight(new THREE.Color("#b3c1d9"), new THREE.Color("#080b10"), 1.0)
-    const moon = new THREE.DirectionalLight(new THREE.Color("#eef3ff"), 2.6)
-    moon.position.copy(MOON_DIR).multiplyScalar(100)
-    const rim = new THREE.PointLight(new THREE.Color("#5a73a8"), 80, 30, 1.6)
-    rim.position.set(-4, 3, -5)
-    const key = new THREE.PointLight(new THREE.Color("#dbe4ff"), 70, 24, 1.6)
-    key.position.set(5, 5, 6)
-    scene.add(hemi, moon, rim, key)
-    // the reflection pass only draws layer 1 (the mirrored boat), with the same lights
-    for (const l of [hemi, moon, rim, key]) l.layers.enable(1)
+    const spray = createSpray(lowPower ? 350 : 700)
+    scene.add(spray.points)
+
+    // ---- the land, the city and the harbour (built after the first frames) ----
+    let terrainMod = null
+    let props = null
+    let birds = null
+    let shoreLights = null
+    const buildWorld = async () => {
+        terrainMod = await import("./world/terrain.js")
+        const { createTerrain, createShoreLights } = terrainMod
+        scene.add(createTerrain({ lowPower }))
+        shoreLights = createShoreLights({ lowPower })
+        shoreLights.material.uniforms.uPx.value = dpr
+        scene.add(shoreLights)
+        const { createProps } = await import("./world/props.js")
+        props = createProps({ lowPower })
+        scene.add(props.group)
+        if (!reduced) {
+            const { createBirds } = await import("./world/birds.js")
+            birds = createBirds(lowPower ? 10 : 22)
+            scene.add(birds.mesh)
+        }
+    }
 
     // ---- Argus ----
     const boat = new THREE.Group() // world position + bobbing
@@ -112,11 +147,9 @@ export async function startScene({ reduced = false } = {}) {
     })
     const model = argus.model
     model.scale.setScalar(SCALE)
-    // waterline: the hulls sit about 0.05 model-units below the centre
-    model.position.y = 0.05 * SCALE
+    // waterline: a little below the middle of the hulls (the thrusters hang under the water)
+    model.position.y = 0.075 * SCALE
     boat.add(model)
-    const mirror = argus.mirror
-    scene.add(mirror)
 
     // LiDAR glow on top of the sensor
     const glowTex = (() => {
@@ -136,9 +169,69 @@ export async function startScene({ reduced = false } = {}) {
     glow.position.fromArray(PARTS.lidar.p)
     model.add(glow)
 
-    // ---- reflection buffer: the mirrored boat, drawn from the same camera ----
-    const reflectRT = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType })
-    water.material.uniforms.uReflect.value = reflectRT.texture
+    let drive = null
+    let rippleI = 0
+
+    // navigation lights for the night: red to port, green to starboard, white on top
+    const navLights = [
+        [0.32, 0.05, -0.27, 0xff3a2a],
+        [0.32, 0.05, 0.27, 0x3aff6a],
+        [-0.07, 0.34, 0, 0xffffff],
+    ].map(([x, y, z, c]) => {
+        const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: new THREE.Color(c).multiplyScalar(2.5), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }))
+        s.scale.setScalar(c === 0xffffff ? 0.045 : 0.07)
+        s.position.set(x, y, z)
+        model.add(s)
+        return s
+    })
+
+    // ---- reflection: the scene seen from below the water, for the mirror image ----
+    const reflectRT = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType, samples: lowPower ? 0 : 2 })
+    wu.uReflect.value = reflectRT.texture
+    const reflCam = new THREE.PerspectiveCamera()
+    const reflPlane = new THREE.Plane()
+    const clipPlane = new THREE.Vector4()
+    const qv = new THREE.Vector4()
+    const fwd = new THREE.Vector3()
+    const upv = new THREE.Vector3()
+    function renderReflection() {
+        camera.updateMatrixWorld()
+        fwd.set(0, 0, -1).applyQuaternion(camera.quaternion)
+        upv.set(0, 1, 0).applyQuaternion(camera.quaternion)
+        reflCam.position.set(camera.position.x, -camera.position.y, camera.position.z)
+        fwd.y = -fwd.y
+        upv.y = -upv.y
+        reflCam.up.copy(upv)
+        reflCam.lookAt(reflCam.position.x + fwd.x, reflCam.position.y + fwd.y, reflCam.position.z + fwd.z)
+        reflCam.far = camera.far
+        reflCam.updateMatrixWorld()
+        reflCam.projectionMatrix.copy(camera.projectionMatrix)
+        const tm = wu.uReflectMatrix.value
+        tm.set(0.5, 0, 0, 0.5, 0, 0.5, 0, 0.5, 0, 0, 0.5, 0.5, 0, 0, 0, 1)
+        tm.multiply(reflCam.projectionMatrix).multiply(reflCam.matrixWorldInverse)
+        // clip away what is under the water (oblique near plane, Lengyel)
+        reflPlane.set(new THREE.Vector3(0, 1, 0), 0.05).applyMatrix4(reflCam.matrixWorldInverse)
+        clipPlane.set(reflPlane.normal.x, reflPlane.normal.y, reflPlane.normal.z, reflPlane.constant)
+        const pm = reflCam.projectionMatrix
+        qv.x = (Math.sign(clipPlane.x) + pm.elements[8]) / pm.elements[0]
+        qv.y = (Math.sign(clipPlane.y) + pm.elements[9]) / pm.elements[5]
+        qv.z = -1
+        qv.w = (1 + pm.elements[10]) / pm.elements[14]
+        clipPlane.multiplyScalar(2 / clipPlane.dot(qv))
+        pm.elements[2] = clipPlane.x
+        pm.elements[6] = clipPlane.y
+        pm.elements[10] = clipPlane.z + 1
+        pm.elements[14] = clipPlane.w
+        reflCam.projectionMatrixInverse.copy(pm).invert()
+        const hidden = [water, beam, motes && motes.points].filter(Boolean)
+        const was = hidden.map((o) => o.visible)
+        hidden.forEach((o) => (o.visible = false))
+        renderer.setRenderTarget(reflectRT)
+        renderer.clear()
+        renderer.render(scene, reflCam)
+        renderer.setRenderTarget(null)
+        hidden.forEach((o, i) => (o.visible = was[i]))
+    }
 
     // ---- post-processing ----
     const post = createPost(renderer, scene, camera, { lowPower })
@@ -214,15 +307,10 @@ export async function startScene({ reduced = false } = {}) {
 
     // a big title in 3D behind the boat (Argus page)
     let title = null
-    let titleMirror = null
     if (hero && hero.el.dataset.title) {
         createTitle3D(hero.el.dataset.title).then((m) => {
             title = m
             scene.add(m)
-            // and its reflection in the water
-            titleMirror = new THREE.Mesh(m.geometry, m.material)
-            titleMirror.layers.set(1)
-            scene.add(titleMirror)
             document.documentElement.classList.add("has-3d-title")
         })
     }
@@ -292,7 +380,8 @@ export async function startScene({ reduced = false } = {}) {
     )
 
     function harbourCam(t, scrollP, out, look) {
-        const a = -0.9 + scrollP * 1.6 + t * 0.012
+        // turn towards the open fjord as you scroll, away from the low sun
+        const a = -0.9 - scrollP * 1.3 + t * 0.012
         const r = small ? 30 : 40
         out.set(Math.cos(a) * r, 8 + scrollP * 7, Math.sin(a) * r)
         look.set(0, 1.2, 0)
@@ -370,8 +459,8 @@ export async function startScene({ reduced = false } = {}) {
         camera.aspect = W / H
         camera.updateProjectionMatrix()
         post.setSize(W, H, dprNow)
-        reflectRT.setSize(Math.round(W * dprNow * 0.5), Math.round(H * dprNow * 0.5))
-        water.material.uniforms.uRes.value.set(W * dprNow, H * dprNow)
+        const rk = lowPower ? 0.35 : 0.5
+        reflectRT.setSize(Math.round(W * dprNow * rk), Math.round(H * dprNow * rk))
         argus.points.uProj.value = (H * dprNow) / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)))
         if (globe) globe.setPx(1, argus.points.uProj.value)
     }
@@ -390,6 +479,36 @@ export async function startScene({ reduced = false } = {}) {
         cut = CUT_ALL_SOLID
     }
 
+    // ---- drive mode ----
+    let headingNow = 0
+    drive = createDrive({
+        camera,
+        reduced,
+        spray,
+        getBoat: () => ({ pos: boat.position, heading: headingNow }),
+        getElev: () => elev,
+        landHeight: (x, z) => (terrainMod ? terrainMod.landHeight(x, z) : -10),
+        obstacles: () => (props ? props.obstacles : []),
+        buoys: () => (props ? props.buoys : []),
+        onPing: (p) => {
+            wu.uRipple.value[rippleI].set(p.x, p.z, t, 2.4)
+            rippleI = (rippleI + 1) % RIPPLE_N
+        },
+    })
+    const startDrive = () => {
+        intro.done = true
+        cut = CUT_ALL_SOLID
+        drive.start()
+    }
+    addEventListener("drive:start", startDrive)
+    document.addEventListener("click", (e) => {
+        const b = e.target.closest && e.target.closest("[data-drive]")
+        if (!b) return
+        e.preventDefault()
+        startDrive()
+    })
+    document.documentElement.classList.add("can-drive")
+
     // ---- loop ----
     const clock = new THREE.Clock()
     let t = 0
@@ -400,6 +519,9 @@ export async function startScene({ reduced = false } = {}) {
     let viewOffsetY = 0
     let titleO = 0
     const titlePos = new THREE.Vector3()
+    let exposure = 1
+    let wakeI = 0
+    const lastWake = new THREE.Vector2(1e9, 1e9)
     const introClock = new THREE.Clock(false)
     let introFixed = null // debug: freeze the intro at a time
     const introTime = () => (introFixed !== null ? introFixed : introClock.getElapsedTime())
@@ -551,32 +673,98 @@ export async function startScene({ reduced = false } = {}) {
         argus.points.uHiOn.value = hiOn
         argus.uniforms.uTime.value = t
 
-        // boat rides the waves
-        const bx = boatPos.x
-        const bz = boatPos.z
-        const h = waveHeight(bx, bz, t, 1)
-        const [sx, sz] = waveSlope(bx, bz, t, 1)
-        boat.position.set(bx, h * 0.8, bz)
+        // ---- the time of day: afternoon at the top of the page, night at the bottom ----
+        const elevWant = drive && drive.active ? drive.sunElev : lerp(sunTop, -8.5, smooth(clamp((scrollP - 0.04) / 0.92)))
+        elev += (elevWant - elev) * (1 - Math.exp(-dt * 2.5))
+        if (Math.abs(elev - sky.state.elev) > 0.03) sky.setSun(elev, SUN_AZIMUTH)
+        if (sky.bake()) scene.environment = sky.env
+        const S = sky.state
+        const night = S.night
+        sky.skyAt(0, 1, 0, zenC)
+        zenLum += (lumOf(zenC) - zenLum) * 0.2
+        sunLight.color.copy(S.sunColor)
+        sunLight.intensity = 3.2
+        sunLight.position.copy(S.dir).multiplyScalar(1000).add(camLook)
+        sunLight.target.position.copy(camLook)
+        // a camera adapts to the light: brighter at dusk, but night stays night
+        const expWant = clamp(Math.pow(0.1 / Math.max(zenLum, 1e-4), 0.5), 0.85, 4.2)
+        moonLight.intensity = night * 0.35
+        exposure += (expWant - exposure) * (1 - Math.exp(-dt * 3))
+        AIR.uNight.value = night
+        if (shoreLights) shoreLights.material.uniforms.uNight.value = night / exposure
+
+        // outside the 3D moments the world steps back a little, so the text reads well
+        let stageW = 0
+        for (const s of stages) stageW = Math.max(stageW, s.w)
+        if (drive && drive.active) stageW = 1
+        const contentDim = lerp(0.52, 1, stageW)
+        dim *= contentDim
+
+        // boat rides the waves (or is driven)
         let heading = 0
-        if (courseO > 0.001 && course) {
+        let speed = 0
+        if (drive && drive.active) {
+            drive.update(dt, t)
+            boatPos.set(drive.pos.x, 0, drive.pos.z)
+            heading = drive.heading
+            speed = drive.speed
+            boatVis = 1
+            camPos.copy(drive.camPos)
+            camLook.copy(drive.camLook)
+            off = 0
+            offY = 0
+            xray = 0
+        } else if (courseO > 0.001 && course) {
             const a = course.curve.getPointAt(clamp(courseU))
             const b = course.curve.getPointAt(clamp(courseU + 0.01))
             heading = -Math.atan2(b.z - a.z, b.x - a.x)
             heading *= courseO
         }
-        boat.rotation.set(sz * 0.6, heading, -sx * 0.6)
+        // after driving: glide back to the page's own view
+        if (drive && !drive.active && drive.outBlend > 0) {
+            const k = smooth(drive.outBlend)
+            drive.fade(dt)
+            boatPos.lerp(drive.pos, k)
+            let dh = drive.heading - heading
+            dh = Math.atan2(Math.sin(dh), Math.cos(dh))
+            heading += dh * k
+            camPos.lerp(drive.camPos, k)
+            camLook.lerp(drive.camLook, k)
+            boatVis = Math.max(boatVis, k)
+        }
+        headingNow = heading
+        const bx = boatPos.x
+        const bz = boatPos.z
+        const h = waveHeight(bx, bz, t, 1)
+        const [sx, sz] = waveSlope(bx, bz, t, 1)
+        boat.position.set(bx, h * 0.8, bz)
+        const pitch = drive && drive.active ? drive.pitch : 0
+        const roll = drive && drive.active ? drive.roll : 0
+        boat.rotation.set(0, 0, 0)
+        boat.rotateY(heading)
+        // lie on the water: bow up on a rising slope, lean with the slope across
+        boat.rotateZ((sx * Math.cos(heading) - sz * Math.sin(heading)) * 1.1 + pitch)
+        boat.rotateX(-(sx * Math.sin(heading) + sz * Math.cos(heading)) * 1.1 + roll)
         boat.visible = boatVis > 0.02
         argus.points.uOpacity.value = boatVis
+        argus.points.uGain.value = 1 / exposure
+        argus.uniforms.uEdgeGain.value = 1 / exposure
         model.traverse((o) => {
             if (o.isMesh) {
                 o.material.transparent = boatVis < 0.999
                 o.material.opacity = boatVis
             }
         })
-        // the reflection follows the boat, upside down
-        mirror.position.set(boat.position.x, -boat.position.y, boat.position.z)
-        mirror.rotation.set(-boat.rotation.x, boat.rotation.y, -boat.rotation.z)
-        mirror.visible = boat.visible
+        // the wake: a trail of foam where the boat has been
+        const moved = Math.hypot(bx - lastWake.x, bz - lastWake.y)
+        if (moved > 1.3 && boat.visible) {
+            const sp = drive && drive.active ? clamp(speed / 14) : courseO > 0.1 ? 0.6 : 0
+            if (sp > 0.02) {
+                wu.uWake.value[wakeI].set(bx, bz, t, sp)
+                wakeI = (wakeI + 1) % WAKE_N
+            }
+            lastWake.set(bx, bz)
+        }
 
         camera.position.copy(camPos)
         camera.lookAt(camLook)
@@ -601,31 +789,47 @@ export async function startScene({ reduced = false } = {}) {
             title.scale.setScalar(width / title.userData.aspect)
             const want = intro.done || reduced ? hero.w : clamp((introTime() - INTRO_ASSEMBLE * 0.75 - INTRO_SCAN * 0.5) / 0.8) * hero.w
             // fades in over time, but follows the scroll at once when the hero leaves
-            titleO = Math.min(titleO + (want - titleO) * (1 - Math.exp(-dt * 3)), hero.w)
+            titleO = Math.min(titleO + (want - titleO) * (1 - Math.exp(-dt * 3)), hero.w) * (drive && drive.active ? 0 : 1)
             title.material.opacity = titleO
+            title.material.color.setScalar(0.95 / exposure)
             title.visible = titleO > 0.01
-            titleMirror.position.set(title.position.x, -title.position.y, title.position.z)
-            titleMirror.quaternion.copy(title.quaternion)
-            titleMirror.scale.set(title.scale.x, -title.scale.y, title.scale.z)
-            titleMirror.visible = title.visible
         }
 
-        // LiDAR
+        // water, LiDAR
         sweep += dt * 2.4
-        const wu = water.material.uniforms
         wu.uTime.value = t
+        wu.uCenter.value.set(Math.round(camera.position.x), Math.round(camera.position.z))
         wu.uBoat.value.set(boat.position.x, boat.position.z)
+        wu.uBoatDir.value.set(Math.cos(-heading), Math.sin(-heading))
+        wu.uBoatSpeed.value = clamp(speed / 14)
+        wu.uBoatOn.value = boat.visible ? 1 : 0
         wu.uSweepAngle.value = -sweep
         wu.uCam.value.copy(camera.position)
         wu.uDim.value = dim
-        wu.uSweep.value = boatVis * (intro.done ? 1 : clamp(cut - CUT_ALL_CLOUD))
-        wu.uReflectOn.value = Math.max(boatVis, title ? titleO : 0)
-        sky.material.uniforms.uDim.value = lerp(1, dim, 0.6)
-        stars.material.uniforms.uTime.value = t
+        wu.uSweep.value = boatVis * (intro.done ? 1 : clamp(cut - CUT_ALL_CLOUD)) * (1 - xray * 0.5) * 0.6 / exposure
+        for (const l of navLights) {
+            l.material.opacity = night * boatVis
+            l.visible = night > 0.05 && boat.visible
+        }
+        // at night the moon takes the sun's place on the water: a path of light towards it
+        if (S.elev > -2) {
+            wu.uSun.value.copy(S.dir)
+            wu.uSunCol.value.copy(S.sunColor)
+        } else {
+            wu.uSun.value.copy(MOON)
+            wu.uSunCol.value.setRGB(0.0022, 0.0025, 0.003).multiplyScalar(night)
+        }
+        wu.uNight.value = night
+        wu.uBody.value.setRGB(0.02, 0.075, 0.09).multiplyScalar(Math.max(zenLum, 0.0015) * 1.3)
+        sky.uniforms.uDim.value = lerp(1, dim, 0.6)
+        // behind text the sun is only a glow, not a blinding disc
+        sky.uniforms.uSunVis.value = 0.02 + 0.98 * smooth(clamp((contentDim - 0.6) / 0.4))
+        wu.uGlit.value = 0.08 + 0.92 * smooth(clamp((contentDim - 0.6) / 0.4))
+        sky.update(t)
         beam.position.set(boat.position.x, 0.25, boat.position.z)
         beam.rotation.y = sweep
-        beam.material.uniforms.uOpacity.value = boatVis * (1 - coastO) * (intro.done ? 1 : 0)
-        glow.material.opacity = (0.65 + Math.sin(t * 6) * 0.25) * boatVis * (cut > 0 ? 1 : 0.2)
+        beam.material.uniforms.uOpacity.value = boatVis * (1 - coastO) * (intro.done ? 1 : 0) * (0.15 + night * 0.35) / exposure
+        glow.material.opacity = (0.65 + Math.sin(t * 6) * 0.25) * boatVis * (cut > 0 ? 1 : 0.2) * (0.3 + night * 0.7)
 
         if (course) {
             course.setOpacity(courseO)
@@ -645,34 +849,43 @@ export async function startScene({ reduced = false } = {}) {
             photo.points.visible = photoO > 0.01
         }
         if (globe) {
-            globe.setOpacity(globeO)
+            globe.setOpacity(globeO / Math.sqrt(exposure))
             globe.update(t, globeArc, 0)
             beam.material.uniforms.uOpacity.value *= 1 - globeO
             if (globeP) placeGlobeLabels(globeP, globeArc)
         }
         if (coast) {
-            coast.setOpacity(coastO)
+            coast.setOpacity(coastO / Math.sqrt(exposure))
             const cs = stages.find((s) => s.kind === "coast")
             coast.routeMat.uniforms.uTo.value = cs ? clamp(cs.p * 1.15) : 0
             coast.routeMat.uniforms.uTime.value = t
             if (cs && cs.cities) placeCities(cs)
         }
+        if (props) props.update(t, dt, night)
+        spray.update(dt)
+        spray.uniforms.uCol.value.copy(S.sunColor).multiplyScalar(Math.max(S.dir.y, 0) * 2.2).add(zenC).multiplyScalar(1.4)
+        spray.uniforms.uProj.value = argus.points.uProj.value
+        if (birds) birds.update(t, dt, smooth(clamp((night - 0.25) / 0.5)))
+        if (drive && drive.active && props) drive.collide(props.buoys)
 
         placeLabels()
-        if (motes) motes.update(t, camera.position, argus.points.uProj.value, 1 - globeO * 0.6)
+        if (motes) motes.update(t, camera.position, argus.points.uProj.value, (0.25 + 0.5 * night) * (1 - globeO * 0.6) / exposure)
 
-        // 1) the reflection: only layer 1, into its own buffer
-        if (boat.visible || (title && title.visible)) {
-            camera.layers.set(1)
-            renderer.setRenderTarget(reflectRT)
-            renderer.setClearColor(0x000000, 0)
-            renderer.clear()
-            renderer.render(scene, camera)
-            renderer.setRenderTarget(null)
-            renderer.setClearColor(COLORS.abyss, 1)
-            camera.layers.set(0)
-        }
-        // 2) the scene, bloom and grade
+        // ---- the camera: exposure, bloom, sun rays and flare ----
+        const g = post.grade.uniforms
+        g.uExposure.value = exposure
+        g.uDim.value = contentDim > 0.99 ? 1 : lerp(0.6, 1, contentDim)
+        post.bloom.threshold = 2.4 / exposure
+        post.bloom.strength = (0.45 + night * 0.25) * lerp(0.5, 1, contentDim)
+        tmp.copy(S.dir).multiplyScalar(1000).add(camera.position).project(camera)
+        g.uSunPos.value.set(tmp.x * 0.5 + 0.5, tmp.y * 0.5 + 0.5)
+        g.uSunOn.value = S.elev > -1.5 && tmp.z < 1 ? 1 : 0
+        g.uSunCol.value.copy(S.sunColor)
+        g.uRays.value = reduced ? 0 : 0.9 * (1 - smooth(clamp((S.elev - 6) / 18))) * smooth(clamp((contentDim - 0.6) / 0.4))
+        g.uFlare.value = smooth(clamp((contentDim - 0.6) / 0.4))
+
+        // 1) the mirror image, 2) the scene, bloom and grade
+        if (wu.uReflectOn.value > 0) renderReflection()
         post.render(t)
     }
 
@@ -760,7 +973,73 @@ export async function startScene({ reduced = false } = {}) {
         }
     }
 
-    if (/[?&]debug\b/.test(location.search)) window.__dbg = { THREE, scene, camera, renderer, coast, course, globe, argus, post, setIntro: (v) => { introFixed = v; intro.done = false; intro.start = 0 } }
+    // ---- touch the water: ripples where you click, and a light trail behind the pointer ----
+    const ray = new THREE.Raycaster()
+    const waterPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
+    const hit = new THREE.Vector3()
+    const ndc = new THREE.Vector2()
+    let lastTrail = 0
+    function waterAt(x, y) {
+        ndc.set((x / innerWidth) * 2 - 1, -(y / innerHeight) * 2 + 1)
+        ray.setFromCamera(ndc, camera)
+        if (!ray.ray.intersectPlane(waterPlane, hit)) return null
+        return hit.distanceTo(camera.position) < 420 ? hit : null
+    }
+    function ripple(p, strength) {
+        wu.uRipple.value[rippleI].set(p.x, p.z, t, strength)
+        rippleI = (rippleI + 1) % RIPPLE_N
+    }
+    const interactive = "a,button,input,textarea,select,label,summary,[role=button],[tabindex],.hud"
+    addEventListener(
+        "pointerdown",
+        (e) => {
+            if (reduced || (e.target.closest && e.target.closest(interactive))) return
+            const p = waterAt(e.clientX, e.clientY)
+            if (p) {
+                ripple(p, 1.2)
+                spray.splash(p.x, p.z, 0.7)
+            }
+        },
+        { passive: true }
+    )
+    addEventListener(
+        "pointermove",
+        (e) => {
+            if (reduced || e.pointerType !== "mouse" || t - lastTrail < 0.22) return
+            const p = waterAt(e.clientX, e.clientY)
+            if (!p) return
+            lastTrail = t
+            ripple(p, 0.35)
+        },
+        { passive: true }
+    )
+
+    if (/[?&]debug\b/.test(location.search))
+        window.__dbg = {
+            THREE,
+            scene,
+            camera,
+            renderer,
+            coast,
+            course,
+            globe,
+            argus,
+            post,
+            sky,
+            water,
+            get drive() {
+                return drive
+            },
+            get props() {
+                return props
+            },
+            setIntro: (v) => {
+                introFixed = v
+                intro.done = false
+                intro.start = 0
+            },
+            setSunTop: (v) => (sunTop = v),
+        }
 
     await argus.ready
     resize()
@@ -776,5 +1055,7 @@ export async function startScene({ reduced = false } = {}) {
     setTimeout(go, 4000)
     requestAnimationFrame(frame)
     requestAnimationFrame(() => canvas.classList.add("is-ready"))
+    // the land, the city and the harbour things come in once the first frames are out
+    setTimeout(() => buildWorld().catch((e) => console.warn("world failed", e)), 80)
     return { renderer, scene, camera }
 }

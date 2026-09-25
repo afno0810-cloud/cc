@@ -92,3 +92,12 @@ Put the original in `framer-export/images/<folder>/` and run `python3 scripts/bu
 Add `?debug` to a URL to get `window.__dbg` in the console (scene, camera, `setIntro(seconds)`).
 
 All text, photos, team and sponsor info come from the old site; nothing is made up.
+
+## The realistic harbour (round 4)
+
+- **Sky** (`src/scene/world/sky.js`): computed from the physics of the air (Rayleigh and Mie scattering, ozone). It is baked into a small panorama whenever the sun moves; that panorama is the sky, the lighting (PMREM) and the haze far things fade into (`air.js`). The sun goes down as you scroll: afternoon at the top of a page, night at the bottom. `<body data-sun="9">` sets the sun height at the top.
+- **Water** (`sea.js`): a grid of rings around the camera, a real planar reflection of the scene, Fresnel, sun or moon glitter, foam around the hulls, a wake, and ripples where you click.
+- **Land** (`terrain.js`): hills and mountains around the fjord, Trondheim with lit windows at night, a quay with cranes and silos.
+- **Higgsfield models** (`public/media/models/world/`, `props.js`): Munkholmen, the wharves, Nidaros cathedral, a lighthouse, a pontoon, boats, a coastal ship and buoys (image → 3D with SAM 3D). Argus itself was rebuilt with Tripo from four views made from our own photos.
+- **Drive mode** (`src/scene/drive.js`): "Drive Argus" on the home and Argus pages (and a button on every page). WASD/arrows, Shift, Space for a LiDAR ping, T for the time of day, drag to look around, a stick on touch screens.
+- **Camera** (`post.js`): auto exposure, bloom, sun rays and a lens flare that only shows when the sun is really visible.

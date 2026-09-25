@@ -22,20 +22,20 @@ export const CUT_ALL_CLOUD = -0.62
 
 export function createArgus({ renderer, lowPower, onProgress }) {
     const model = new THREE.Group() // model units, centred, bow = +x
-    const mirror = new THREE.Group() // the same boat upside down, for the reflection pass
-    mirror.scale.y = -1
 
     const U = {
         uCut: { value: CUT_ALL_CLOUD },
         uGhost: { value: 0 },
         uTime: { value: 0 },
         uEdgeCol: { value: COLORS.ice.clone() },
+        uEdgeGain: { value: 1 },
     }
     const P = {
         uCut: U.uCut,
         uTime: U.uTime,
         uAssemble: { value: 0 },
         uOpacity: { value: 1 },
+        uGain: { value: 1 },
         uPx: { value: 1 },
         uProj: { value: 800 },
         uHi: { value: new THREE.Vector3(99, 99, 99) },
@@ -56,7 +56,7 @@ export function createArgus({ renderer, lowPower, onProgress }) {
             sh.fragmentShader = sh.fragmentShader
                 .replace(
                     "#include <common>",
-                    "#include <common>\nuniform float uCut;\nuniform float uGhost;\nuniform float uTime;\nuniform vec3 uEdgeCol;\nvarying vec3 vModelPos;"
+                    "#include <common>\nuniform float uCut;\nuniform float uGhost;\nuniform float uTime;\nuniform vec3 uEdgeCol;\nuniform float uEdgeGain;\nvarying vec3 vModelPos;"
                 )
                 .replace(
                     "#include <clipping_planes_fragment>",
@@ -67,9 +67,9 @@ export function createArgus({ renderer, lowPower, onProgress }) {
                     `{
                         float ghostK = step(0.0, side) * uGhost;
                         float rim = pow(1.0 - abs(dot(normalize(normal), normalize(vViewPosition))), 2.2);
-                        outgoingLight = mix(outgoingLight, outgoingLight * 0.12 + uEdgeCol * (rim * 0.35 + 0.015), ghostK);
+                        outgoingLight = mix(outgoingLight, outgoingLight * 0.12 + uEdgeCol * (rim * 0.35 + 0.015) * uEdgeGain, ghostK);
                         float edge = exp(-pow(side * 110.0, 2.0));
-                        outgoingLight += uEdgeCol * edge * 2.2;
+                        outgoingLight += uEdgeCol * edge * 2.2 * uEdgeGain;
                     }
                     #include <opaque_fragment>`
                 )
@@ -123,7 +123,7 @@ export function createArgus({ renderer, lowPower, onProgress }) {
             vertexShader: /* glsl */ `
                 uniform float uCut; uniform float uTime; uniform float uAssemble; uniform float uPx; uniform float uProj;
                 uniform vec3 uHi; uniform float uHiOn; uniform float uHiR;
-                uniform vec3 uLav; uniform vec3 uYel; uniform vec3 uVio; uniform float uOpacity;
+                uniform vec3 uLav; uniform vec3 uYel; uniform vec3 uVio; uniform float uOpacity; uniform float uGain;
                 attribute vec3 aDir; attribute float aLum; attribute float aSeed;
                 varying vec3 vCol; varying float vA;
                 void main() {
@@ -141,7 +141,7 @@ export function createArgus({ renderer, lowPower, onProgress }) {
                     c = mix(c, vec3(1.0), edge * 0.7);
                     c = mix(c, uYel * 2.2, hi);
                     vCol = c;
-                    vA = (cloud * (0.45 + aLum * 0.7) * twinkle + edge * 1.2 + hi * 2.4) * uOpacity * (0.25 + 0.75 * t);
+                    vA = (cloud * (0.45 + aLum * 0.7) * twinkle + edge * 1.2 + hi * 2.4) * uOpacity * uGain * (0.25 + 0.75 * t);
                     vec4 mv = modelViewMatrix * vec4(p, 1.0);
                     float size = 0.0085 * (1.0 + edge * 1.3 + hi * 1.4) * (1.0 + (1.0 - t) * 0.8);
                     gl_PointSize = max(1.0, uPx * size * uProj / -mv.z);
@@ -227,10 +227,6 @@ export function createArgus({ renderer, lowPower, onProgress }) {
             cloud = pointCloud(meshes, lowPower ? 16000 : 42000)
             meshes.forEach((o) => (o.material = patch(o.material, o.userData.toModel)))
             model.add(cloud)
-            // the reflection: the same meshes and points, mirrored, on layer 1 only
-            const copy = model.clone(true)
-            copy.traverse((o) => o.layers.set(1))
-            mirror.add(copy)
         })
         .catch((err) => {
             console.warn("Argus model failed to load", err)
@@ -241,7 +237,6 @@ export function createArgus({ renderer, lowPower, onProgress }) {
 
     return {
         model,
-        mirror,
         uniforms: U,
         points: P,
         ready,

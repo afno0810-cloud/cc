@@ -44,6 +44,14 @@
    "2400": "argus-dock-carrying-argus-dscf6226-2400.webp"
   }
  },
+ "argus-dock-hatches-2026-04-19": {
+  "w": 2268,
+  "h": 1512,
+  "files": {
+   "800": "argus-dock-hatches-2026-04-19-800.webp",
+   "1600": "argus-dock-hatches-2026-04-19-1600.webp"
+  }
+ },
  "argus-dock-lowering-argus-dscf6206": {
   "w": 7728,
   "h": 5152,
@@ -89,6 +97,15 @@
    "2400": "argus-dock-working-on-argus-in-water-dscf6222-2400.webp"
   }
  },
+ "argus-float-test-harbour-2026-03-08": {
+  "w": 2400,
+  "h": 1800,
+  "files": {
+   "800": "argus-float-test-harbour-2026-03-08-800.webp",
+   "1600": "argus-float-test-harbour-2026-03-08-1600.webp",
+   "2400": "argus-float-test-harbour-2026-03-08-2400.webp"
+  }
+ },
  "argus-float-test-towed-by-dinghy-old-hero": {
   "w": 4000,
   "h": 1360,
@@ -105,6 +122,13 @@
    "800": "argus-workshop-hull-2025-11-16-800.webp",
    "1600": "argus-workshop-hull-2025-11-16-1600.webp",
    "2400": "argus-workshop-hull-2025-11-16-2400.webp"
+  }
+ },
+ "argus-workshop-hull-on-bench-2025-11-16": {
+  "w": 1210,
+  "h": 1613,
+  "files": {
+   "800": "argus-workshop-hull-on-bench-2025-11-16-800.webp"
   }
  },
  "argus-workshop-sanding-2026-01-08": {

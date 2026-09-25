@@ -76,14 +76,17 @@ const [links, modulesJson] = head.split("@@MODULES@@")
 const modules = JSON.parse(modulesJson).join("\n")
 
 const boot = `<script>
-/* the Argus model comes from a JS module here (see media/models/*.js) */
-window.__modelSource = function (lite) {
-    return import("./media/models/" + (lite ? "argus-lite" : "argus") + ".js").then(function (m) {
+/* the 3D models come from JS modules here (see media/models/*.js) */
+window.__glbSource = function (name) {
+    return import("./media/models/" + name + ".js").then(function (m) {
         var s = atob(m.default)
         var b = new Uint8Array(s.length)
         for (var i = 0; i < s.length; i++) b[i] = s.charCodeAt(i)
         return b.buffer
     })
+};
+window.__modelSource = function (lite) {
+    return window.__glbSource(lite ? "argus-lite" : "argus")
 };
 /* the router: show the page in the address, and reload for a new one */
 (function () {
@@ -146,7 +149,9 @@ for (const f of fs.readdirSync(path.join(tmp, "media", "img"))) {
 fs.mkdirSync(path.join(out, "media", "models"), { recursive: true })
 await MeshoptDecoder.ready
 const io = new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({ "meshopt.decoder": MeshoptDecoder })
-for (const f of ["argus.glb", "argus-lite.glb"]) {
+fs.mkdirSync(path.join(out, "media", "models", "world"), { recursive: true })
+const models = ["argus.glb", "argus-lite.glb", ...fs.readdirSync(path.join(tmp, "media", "models", "world")).map((f) => "world/" + f)]
+for (const f of models) {
     const doc = await io.read(path.join(tmp, "media", "models", f))
     for (const ext of doc.getRoot().listExtensionsUsed()) if (ext.extensionName === "EXT_meshopt_compression") ext.dispose()
     // artifacts do not serve .glb files: ship the bytes as a JS module instead
