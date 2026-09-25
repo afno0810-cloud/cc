@@ -486,7 +486,7 @@ if (fine && !reduced) {
     })
 
     // photo cards tilt in 3D under the pointer
-    $$(".door, .season, .way, .lcard, .benefit.is-photo, .group, .do-card").forEach((c) => {
+    $$(".door, .season, .way, .lcard, .benefit.is-photo, .group, .do-card, .sponsor, .card, .chain-step").forEach((c) => {
         c.classList.add("tilt")
         c.addEventListener("pointermove", (e) => {
             const r = c.getBoundingClientRect()
@@ -504,6 +504,134 @@ if (fine && !reduced) {
     })
 }
 
+// ---------- headings: letters flip up in 3D when they come into view ----------
+function splitHeading(h) {
+    if (h.dataset.split) return
+    h.dataset.split = "1"
+    h.setAttribute("aria-label", h.textContent.replace(/\s+/g, " ").trim())
+    let i = 0
+    const walk = (node) => {
+        ;[...node.childNodes].forEach((c) => {
+            if (c.nodeType === 3) {
+                if (!c.textContent.trim()) return
+                const frag = document.createDocumentFragment()
+                c.textContent.split(/(\s+)/).forEach((part) => {
+                    if (!part) return
+                    if (/^\s+$/.test(part)) return frag.append(document.createTextNode(" "))
+                    const w = document.createElement("span")
+                    w.className = "w-split"
+                    w.setAttribute("aria-hidden", "true")
+                    for (const ch of part) {
+                        const sp = document.createElement("span")
+                        sp.className = "ch"
+                        sp.textContent = ch
+                        sp.style.setProperty("--ci", Math.min(i++, 36))
+                        w.append(sp)
+                    }
+                    frag.append(w)
+                })
+                c.replaceWith(frag)
+            } else if (c.nodeType === 1 && !["svg", "BR", "SVG"].includes(c.nodeName)) walk(c)
+        })
+    }
+    walk(h)
+}
+if (!reduced && "IntersectionObserver" in window) {
+    const heads = $$(".h2, .chapter-year, .door-title, .lcard-title, .coming .h1")
+    heads.forEach(splitHeading)
+    const io = new IntersectionObserver(
+        (es) =>
+            es.forEach((e) => {
+                if (!e.isIntersecting) return
+                io.unobserve(e.target)
+                e.target.classList.add("is-split-in")
+            }),
+        { threshold: 0.2 }
+    )
+    heads.forEach((h) => io.observe(h))
+}
+
+// ---------- photos: revealed top to bottom with a scan line, then a little parallax ----------
+const rvMedia = $$(
+    ".collage .media, .tl-photo, .chapter-media:not(.plan):not(.chapter-logo), .do-card .media, .comp-marinor, .group-photo, .gallery-tile .media, .bento .media, .onboard-photo, .shot .media, .benefit.is-photo > .media"
+).filter((m) => !m.closest("[data-stage='photo']"))
+if (!reduced && "IntersectionObserver" in window && rvMedia.length) {
+    rvMedia.forEach((m) => {
+        m.classList.add("rv")
+        const line = document.createElement("i")
+        line.className = "scanline"
+        line.setAttribute("aria-hidden", "true")
+        m.append(line)
+    })
+    const io = new IntersectionObserver(
+        (es) =>
+            es.forEach((e) => {
+                if (!e.isIntersecting) return
+                io.unobserve(e.target)
+                e.target.classList.add("is-vis")
+            }),
+        { threshold: 0.18, rootMargin: "0px 0px -6% 0px" }
+    )
+    rvMedia.forEach((m) => io.observe(m))
+
+    // parallax on the bigger photos
+    const px = rvMedia.filter((m) => !m.closest(".gallery, .bento, .shot, .group"))
+    px.forEach((m) => m.classList.add("px"))
+    let ticking = false
+    const update = () => {
+        ticking = false
+        const vh = innerHeight
+        for (const m of px) {
+            const r = m.getBoundingClientRect()
+            if (r.bottom < -50 || r.top > vh + 50) continue
+            const k = (r.top + r.height / 2 - vh / 2) / vh
+            m.style.setProperty("--py", `${(-k * r.height * 0.1).toFixed(1)}px`)
+        }
+    }
+    addEventListener("scroll", () => {
+        if (!ticking) {
+            ticking = true
+            requestAnimationFrame(update)
+        }
+    }, { passive: true })
+    update()
+}
+
+// ---------- the running band of words: faster and tilted when you scroll fast ----------
+const bands = $$(".marquee")
+if (bands.length && !reduced) {
+    let last = scrollY
+    let v = 0
+    const tick = () => {
+        const d = scrollY - last
+        last = scrollY
+        v += (Math.max(-60, Math.min(60, d)) - v) * 0.12
+        bands.forEach((b) => {
+            b.style.setProperty("--skew", `${(-v * 0.18).toFixed(2)}deg`)
+            b.style.setProperty("--boost", (1 + Math.abs(v) * 0.08).toFixed(2))
+        })
+        requestAnimationFrame(tick)
+    }
+    requestAnimationFrame(tick)
+}
+
+// ---------- a thin line at the top that shows how far down the page you are ----------
+{
+    const bar = document.createElement("div")
+    bar.className = "progress"
+    bar.setAttribute("aria-hidden", "true")
+    bar.innerHTML = "<i></i>"
+    document.body.append(bar)
+    const i = bar.firstChild
+    const set = () => {
+        const max = Math.max(1, document.documentElement.scrollHeight - innerHeight)
+        i.style.transform = `scaleX(${Math.min(1, scrollY / max)})`
+    }
+    addEventListener("scroll", set, { passive: true })
+    addEventListener("resize", set)
+    set()
+}
+
 // ---------- the 3D harbour ----------
 function webgl() {
     try {
@@ -513,13 +641,22 @@ function webgl() {
         return false
     }
 }
+const photoStage = $('[data-stage="photo"]')
+if (photoStage) setTimeout(() => photoStage.classList.add("is-formed"), 9000)
 if (webgl() && !document.body.hasAttribute("data-no-scene")) {
+    document.documentElement.classList.add("webgl")
     const go = () =>
         import("./scene/index.js")
             .then((m) => m.startScene({ reduced }))
-            .then((r) => r || window.__endLoader?.())
+            .then((r) => {
+                if (!r) {
+                    window.__endLoader?.()
+                    photoStage?.classList.add("is-formed")
+                }
+            })
             .catch((err) => {
                 console.warn("3D scene off:", err)
+                photoStage?.classList.add("is-formed")
                 window.__endLoader?.()
             })
     // pages with a 3D first screen start at once, the others when the browser is idle

@@ -4,7 +4,10 @@ import { createWater, createSky, createStars, createHills, createBeam, COLORS, M
 import { waveHeight, waveSlope } from "./world/waves.js"
 import { createArgus, CUT_ALL_SOLID, CUT_ALL_CLOUD } from "./world/argus.js"
 import { createTitle3D } from "./world/title3d.js"
+import { createGlobe, GLOBE_CENTER, GLOBE_R, PLACES } from "./world/globe.js"
 import { createPost } from "./post.js"
+import { createMotes } from "./world/motes.js"
+import { createPhotoCloud, PHOTO_CENTER } from "./world/photocloud.js"
 
 /* ================================================================
    The harbour behind every page.
@@ -81,16 +84,18 @@ export async function startScene({ reduced = false } = {}) {
     const hills = createHills()
     const beam = createBeam()
     scene.add(sky, stars, water, hills, beam)
+    const motes = reduced ? null : createMotes(lowPower ? 500 : 1400)
+    if (motes) scene.add(motes.points)
 
     const pmrem = new THREE.PMREMGenerator(renderer)
     scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture
-    scene.environmentIntensity = 0.42
-    const hemi = new THREE.HemisphereLight(new THREE.Color("#b9a6d8"), new THREE.Color("#0b0914"), 1.0)
-    const moon = new THREE.DirectionalLight(new THREE.Color("#efe6ff"), 2.0)
+    scene.environmentIntensity = 0.55
+    const hemi = new THREE.HemisphereLight(new THREE.Color("#b3c1d9"), new THREE.Color("#080b10"), 1.0)
+    const moon = new THREE.DirectionalLight(new THREE.Color("#eef3ff"), 2.6)
     moon.position.copy(MOON_DIR).multiplyScalar(100)
-    const rim = new THREE.PointLight(COLORS.violet, 90, 30, 1.6)
+    const rim = new THREE.PointLight(new THREE.Color("#5a73a8"), 80, 30, 1.6)
     rim.position.set(-4, 3, -5)
-    const key = new THREE.PointLight(new THREE.Color("#cdb6ff"), 40, 22, 1.8)
+    const key = new THREE.PointLight(new THREE.Color("#dbe4ff"), 70, 24, 1.6)
     key.position.set(5, 5, 6)
     scene.add(hemi, moon, rim, key)
     // the reflection pass only draws layer 1 (the mirrored boat), with the same lights
@@ -126,7 +131,7 @@ export async function startScene({ reduced = false } = {}) {
         g.fillRect(0, 0, 64, 64)
         return new THREE.CanvasTexture(c)
     })()
-    const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: new THREE.Color(1.3, 1.15, 1.5), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }))
+    const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: new THREE.Color(1.25, 1.2, 1.45), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }))
     glow.scale.setScalar(0.075)
     glow.position.fromArray(PARTS.lidar.p)
     model.add(glow)
@@ -149,6 +154,22 @@ export async function startScene({ reduced = false } = {}) {
         course.setOpacity(0)
         course.route.material.uniforms.uPx.value = dpr
         scene.add(course.group)
+    }
+    let globe = null
+    if (kinds.has("globe")) {
+        globe = await createGlobe({ lowPower })
+        globe.setOpacity(0)
+        scene.add(globe.group)
+    }
+    let photo = null
+    const photoEl = document.querySelector('[data-stage="photo"]')
+    if (photoEl && photoEl.dataset.src) {
+        try {
+            photo = await createPhotoCloud(photoEl.dataset.src, { lowPower })
+            scene.add(photo.points)
+        } catch (e) {
+            photoEl.classList.add("is-formed")
+        }
     }
     if (kinds.has("coast")) {
         const { createCoast } = await import("./world/coast.js")
@@ -179,6 +200,11 @@ export async function startScene({ reduced = false } = {}) {
             labels: labelsEl ? labels : [],
             cities: el.querySelector("[data-cities]"),
             tasks: [...el.querySelectorAll("[data-task]")],
+            through: el.hasAttribute("data-through"), // progress while the section passes the screen (not pinned)
+            arcStart: parseFloat(el.dataset.arcStart || "0.45"),
+            zoom: parseFloat(el.dataset.zoom || "1"),
+            anchor: el.dataset.anchor ? el.querySelector(el.dataset.anchor) : null, // the globe sits in this box
+            globePins: [...el.querySelectorAll("[data-globe-pin]")],
             p: 0,
             w: 0,
             active: null,
@@ -211,8 +237,13 @@ export async function startScene({ reduced = false } = {}) {
                 s.w = 1 - smooth(clamp((-r.top - r.height * 0.05) / (r.height * 0.75)))
                 continue
             }
+            if (s.kind === "photo") {
+                // on as soon as a good part of the photo is on screen
+                s.w = smooth(clamp((vh - r.top) / (vh * 0.4))) * smooth(clamp(r.bottom / (vh * 0.4)))
+                continue
+            }
             const range = Math.max(1, s.el.offsetHeight - vh)
-            s.p = clamp(-r.top / range)
+            s.p = s.through ? clamp((vh - r.top) / (vh + r.height)) : clamp(-r.top / range)
             const fadeIn = clamp(1 - r.top / (vh * 0.85))
             const fadeOut = clamp((r.bottom - vh * 0.15) / (vh * 0.85))
             s.w = smooth(Math.min(fadeIn, fadeOut))
@@ -268,7 +299,7 @@ export async function startScene({ reduced = false } = {}) {
     }
     // the first screen: low over the water, close to the boat
     const HERO_VIEW = {
-        home: { a: -0.85, r: 13, rs: 34, y: 2.0, look: 1.1, off: 0.27, offY: -0.02, offYs: 0.2 },
+        home: { a: -0.95, r: 15.5, rs: 34, y: 2.3, look: 1.0, off: 0.25, offY: 0.02, offYs: 0.2 },
         argus: { a: -0.5, r: 13.5, rs: 31, y: 1.7, look: 1.4, off: 0, offY: -0.1, offYs: 0.04 },
     }
     function heroCam(s, out, look) {
@@ -342,6 +373,7 @@ export async function startScene({ reduced = false } = {}) {
         reflectRT.setSize(Math.round(W * dprNow * 0.5), Math.round(H * dprNow * 0.5))
         water.material.uniforms.uRes.value.set(W * dprNow, H * dprNow)
         argus.points.uProj.value = (H * dprNow) / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)))
+        if (globe) globe.setPx(1, argus.points.uProj.value)
     }
     addEventListener("resize", resize)
 
@@ -393,6 +425,11 @@ export async function startScene({ reduced = false } = {}) {
         let boatVis = small && !hero ? 0 : 1
         let courseO = 0
         let coastO = 0
+        let globeO = 0
+        let globeArc = 0
+        let globeP = null
+        let anchored = 0
+        let photoO = 0
         let off = !small ? baseOffset : 0
         let offY = 0
         let xray = 0 // 0 = solid boat, 1 = LiDAR point cloud with the parts lit
@@ -423,6 +460,51 @@ export async function startScene({ reduced = false } = {}) {
                 boatPos.lerp(at, s.w)
                 courseO = Math.max(courseO, s.w)
                 off = lerp(off, 0, s.w)
+            } else if (s.kind === "globe" && globe) {
+                const arcTo = smooth(clamp((s.p - s.arcStart) / 0.38))
+                globeArc = Math.max(globeArc, arcTo)
+                globeO = Math.max(globeO, s.w)
+                globeP = s
+                const lat = lerp(PLACES.trondheim.lat, PLACES.sarasota.lat, arcTo * 0.85)
+                const lon = lerp(PLACES.trondheim.lon, PLACES.sarasota.lon, arcTo * 0.85)
+                globe.face(lat * 0.8, lon + (reduced ? 0 : Math.sin(t * 0.12) * 4))
+                let dist = (GLOBE_R * (small ? 5.8 : 4.3) - s.p * GLOBE_R * 0.4) * s.zoom
+                let ox = small ? 0 : s.offset
+                let oy = small ? 0.12 : 0
+                if (s.anchor) {
+                    // fit the globe into the box on the page, and follow it while scrolling
+                    const r = s.anchor.getBoundingClientRect()
+                    ox = (r.left + r.width / 2 - W / 2) / W
+                    oy = -(r.top + r.height / 2 - H / 2) / H
+                    const want = Math.min(r.width, r.height) * 0.46
+                    dist = (GLOBE_R * (H / 2)) / (want * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)))
+                    anchored = Math.max(anchored, s.w)
+                }
+                P.set(GLOBE_CENTER.x + pointerS.x * 3, GLOBE_CENTER.y, GLOBE_CENTER.z + dist)
+                L.copy(GLOBE_CENTER)
+                boatVis = Math.min(boatVis, 1 - s.w)
+                dim = lerp(dim, 0.4, s.w)
+                off = lerp(off, ox, s.w)
+                offY = lerp(offY, oy, s.w)
+            } else if (s.kind === "photo" && photo) {
+                // the photo forms from points in its own box on the page, then the real photo takes over
+                if (s.w > 0.5 && s.t0 === undefined) s.t0 = t
+                const el = s.t0 === undefined ? 0 : t - s.t0
+                photo.U.uAssemble.value = reduced ? 1 : clamp(el / 1.9)
+                photo.U.uScan.value = reduced ? 2 : lerp(-0.1, 1.1, clamp((el - 0.5) / 1.7))
+                if (el > 2.2 || reduced) s.el.classList.add("is-formed")
+                photoO = Math.max(photoO, s.w * (el < 2.6 ? 1 : Math.max(0, 1 - (el - 2.6) / 0.9)))
+                const r = s.el.getBoundingClientRect()
+                const tanH = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))
+                const dist = (photo.width * W) / (2 * tanH * camera.aspect * Math.max(80, r.width))
+                const settle = clamp(1 - (el - 1.9) / 0.5)
+                P.set(PHOTO_CENTER.x + pointerS.x * dist * 0.1 * settle, PHOTO_CENTER.y - pointerS.y * dist * 0.06 * settle, PHOTO_CENTER.z + dist)
+                L.copy(PHOTO_CENTER)
+                off = lerp(off, (r.left + r.width / 2 - W / 2) / W, s.w)
+                offY = lerp(offY, -(r.top + r.height / 2 - H / 2) / H, s.w)
+                anchored = Math.max(anchored, s.w)
+                boatVis = Math.min(boatVis, 1 - s.w)
+                dim = lerp(dim, 0.5, s.w)
             } else if (s.kind === "coast" && coast) {
                 coastCam(s.p, P, L)
                 coastO = Math.max(coastO, s.w)
@@ -498,7 +580,8 @@ export async function startScene({ reduced = false } = {}) {
 
         camera.position.copy(camPos)
         camera.lookAt(camLook)
-        const ko = 1 - Math.exp(-dt * 5)
+        // follow an anchored box exactly, otherwise ease
+        const ko = anchored > 0.5 ? 1 : 1 - Math.exp(-dt * 5)
         viewOffset = lerp(viewOffset, off, ko)
         viewOffsetY = lerp(viewOffsetY, offY, ko)
         if (Math.abs(viewOffset) > 0.002 || Math.abs(viewOffsetY) > 0.002) camera.setViewOffset(W, H, -viewOffset * W, viewOffsetY * H, W, H)
@@ -556,6 +639,17 @@ export async function startScene({ reduced = false } = {}) {
             const cu = clamp((courseU - course.phases[2]) / (course.phases[3] - course.phases[2]))
             o.obj.position.set(o.x, o.obj.position.y, o.z - cu * 56)
         }
+        if (photo) {
+            photo.U.uOpacity.value = photoO
+            photo.U.uProj.value = argus.points.uProj.value
+            photo.points.visible = photoO > 0.01
+        }
+        if (globe) {
+            globe.setOpacity(globeO)
+            globe.update(t, globeArc, 0)
+            beam.material.uniforms.uOpacity.value *= 1 - globeO
+            if (globeP) placeGlobeLabels(globeP, globeArc)
+        }
         if (coast) {
             coast.setOpacity(coastO)
             const cs = stages.find((s) => s.kind === "coast")
@@ -565,6 +659,7 @@ export async function startScene({ reduced = false } = {}) {
         }
 
         placeLabels()
+        if (motes) motes.update(t, camera.position, argus.points.uProj.value, 1 - globeO * 0.6)
 
         // 1) the reflection: only layer 1, into its own buffer
         if (boat.visible || (title && title.visible)) {
@@ -623,6 +718,27 @@ export async function startScene({ reduced = false } = {}) {
         }
     }
 
+    // labels on the globe: the pins in the HTML are moved to the places on screen
+    const gv = new THREE.Vector3()
+    function placeGlobeLabels(s, arcTo) {
+        globe.group.updateMatrixWorld(true)
+        for (const el of s.globePins) {
+            const key = el.dataset.globePin
+            if (key === "mid") gv.copy(globe.arcMid)
+            else gv.copy(globe.pins.find((p) => p.key === key).top)
+            globe.worldOf(gv, gv)
+            // hidden when on the far side of the earth
+            const toCam = camera.position.clone().sub(GLOBE_CENTER).normalize()
+            const facing = gv.clone().sub(GLOBE_CENTER).normalize().dot(toCam)
+            gv.project(camera)
+            const lw = el.offsetWidth || 160
+            el.style.setProperty("--x", `${Math.min((gv.x * 0.5 + 0.5) * W, W - lw - 24)}px`)
+            el.style.setProperty("--y", `${(-gv.y * 0.5 + 0.5) * H}px`)
+            const need = key === "trondheim" ? 0 : key === "mid" ? 0.55 : 0.97
+            el.classList.toggle("is-shown", s.w > 0.82 && facing > 0.05 && arcTo >= need)
+        }
+    }
+
     let cityEls = null
     function placeCities(s) {
         if (!cityEls) {
@@ -644,7 +760,7 @@ export async function startScene({ reduced = false } = {}) {
         }
     }
 
-    if (/[?&]debug\b/.test(location.search)) window.__dbg = { THREE, scene, camera, renderer, coast, course, argus, post, setIntro: (v) => { introFixed = v; intro.done = false; intro.start = 0 } }
+    if (/[?&]debug\b/.test(location.search)) window.__dbg = { THREE, scene, camera, renderer, coast, course, globe, argus, post, setIntro: (v) => { introFixed = v; intro.done = false; intro.start = 0 } }
 
     await argus.ready
     resize()

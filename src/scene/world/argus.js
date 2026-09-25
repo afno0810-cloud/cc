@@ -29,7 +29,7 @@ export function createArgus({ renderer, lowPower, onProgress }) {
         uCut: { value: CUT_ALL_CLOUD },
         uGhost: { value: 0 },
         uTime: { value: 0 },
-        uEdgeCol: { value: COLORS.lavender.clone().multiplyScalar(1) },
+        uEdgeCol: { value: COLORS.ice.clone() },
     }
     const P = {
         uCut: U.uCut,
@@ -136,7 +136,8 @@ export function createArgus({ renderer, lowPower, onProgress }) {
                     float edge = exp(-pow(side * 60.0, 2.0));
                     float hi = uHiOn * (1.0 - smoothstep(uHiR * 0.35, uHiR, distance(position, uHi)));
                     float twinkle = 0.75 + 0.25 * sin(uTime * 3.0 + aSeed * 40.0);
-                    vec3 c = mix(uVio * 1.6, uLav, 0.35 + aLum * 0.65);
+                    // cool white points with a touch of Marinor lilac
+                    vec3 c = mix(vec3(0.42, 0.52, 0.74), mix(vec3(0.93, 0.95, 1.0), uLav, 0.25), 0.3 + aLum * 0.7);
                     c = mix(c, vec3(1.0), edge * 0.7);
                     c = mix(c, uYel * 2.2, hi);
                     vCol = c;

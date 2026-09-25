@@ -15,9 +15,9 @@ const GradeShader = {
     uniforms: {
         tDiffuse: { value: null },
         uTime: { value: 0 },
-        uExposure: { value: 0.9 },
+        uExposure: { value: 1.0 },
         uRes: { value: new THREE.Vector2(1, 1) },
-        uCA: { value: 0.0009 },
+        uCA: { value: 0.0006 },
         uGrain: { value: 0.045 },
         uVig: { value: 0.55 },
         uFlash: { value: 0 },
@@ -62,8 +62,8 @@ const GradeShader = {
             c = aces(c);
             c = toSRGB(c);
             // grade: lift the shadows towards violet, keep highlights clean
-            c = mix(c, c * vec3(1.02, 0.97, 1.08) + vec3(0.012, 0.004, 0.028), 0.9);
-            c += uFlash * vec3(0.84, 0.73, 0.93);
+            c = c * vec3(1.0, 1.0, 1.02) + vec3(0.003, 0.006, 0.011);
+            c += uFlash * vec3(0.9, 0.93, 1.0);
             // vignette
             float v = smoothstep(0.95, 0.2, sqrt(r2) * 1.25);
             c *= mix(1.0, v, uVig);

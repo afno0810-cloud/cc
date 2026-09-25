@@ -3,7 +3,7 @@ import * as THREE from "three"
 /* A big title set in the site's display font, drawn into a texture and
    placed in the scene behind the boat, so the boat sits in front of the
    words and they move with the camera. */
-export async function createTitle3D(text, { color = "#efebf7", glow = "#d6baec" } = {}) {
+export async function createTitle3D(text, { color = "#f1f4f8", glow = "#b9c9e6" } = {}) {
     const family = "Big Shoulders Display"
     try {
         await document.fonts.load(`800 200px "${family}"`, text)
@@ -39,7 +39,7 @@ export async function createTitle3D(text, { color = "#efebf7", glow = "#d6baec" 
         depthWrite: false,
         fog: false,
         toneMapped: false,
-        color: new THREE.Color(1.15, 1.1, 1.25),
+        color: new THREE.Color(1.18, 1.2, 1.26),
         opacity: 0,
     })
     const mesh = new THREE.Mesh(new THREE.PlaneGeometry(aspect, 1), mat)

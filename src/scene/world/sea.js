@@ -8,13 +8,15 @@ import { WAVE_GLSL } from "./waves.js"
    ================================================================ */
 
 export const COLORS = {
-    abyss: new THREE.Color("#07060d"),
-    deep: new THREE.Color("#0c0a18"),
-    horizon: new THREE.Color("#1a1030"),
+    abyss: new THREE.Color("#05080c"),
+    deep: new THREE.Color("#080d15"),
+    horizon: new THREE.Color("#141a2d"),
     violet: new THREE.Color("#7c469c"),
     lavender: new THREE.Color("#d6baec"),
     cardinal: new THREE.Color("#f2c230"),
-    moon: new THREE.Color("#f1e6ff"),
+    moon: new THREE.Color("#eef3ff"),
+    steel: new THREE.Color("#3f5678"),
+    ice: new THREE.Color("#c9d7ee"),
 }
 
 export const MOON_DIR = new THREE.Vector3(-0.55, 0.32, -0.77).normalize()
@@ -37,8 +39,8 @@ export function createWater(segments) {
             uMoon: { value: MOON_DIR },
             uDeep: { value: COLORS.deep },
             uHorizon: { value: COLORS.horizon },
-            uLav: { value: COLORS.lavender },
-            uViolet: { value: COLORS.violet },
+            uLav: { value: COLORS.ice },
+            uViolet: { value: COLORS.steel },
             uFogFar: { value: 320 },
             uReflect: { value: null },
             uReflectOn: { value: 0 },
@@ -72,13 +74,19 @@ export function createWater(segments) {
 
                 // moonlight glitter
                 vec3 R = reflect(-uMoon, N);
-                float spec = pow(max(dot(R, V), 0.0), 420.0);
-                col += vec3(0.95, 0.9, 1.0) * spec * 0.55;
+                float rv = max(dot(R, V), 0.0);
+                float spec = pow(rv, 420.0);
+                col += vec3(0.95, 0.97, 1.0) * spec * 0.6;
+                // the moon path: a broad sheen with glints that sparkle on and off
+                float path = pow(rv, 40.0);
+                vec2 gc = floor(vPos.xz * 1.6);
+                float glint = step(0.975, fract(sin(dot(gc, vec2(12.9898, 78.233)) + floor(uTime * 4.0 + fract(gc.x * 0.37) * 4.0)) * 43758.5453));
+                col += vec3(0.85, 0.9, 1.0) * path * (0.06 + glint * 0.45 * smoothstep(0.15, 0.6, path));
 
                 // nautical chart grid, every 8 units
                 vec2 g = abs(fract(vPos.xz / 8.0) - 0.5);
                 float grid = 1.0 - smoothstep(0.0, 0.035, min(g.x, g.y));
-                col += uLav * grid * 0.06 * uGrid;
+                col += vec3(0.75, 0.82, 0.95) * grid * 0.05 * uGrid;
 
                 // LiDAR: rings and a rotating sweep around the boat
                 vec2 d = vPos.xz - uBoat;
@@ -89,10 +97,10 @@ export function createWater(segments) {
                 float diff = mod(uSweepAngle - ang, 6.28318);
                 float sweep = exp(-diff * 3.2) * smoothstep(55.0, 4.0, r);
                 vec2 cell = fract(vPos.xz * 0.9) - 0.5;
-                float dots = smoothstep(0.16, 0.02, length(cell));
+                float dots = 1.0 - smoothstep(0.02, 0.11, length(cell));
                 float lidar = (ring * 0.9 + sweep) * uSweep;
                 col += uLav * lidar * (0.25 + dots * 1.4);
-                col += uViolet * smoothstep(9.0, 0.0, r) * 0.18 * uSweep;
+                col += uViolet * (1.0 - smoothstep(0.0, 9.0, r)) * 0.1 * uSweep;
 
                 // Argus mirrored in the water (rendered upside down into its own buffer)
                 if (uReflectOn > 0.0) {
@@ -138,7 +146,7 @@ export function createSky() {
                 float h = clamp(vDir.y, -0.2, 1.0);
                 vec3 col = mix(uHorizon * 1.15, uTop, smoothstep(-0.02, 0.45, h));
                 float m = max(dot(vDir, uMoon), 0.0);
-                col += vec3(0.85, 0.75, 1.0) * (pow(m, 900.0) * 3.0 + pow(m, 40.0) * 0.18 + pow(m, 6.0) * 0.05);
+                col += vec3(0.88, 0.92, 1.0) * (pow(m, 900.0) * 3.0 + pow(m, 40.0) * 0.18 + pow(m, 6.0) * 0.05);
                 gl_FragColor = vec4(col * uDim, 1.0);
             }
         `,
@@ -177,7 +185,7 @@ export function createStars(count) {
         `,
         fragmentShader: /* glsl */ `
             uniform float uOpacity; varying float vA;
-            void main() { float d = length(gl_PointCoord - 0.5); if (d > 0.5) discard; gl_FragColor = vec4(vec3(0.9, 0.85, 1.0), vA * uOpacity * (1.0 - d * 2.0)); }
+            void main() { float d = length(gl_PointCoord - 0.5); if (d > 0.5) discard; gl_FragColor = vec4(vec3(0.9, 0.93, 1.0), vA * uOpacity * (1.0 - d * 2.0)); }
         `,
     })
     return new THREE.Points(geo, mat)
@@ -189,8 +197,8 @@ export function createHills() {
     const pos = []
     const col = []
     const idx = []
-    const top = new THREE.Color("#241a36")
-    const bottom = new THREE.Color("#0b0914")
+    const top = new THREE.Color("#172030")
+    const bottom = new THREE.Color("#070a0f")
     const noise = (a) => Math.sin(a * 3.1) * 0.5 + Math.sin(a * 7.3 + 1.3) * 0.28 + Math.sin(a * 17.9 + 0.4) * 0.14 + Math.sin(a * 41.7) * 0.06
     for (let i = 0; i <= seg; i++) {
         const a = (i / seg) * Math.PI * 2
@@ -214,7 +222,7 @@ export function createHills() {
     for (let i = 0; i <= seg; i++) ridge.push(pos[i * 6 + 3], pos[i * 6 + 4], pos[i * 6 + 5])
     const rg = new THREE.BufferGeometry()
     rg.setAttribute("position", new THREE.Float32BufferAttribute(ridge, 3))
-    const line = new THREE.Line(rg, new THREE.LineBasicMaterial({ color: COLORS.violet, transparent: true, opacity: 0.55, fog: true }))
+    const line = new THREE.Line(rg, new THREE.LineBasicMaterial({ color: COLORS.steel, transparent: true, opacity: 0.55, fog: true }))
     const g = new THREE.Group()
     g.add(mesh, line)
     // a few harbour lights along the shore
@@ -240,7 +248,7 @@ export function createBeam() {
         depthWrite: false,
         side: THREE.DoubleSide,
         blending: THREE.AdditiveBlending,
-        uniforms: { uOpacity: { value: 1 }, uColor: { value: COLORS.lavender } },
+        uniforms: { uOpacity: { value: 1 }, uColor: { value: COLORS.ice } },
         vertexShader: /* glsl */ `varying vec2 vP; void main(){ vP = position.xz; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
         fragmentShader: /* glsl */ `
             uniform float uOpacity; uniform vec3 uColor; varying vec2 vP;

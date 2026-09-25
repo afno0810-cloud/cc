@@ -55,6 +55,11 @@ A section with `data-stage` drives the camera while you scroll past it:
   screen (`data-part`).
 - `data-stage="course"` – follows the boat through the Njord course; `[data-task]` items light up in turn.
 - `data-stage="coast"` – the route along the Norwegian coast; city labels go in `[data-cities]`.
+- `data-stage="globe"` – the globe with the route from Trondheim to Sarasota (continents from the
+  `world-atlas` package). Labels are `[data-globe-pin]` elements; `data-arc-start` sets when the arc is drawn,
+  `data-anchor=".box"` fits the globe into a box on the page, `data-through` for sections that are not pinned.
+- `data-stage="photo"` on a photo (`data-src` = the image) – the photo forms from points in 3D, then the real
+  photo fades in.
 
 `data-offset` moves the boat sideways on screen (−0.25 = to the left). Without WebGL, or with
 "reduce motion" turned on, the pages work fine without the scene.
@@ -72,9 +77,16 @@ Put the original in `framer-export/images/<folder>/` and run `python3 scripts/bu
   Argus page the title stands in 3D behind the boat. The boat and the title are mirrored in the water.
 - **Scan mode** (`data-stage="argus"`): the boat turns into a see-through point cloud and the part you
   read about lights up.
-- **Post-processing** (`src/scene/post.js`): bloom, tone mapping, a violet grade, vignette and grain.
-- **Desktop extras** (`src/main.js`): crosshair cursor that locks onto buttons, magnetic buttons, cards
-  that tilt, numbers that count up and mono labels that decode. Page changes use view transitions.
+- **Globe** (Competitions and Home): the continents as points and a gold arc from Trondheim to Sarasota.
+- **Team photo from points** (Team 2025 and Join): the photo assembles from coloured points before the real
+  photo takes over.
+- **Atmosphere**: sea spray drifting past the camera, and a moon path that glints on the water.
+- **Post-processing** (`src/scene/post.js`): bloom, tone mapping, a light grade, vignette and grain.
+- **Animations** (`src/main.js`): headings whose letters flip up in 3D, photos wiped in with a scan line
+  plus parallax, running bands of words that react to scroll speed, a progress line, numbers that count up
+  and mono labels that decode.
+- **Desktop extras**: crosshair cursor that locks onto buttons, magnetic buttons with a sheen, cards that
+  tilt. Page changes use view transitions.
 - With "reduce motion" on, or without WebGL, the pages work without all of this.
 
 Add `?debug` to a URL to get `window.__dbg` in the console (scene, camera, `setIntro(seconds)`).

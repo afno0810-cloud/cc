@@ -150,8 +150,10 @@
     </div>
   </section>
 
+  <div class="marquee" aria-hidden="true"><div class="marquee-track"><span>Argus</span>{{mark}}<span>Njord Challenge</span>{{mark}}<span>RoboBoat</span>{{mark}}<span>Proteus</span>{{mark}}<span>Trondheim</span>{{mark}}<span>Argus</span>{{mark}}<span>Njord Challenge</span>{{mark}}<span>RoboBoat</span>{{mark}}<span>Proteus</span>{{mark}}<span>Trondheim</span>{{mark}}</div></div>
+
   <!-- ============ Competitions ============ -->
-  <section class="sec" id="competitions">
+  <section class="sec" id="competitions" data-stage="globe" data-through data-arc-start="0.34" data-anchor=".globe-window">
     <div class="wrap">
       <div class="sec-head" data-reveal>
         <p class="eyebrow">Competitions</p>
@@ -160,26 +162,13 @@
       </div>
       <div class="comp-grid sec-body">
         <div class="comp-left" data-reveal>
-          <div class="route-map hud">
-            <svg viewBox="0 0 600 400" aria-hidden="true">
-              <defs><pattern id="dots" width="14" height="14" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.1" fill="rgba(214,186,236,.16)"/></pattern></defs>
-              <rect width="600" height="400" fill="url(#dots)"/>
-              <g fill="none" stroke="rgba(214,186,236,.11)"><ellipse cx="300" cy="420" rx="152" ry="80"/><ellipse cx="300" cy="420" rx="285" ry="150"/><ellipse cx="300" cy="420" rx="418" ry="220"/><ellipse cx="300" cy="420" rx="551" ry="290"/><path d="M60 420 Q 156 120 252 -20"/><path d="M180 420 Q 228 120 276 -20"/><path d="M300 420 Q 300 120 300 -20"/><path d="M420 420 Q 372 120 324 -20"/><path d="M540 420 Q 444 120 348 -20"/></g>
-              <path id="route" d="M470 118 C 380 40, 200 110, 140 300" fill="none" stroke="rgba(214,186,236,.3)" stroke-width="2" stroke-dasharray="4 8"/>
-              <path class="route-line" d="M470 118 C 380 40, 200 110, 140 300" fill="none" stroke="#d6baec" stroke-width="2.5" stroke-linecap="round" pathLength="1"/>
-              <g><circle cx="470" cy="118" r="11" fill="rgba(214,186,236,.2)"/><circle cx="470" cy="118" r="5.5" fill="#fff"/></g>
-              <g><circle cx="140" cy="300" r="11" fill="rgba(214,186,236,.2)"/><circle cx="140" cy="300" r="5.5" fill="#fff"/></g>
-              <g><path d="M-9 -3 L9 -3 L6 4 L-6 4 Z M0 -3 L0 -12 L6 -5 Z" fill="#fff"/><animateMotion dur="14s" repeatCount="indefinite" rotate="0"><mpath href="#route"/></animateMotion></g>
-              <text x="300" y="92" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" letter-spacing="2" fill="rgba(214,186,236,.8)">≈ 7 450 KM</text>
-            </svg>
+          <div class="route-map hud globe-window">
             <p class="route-title mono">Where we're headed</p>
-            <p class="route-pin is-a"><b>Trondheim, Norway</b><span>Njord · every August</span></p>
-            <p class="route-pin is-b"><b>Sarasota, Florida</b><span>RoboBoat · every February</span></p>
           </div>
           <ol class="steps" style="--n:3">
-            <li class="step"><b>2026</b><p class="h4">First time at Njord</p></li>
-            <li class="step"><b>2027</b><p class="h4">Win Njord</p></li>
-            <li class="step is-last"><b>Then</b><p class="h4">RoboBoat</p></li>
+            <li class="step" data-task><b>2026</b><p class="h4">First time at Njord</p></li>
+            <li class="step" data-task><b>2027</b><p class="h4">Win Njord</p></li>
+            <li class="step is-last" data-task><b>Then</b><p class="h4">RoboBoat</p></li>
           </ol>
         </div>
         <div class="comp-right" data-reveal>
@@ -195,6 +184,11 @@
           </a>
         </div>
       </div>
+    </div>
+    <div class="stage-labels globe-labels" aria-hidden="true">
+      <p class="globe-pin" data-globe-pin="trondheim"><b>Trondheim, Norway</b><span>Njord · every August</span></p>
+      <p class="globe-pin" data-globe-pin="sarasota"><b>Sarasota, Florida</b><span>RoboBoat · every February</span></p>
+      <p class="globe-pin is-mid" data-globe-pin="mid"><span>≈ 7 450 KM</span></p>
     </div>
   </section>
 

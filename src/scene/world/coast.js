@@ -128,7 +128,7 @@ export function createCoast(density = 1) {
         transparent: true,
         depthWrite: false,
         blending: THREE.AdditiveBlending,
-        uniforms: { uOpacity: { value: 0 }, uPx: { value: 1 }, uLav: { value: COLORS.lavender }, uVio: { value: COLORS.violet }, uReveal: { value: 1 } },
+        uniforms: { uOpacity: { value: 0 }, uPx: { value: 1 }, uLav: { value: COLORS.ice }, uVio: { value: COLORS.steel }, uReveal: { value: 1 } },
         vertexShader: /* glsl */ `
             attribute float aH; uniform float uPx; varying float vH;
             void main(){ vH = aH; vec4 mv = modelViewMatrix * vec4(position,1.0); gl_PointSize = uPx * (1.4 + aH * 1.6) * (560.0 / -mv.z); gl_Position = projectionMatrix * mv; }
