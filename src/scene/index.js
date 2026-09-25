@@ -84,7 +84,7 @@ export async function startScene({ reduced = false } = {}) {
     const hills = createHills()
     const beam = createBeam()
     scene.add(sky, stars, water, hills, beam)
-    const motes = reduced ? null : createMotes(lowPower ? 500 : 1400)
+    const motes = reduced ? null : createMotes(lowPower ? 260 : 600)
     if (motes) scene.add(motes.points)
 
     const pmrem = new THREE.PMREMGenerator(renderer)

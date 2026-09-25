@@ -38,10 +38,10 @@ export function createMotes(count, box = 60) {
                     vec4 mv = modelViewMatrix * vec4(p, 1.0);
                     float d = -mv.z;
                     // soft near the lens, gone at the edge of the box so the wrap never shows
-                    vA = smoothstep(0.6, 3.5, d) * (1.0 - smoothstep(uBox * 0.3, uBox * 0.48, d)) * (0.2 + 0.8 * aSeed);
+                    vA = smoothstep(2.5, 8.0, d) * (1.0 - smoothstep(uBox * 0.3, uBox * 0.48, d)) * (0.15 + 0.85 * aSeed);
                     vA *= 0.6 + 0.4 * sin(uTime * (1.0 + aSeed * 2.0) + aSeed * 50.0);
                     vS = aSeed;
-                    gl_PointSize = clamp((0.035 + aSeed * 0.05) * uProj / d, 1.0, 26.0);
+                    gl_PointSize = clamp((0.025 + aSeed * 0.035) * uProj / d, 1.0, 7.0);
                     gl_Position = projectionMatrix * mv;
                 }
             `,
@@ -52,7 +52,7 @@ export function createMotes(count, box = 60) {
                     if (d > 0.5) discard;
                     float k = pow(1.0 - d * 2.0, 1.6);
                     vec3 c = mix(vec3(0.72, 0.8, 0.95), vec3(1.0, 0.95, 0.85), step(0.92, vS));
-                    gl_FragColor = vec4(c * k * vA * 0.55 * uOpacity, 1.0);
+                    gl_FragColor = vec4(c * k * vA * 0.28 * uOpacity, 1.0);
                 }
             `,
         })

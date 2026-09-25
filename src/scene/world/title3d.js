@@ -39,7 +39,7 @@ export async function createTitle3D(text, { color = "#f1f4f8", glow = "#b9c9e6" 
         depthWrite: false,
         fog: false,
         toneMapped: false,
-        color: new THREE.Color(1.18, 1.2, 1.26),
+        color: new THREE.Color(0.92, 0.94, 0.98),
         opacity: 0,
     })
     const mesh = new THREE.Mesh(new THREE.PlaneGeometry(aspect, 1), mat)

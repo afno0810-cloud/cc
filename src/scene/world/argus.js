@@ -190,8 +190,25 @@ export function createArgus({ renderer, lowPower, onProgress }) {
     let cloud = null
     const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder)
     const url = lowPower ? "/media/models/argus-lite.glb" : "/media/models/argus.glb"
-    const ready = loader
-        .loadAsync(url, (e) => e.total && onProgress && onProgress(e.loaded / e.total))
+    // a host page can hand over the model bytes itself (the one-file preview does); normally we fetch the GLB
+    const fromHost = typeof window.__modelSource === "function" ? window.__modelSource(lowPower) : null
+    const load = fromHost
+        ? fromHost.then(
+              (buf) =>
+                  new Promise((res, rej) => {
+                      // textures through <img> instead of fetch(), which strict hosts may block for blob: URLs
+                      const cib = window.createImageBitmap
+                      try {
+                          window.createImageBitmap = undefined
+                      } catch (e) {
+                          /* read-only: keep the default */
+                      }
+                      loader.parse(buf, "", res, rej)
+                      window.createImageBitmap = cib
+                  })
+          )
+        : loader.loadAsync(url, (e) => e.total && onProgress && onProgress(e.loaded / e.total))
+    const ready = load
         .then((gltf) => {
             const obj = gltf.scene
             const box = new THREE.Box3().setFromObject(obj)
