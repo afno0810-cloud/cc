@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+<site-head title="Argus" description="Argus is the first autonomous surface vessel from Marinor NTNU: a catamaran with LiDAR, a stereo depth camera and a Kongsberg Seapath 130, built by students in Trondheim." image="/media/og/og-argus.jpg"></site-head>
+</head>
+<body data-page="argus" data-offset="0.16">
+<site-nav></site-nav>
+
+<main id="main">
+  <div class="wrap">
+    <!-- ============ Hero ============ -->
+    <section class="hero-card" aria-label="Meet Argus">
+      <div class="media">
+        <video autoplay muted loop playsinline preload="auto" poster="/media/video/argus-orbit-poster.jpg" aria-hidden="true">
+          <source src="/media/video/argus-orbit-sm.mp4" type="video/mp4" media="(max-width: 900px)">
+          <source src="/media/video/argus-orbit.mp4" type="video/mp4">
+        </video>
+      </div>
+      <div class="hero-card-top">
+        <p class="eyebrow rise">Marinor NTNU · Project Argus</p>
+        <span class="tag rise" style="--d:.1s"><i class="dot dot-live"></i>Autonomous Surface Vessel</span>
+      </div>
+      <div class="hero-card-body">
+        <h1 class="h1 argus-title"><span class="line-mask"><span style="--d:.1s">Meet Argus</span></span></h1>
+        <p class="lead rise" style="--d:.3s">Our first autonomous boat. A catamaran built by students in Trondheim and tested in the harbour.</p>
+        <div class="btns rise" style="--d:.4s">
+          <a class="btn btn-light is-out" href="https://gui.marinorntnu.no" target="_blank" rel="noopener noreferrer"><span>Open the interface</span>{{icon:out}}</a>
+          <a class="btn btn-line is-down" href="#build"><span>See the build</span>{{icon:down}}</a>
+        </div>
+      </div>
+      <p class="hero-card-note mono">Video: our photo, animated with AI</p>
+    </section>
+
+    <!-- ============ Numbers ============ -->
+    <section class="sec-tight">
+      <div class="stats" data-reveal>
+        <div class="stat"><b>1<small>st</small></b><span>autonomous surface vessel built by Marinor NTNU</span></div>
+        <div class="stat"><b>2</b><span>hulls in a stable catamaran design</span></div>
+        <div class="stat"><b>5</b><span>months from the first hull to launch day</span></div>
+        <div class="stat"><b>4</b><span>propellers, so Argus can turn 360 degrees while it moves forward</span></div>
+      </div>
+    </section>
+
+    <!-- ============ About Argus ============ -->
+    <section class="sec split">
+      <div class="prose">
+        <div class="sec-head" data-reveal>
+          <p class="eyebrow">The project</p>
+          <h2 class="h2">About Argus</h2>
+        </div>
+        <div class="prose" data-reveal>
+          <p>Argus is our first autonomous surface vessel. It finds its way on the water with no one at the wheel.</p>
+          <p>The hulls, electronics, sensors, control system and software all have to work together on one boat. Our members made every part of it.</p>
+        </div>
+      </div>
+      <div class="collage" data-reveal="self">
+        <div class="media grade c-a hud"><m-img src="argus-argus-in-water-front-dscf6216" alt="Argus in the water" sizes="(max-width: 860px) 90vw, 44vw"></m-img></div>
+        <div class="media grade c-b"><m-img src="argus-dock-wiring-electronics-dscf6185" alt="Working on the boat on the dock" sizes="(max-width: 860px) 50vw, 26vw"></m-img></div>
+        <span class="collage-chip"><i class="dot" style="background:var(--violet)"></i>Tested in Trondheim harbour</span>
+      </div>
+    </section>
+  </div>
+
+  <!-- ============ What is on board (3D, the list drives the model) ============ -->
+  <section class="sec" id="on-board">
+    <div class="wrap">
+      <div class="sec-head" data-reveal>
+        <p class="eyebrow">On board</p>
+        <h2 class="h2">What is on board</h2>
+        <p class="lead">The sensors and hardware Argus uses to see, find its position and steer.</p>
+      </div>
+    </div>
+    <div class="stage onboard" data-stage="argus" data-mode="list" data-offset="-0.27" data-parts="hull,props,gnss,camera,lidar,pixhawk,link,case">
+      <div class="wrap onboard-grid">
+        <div class="stage-sticky onboard-view" aria-hidden="true">
+          <p class="onboard-hint mono">3D model · made from our photos</p>
+        </div>
+        <div class="onboard-list">
+          <figure class="media grade hud onboard-photo">
+            <m-img src="argus-argus-sensors-closeup-dscf6178" alt="Sensors mounted on the electronics case" sizes="(max-width: 1100px) 100vw, 44vw"></m-img>
+            <span class="tag onboard-tag"><i class="dot dot-live"></i>Sensing</span>
+            <figcaption class="collage-chip onboard-cap"><i class="dot" style="background:var(--violet)"></i>Sensors mounted on top of the electronics case</figcaption>
+          </figure>
+          <ol class="rows">
+            <li class="row" data-part="hull"><span class="row-no">01</span><h3 class="row-title is-sans">Two hulls</h3><p>Argus is a catamaran. The two hulls give a wide and stable platform for the sensors and electronics.</p></li>
+            <li class="row" data-part="props"><span class="row-no">02</span><h3 class="row-title is-sans">Four propellers</h3><p>With four propellers Argus can turn a full 360 degrees while it keeps moving forward.</p></li>
+            <li class="row" data-part="gnss"><span class="row-no">03</span><h3 class="row-title is-sans">Kongsberg Seapath 130</h3><p>A GNSS-aided inertial navigation system. It combines multi-frequency GNSS receivers with gyroscopes and accelerometers, and gives Argus its position, heading, speed, roll and pitch.</p></li>
+            <li class="row" data-part="camera"><span class="row-no">04</span><h3 class="row-title is-sans">Stereo depth camera</h3><p>Two lenses measure the distance to things in front of the boat. The images are also used to recognise what the objects are.</p></li>
+            <li class="row" data-part="lidar"><span class="row-no">05</span><h3 class="row-title is-sans">LiDAR</h3><p>Measures the distance to docks, buoys, boats and other obstacles around the boat.</p></li>
+            <li class="row" data-part="pixhawk"><span class="row-no">06</span><h3 class="row-title is-sans">Pixhawk flight controller</h3><p>Controls the motors. It calculates the PWM signal that sets the speed of each propeller.</p></li>
+            <li class="row" data-part="link"><span class="row-no">07</span><h3 class="row-title is-sans">5G link</h3><p>Sends all data from the boat to land, so we can follow its internal state while it sails.</p></li>
+            <li class="row" data-part="case"><span class="row-no">08</span><h3 class="row-title is-sans">Waterproof electronics case</h3><p>The computer, power and wiring are kept dry inside one sealed case.</p></li>
+          </ol>
+        </div>
+      </div>
+      <div class="stage-labels" data-labels></div>
+    </div>
+  </section>
+
+  <div class="wrap">
+    <!-- ============ How Argus finds its way ============ -->
+    <section class="sec" id="autonomy">
+      <div class="panel autonomy contours">
+        <div class="sec-head" data-reveal>
+          <p class="eyebrow">Autonomy</p>
+          <h2 class="h2">How Argus finds its way</h2>
+          <p class="lead">From what the sensors see to the signal that turns the propellers, in the order it happens on board.</p>
+        </div>
+        <ol class="chain sec-body" data-reveal>
+          <li class="chain-step" style="--k:0"><p class="chain-top"><span>01</span><span>See</span></p><h3 class="h3">Stereo camera and LiDAR</h3><p class="small">The depth camera measures distance and recognises objects like buoys and boats. The LiDAR measures the distance to everything around the boat.</p></li>
+          <li class="chain-step" style="--k:1"><p class="chain-top"><span>02</span><span>Locate</span></p><h3 class="h3">Kongsberg Seapath 130</h3><p class="small">GNSS receivers give the position and heading. Gyroscopes and accelerometers fill in between the satellite fixes and keep the estimate going if the signal drops out. Correction data over 5G makes the position more accurate.</p><a class="link-arrow" href="https://www.kongsberg.com/what-we-do/ocean-space/inertial-solutions/seapath/seapath-130-series/" target="_blank" rel="noopener noreferrer">Seapath 130 at Kongsberg{{icon:out}}</a></li>
+          <li class="chain-step" style="--k:2"><p class="chain-top"><span>03</span><span>Map</span></p><h3 class="h3">Cost map</h3><p class="small">What the sensors find goes into a map of the water around the boat. Obstacles, and the water close to them, cost more to sail through.</p></li>
+          <li class="chain-step" style="--k:3"><p class="chain-top"><span>04</span><span>Decide</span></p><h3 class="h3">State machine</h3><p class="small">Keeps track of what Argus is doing right now, for example following the course, going around another boat or docking, and switches when something changes.</p></li>
+          <li class="chain-step" style="--k:4"><p class="chain-top"><span>05</span><span>Plan</span></p><h3 class="h3">Field D*</h3><p class="small">The path planning algorithm finds the cheapest route across the cost map, and plans again when the map changes.</p></li>
+          <li class="chain-step" style="--k:5"><p class="chain-top"><span>06</span><span>Drive</span></p><h3 class="h3">Pixhawk</h3><p class="small">The flight controller turns the plan into PWM signals for the four motors.</p></li>
+        </ol>
+        <div class="link5g" data-reveal="self">
+          <span class="bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+          <b>5G to shore</b>
+          <p class="small">All data from Argus is sent to land over 5G, so we can follow its internal state and get important information while it sails.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ The build ============ -->
+    <section class="sec" id="build">
+      <div class="sec-head is-center" data-reveal>
+        <p class="eyebrow">The build</p>
+        <h2 class="h2">How we built it</h2>
+        <p class="lead">The build, from the first hull in the workshop to the first test in the harbour.</p>
+      </div>
+      <div class="tl sec-body" data-progress>
+        <div class="tl-line" aria-hidden="true"><i></i></div>
+        <div class="tl-row" data-reveal>
+          <div class="panel tl-card"><p class="tl-date">16 November 2025</p><h3 class="h3">Shaping the hulls</h3><p class="text">Work starts in the workshop with the first hull.</p></div>
+          <span class="tl-dot" aria-hidden="true"></span>
+          <div class="media grade tl-photo"><m-img src="argus-workshop-hull-2025-11-16" alt="Working on the hull in the workshop" sizes="(max-width: 860px) 90vw, 44vw"></m-img></div>
+        </div>
+        <div class="tl-row is-flip" data-reveal>
+          <div class="media grade tl-photo"><m-img src="argus-workshop-sanding-2026-01-08" alt="Sanding and finishing the hulls" sizes="(max-width: 860px) 90vw, 44vw"></m-img></div>
+          <span class="tl-dot" aria-hidden="true"></span>
+          <div class="panel tl-card"><p class="tl-date">8 January 2026</p><h3 class="h3">Sanding and finishing</h3><p class="text">Long days of sanding, filling and painting to make the hulls smooth and watertight.</p></div>
+        </div>
+        <div class="tl-row" data-reveal>
+          <div class="panel tl-card"><p class="tl-date">8 March 2026</p><h3 class="h3">First time on the water</h3><p class="text">The first float test in the harbour. It floats.</p></div>
+          <span class="tl-dot" aria-hidden="true"></span>
+          <div class="media grade tl-photo"><m-img src="argus-float-test-towed-by-dinghy-old-hero" alt="First float test in the harbour" sizes="(max-width: 860px) 90vw, 44vw" style="object-position:38% 50%"></m-img></div>
+        </div>
+        <div class="tl-row is-flip" data-reveal>
+          <div class="media grade tl-photo"><m-img src="argus-dock-wiring-electronics-dscf6185" alt="Putting Argus together on the dock" sizes="(max-width: 860px) 90vw, 44vw"></m-img></div>
+          <span class="tl-dot" aria-hidden="true"></span>
+          <div class="panel tl-card"><p class="tl-date">19 April 2026</p><h3 class="h3">Putting it all together</h3><p class="text">Hulls, frame and electronics are joined together on the dock for the first time.</p></div>
+        </div>
+        <div class="tl-row" data-reveal>
+          <div class="panel tl-card"><p class="tl-date">26 April 2026</p><h3 class="h3">Launch day</h3><p class="text">Argus goes into the water with all sensors on board, ready for testing.</p></div>
+          <span class="tl-dot" aria-hidden="true"></span>
+          <div class="media grade tl-photo"><m-img src="argus-argus-in-water-front-dscf6216" alt="Argus in the water on launch day" sizes="(max-width: 860px) 90vw, 44vw"></m-img></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ Gallery ============ -->
+    <section class="sec" id="gallery">
+      <div class="sec-head" data-reveal>
+        <p class="eyebrow">Behind the scenes</p>
+        <h2 class="h2">Photos from the dock</h2>
+      </div>
+      <div class="gallery sec-body">
+        <div class="gallery-item"><button class="gallery-tile" type="button" data-lightbox data-caption="Wiring the electronics on the dock"><span class="media grade" style="aspect-ratio:4/5"><m-img src="argus-dock-team-gathered-2026-04-19" alt="Wiring the electronics on the dock" sizes="(max-width: 600px) 100vw, (max-width: 1100px) 50vw, 33vw"></m-img></span><span class="gallery-cap">Wiring the electronics on the dock</span></button></div>
+        <div class="gallery-item"><button class="gallery-tile" type="button" data-lightbox data-caption="Last checks before launch"><span class="media grade" style="aspect-ratio:4/3"><m-img src="argus-dock-member-with-argus-dscf6189" alt="Last checks before launch" sizes="(max-width: 600px) 100vw, (max-width: 1100px) 50vw, 33vw"></m-img></span><span class="gallery-cap">Last checks before launch</span></button></div>
+        <div class="gallery-item"><button class="gallery-tile" type="button" data-lightbox data-caption="Lowering Argus into the water"><span class="media grade" style="aspect-ratio:1/1"><m-img src="argus-dock-lowering-argus-dscf6206" alt="Lowering Argus into the water" sizes="(max-width: 600px) 100vw, (max-width: 1100px) 50vw, 33vw"></m-img></span><span class="gallery-cap">Lowering Argus into the water</span></button></div>
+        <div class="gallery-item"><button class="gallery-tile" type="button" data-lightbox data-caption="Working on the hull"><span class="media grade" style="aspect-ratio:3/4"><m-img src="argus-dock-working-on-argus-in-water-dscf6222" alt="Working on the hull" sizes="(max-width: 600px) 100vw, (max-width: 1100px) 50vw, 33vw"></m-img></span><span class="gallery-cap">Working on the hull</span></button></div>
+        <div class="gallery-item"><button class="gallery-tile" type="button" data-lightbox data-caption="Rolling Argus out to the harbour"><span class="media grade" style="aspect-ratio:4/3"><m-img src="argus-dock-carrying-argus-dscf6226" alt="Rolling Argus out to the harbour" sizes="(max-width: 600px) 100vw, (max-width: 1100px) 50vw, 33vw"></m-img></span><span class="gallery-cap">Rolling Argus out to the harbour</span></button></div>
+        <div class="gallery-item"><button class="gallery-tile" type="button" data-lightbox data-caption="Ready on the dock"><span class="media grade" style="aspect-ratio:4/5"><m-img src="argus-dock-argus-ready-dscf6192" alt="Ready on the dock" sizes="(max-width: 600px) 100vw, (max-width: 1100px) 50vw, 33vw"></m-img></span><span class="gallery-cap">Ready on the dock</span></button></div>
+        <div class="gallery-item"><button class="gallery-tile" type="button" data-lightbox data-caption="The team behind Argus"><span class="media grade" style="aspect-ratio:16/10"><m-img src="team-team-2025-group-photo" alt="The team behind Argus" sizes="(max-width: 600px) 100vw, (max-width: 1100px) 50vw, 33vw"></m-img></span><span class="gallery-cap">The team behind Argus</span></button></div>
+      </div>
+    </section>
+
+    <!-- ============ Goals ============ -->
+    <section class="sec">
+      <div class="sec-head is-center" data-reveal>
+        <p class="eyebrow">Our goals</p>
+        <h2 class="h2">Our goals</h2>
+      </div>
+      <div class="cards sec-body" data-reveal>
+        <div class="card is-accent"><p class="card-no">Goal 01</p><h3 class="h3">A fully autonomous boat</h3><p class="text">Get Argus to solve all four Njord tasks on its own.</p></div>
+        <div class="card is-accent"><p class="card-no">Goal 02</p><h3 class="h3">More partners</h3><p class="text">Work more with the Department of Engineering Cybernetics and with the companies that support us.</p></div>
+        <div class="card is-accent"><p class="card-no">Goal 03</p><h3 class="h3">Next projects</h3><p class="text">Use what we learn from Argus when we build Proteus and the bigger boat.</p></div>
+      </div>
+    </section>
+
+    <!-- ============ CTA ============ -->
+    <section class="sec">
+      <div class="cta is-left contours" data-reveal>
+        <p class="eyebrow">Project Argus</p>
+        <h2 class="h2">Open the Argus interface</h2>
+        <p class="lead">Our GUI team built a web interface for following Argus while it sails. You can open it here.</p>
+        <div class="btns">
+          <a class="btn btn-light is-out" href="https://gui.marinorntnu.no" target="_blank" rel="noopener noreferrer"><span>Open the interface</span>{{icon:out}}</a>
+          <a class="btn btn-line" href="/join/"><span>Join Marinor</span>{{icon:arrow}}</a>
+        </div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<site-footer></site-footer>
+</body>
+</html>
