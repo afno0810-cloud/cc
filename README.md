@@ -48,8 +48,11 @@ The build replaces these, so every page stays short:
 
 A section with `data-stage` drives the camera while you scroll past it:
 
-- `data-stage="argus"` – orbits Argus. `data-parts="lidar,gnss,…"` picks the labelled parts. With
-  `data-mode="list"` the boat turns to the part in the list nearest the middle of the screen (`data-part`).
+- `data-stage="hero"` – the first screen, close to the boat (`data-view="home"` or `"argus"`,
+  `data-title="…"` for a 3D title behind the boat). Pages with `data-loader` on `<body>` show a loader first.
+- `data-stage="argus"` – orbits Argus and switches to scan mode. `data-parts="lidar,gnss,…"` picks the
+  labelled parts. With `data-mode="list"` the boat turns to the part in the list nearest the middle of the
+  screen (`data-part`).
 - `data-stage="course"` – follows the boat through the Njord course; `[data-task]` items light up in turn.
 - `data-stage="coast"` – the route along the Norwegian coast; city labels go in `[data-cities]`.
 
@@ -61,11 +64,19 @@ A section with `data-stage` drives the camera while you scroll past it:
 Put the original in `framer-export/images/<folder>/` and run `python3 scripts/build-media.py`
 (needs Pillow). It writes 800/1600/2400 px WebP versions to `public/media/img/` and updates the manifest.
 
-## Made with AI (Higgsfield)
+## The 3D
 
-- `public/media/models/argus.glb` – the 3D model of Argus, generated from our own photos
-  (`argus-lite.glb` is a lighter version for phones).
-- `public/media/video/hero-argus*.mp4` and `argus-orbit*.mp4` – our own photos of Argus, animated.
-  The pages say so next to the videos.
+- **Argus** is a 3D model made with Higgsfield from our own photos (`public/media/models/argus.glb`,
+  `argus-lite.glb` for phones). The same model is also sampled into a LiDAR-style point cloud.
+- **First screen** (home and Argus): the points fly in and a scan line turns them into the boat. On the
+  Argus page the title stands in 3D behind the boat. The boat and the title are mirrored in the water.
+- **Scan mode** (`data-stage="argus"`): the boat turns into a see-through point cloud and the part you
+  read about lights up.
+- **Post-processing** (`src/scene/post.js`): bloom, tone mapping, a violet grade, vignette and grain.
+- **Desktop extras** (`src/main.js`): crosshair cursor that locks onto buttons, magnetic buttons, cards
+  that tilt, numbers that count up and mono labels that decode. Page changes use view transitions.
+- With "reduce motion" on, or without WebGL, the pages work without all of this.
 
-Everything else (all text, all other photos, the team and sponsor info) comes from the old site.
+Add `?debug` to a URL to get `window.__dbg` in the console (scene, camera, `setIntro(seconds)`).
+
+All text, photos, team and sponsor info come from the old site; nothing is made up.

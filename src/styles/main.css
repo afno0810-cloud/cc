@@ -1265,3 +1265,218 @@ main,
         display: none;
     }
 }
+
+/* ---------------- loader (pages with a 3D first screen) ---------------- */
+.loader {
+    position: fixed;
+    inset: 0;
+    z-index: 5000;
+    display: grid;
+    place-items: center;
+    background: var(--abyss);
+    transition: clip-path 1s cubic-bezier(0.76, 0, 0.24, 1);
+    clip-path: inset(0 0 0 0);
+}
+html:not(.is-loading) .loader:not(.is-out) {
+    display: none;
+}
+.loader.is-out {
+    clip-path: inset(0 0 100% 0);
+}
+.loader::after {
+    /* the scan line that wipes the loader away */
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 2px;
+    background: var(--lavender);
+    box-shadow: 0 0 24px 4px rgba(214, 186, 236, 0.7);
+    opacity: 0;
+}
+.loader.is-out::after {
+    opacity: 1;
+}
+.loader-in {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+    color: var(--foam);
+    transition: opacity 0.4s ease, transform 0.6s var(--ease);
+}
+.loader.is-out .loader-in {
+    opacity: 0;
+    transform: translateY(-30px);
+}
+.loader .mark {
+    width: 64px;
+    height: 64px;
+    animation: loader-spin 3.2s linear infinite;
+}
+@keyframes loader-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+.loader-word {
+    font-family: var(--body);
+    font-style: italic;
+    font-size: 18px;
+    letter-spacing: 0.02em;
+}
+.loader-word b {
+    font-weight: 700;
+}
+.loader-bar {
+    width: 180px;
+    height: 2px;
+    background: var(--line-2);
+    overflow: hidden;
+}
+.loader-bar i {
+    display: block;
+    height: 100%;
+    background: var(--lavender);
+    box-shadow: 0 0 12px var(--lavender);
+    transform-origin: left;
+    transform: scaleX(0);
+}
+.loader-pct {
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    color: var(--mist);
+}
+/* hold the first-screen animations until the loader has gone */
+html.is-loading .rise,
+html.is-loading .line-mask > span,
+html.is-loading .wave path {
+    animation-play-state: paused;
+}
+/* the post-processing adds its own grain */
+html.has-scene .grain {
+    display: none;
+}
+
+/* ---------------- crosshair cursor (desktop) ---------------- */
+html.has-cursor,
+html.has-cursor * {
+    cursor: none !important;
+}
+.cursor {
+    position: fixed;
+    inset: 0;
+    z-index: 6000;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+.cursor.is-on {
+    opacity: 1;
+}
+.cursor i,
+.cursor b {
+    position: fixed;
+    left: 0;
+    top: 0;
+    display: block;
+}
+.cursor i {
+    width: 6px;
+    height: 6px;
+    margin: -3px 0 0 -3px;
+    border-radius: 99px;
+    background: var(--foam);
+    box-shadow: 0 0 10px var(--lavender);
+}
+.cursor b {
+    translate: -50% -50%;
+    border-radius: 2px;
+    transition: width 0.28s var(--ease), height 0.28s var(--ease), border-radius 0.28s ease, opacity 0.3s ease;
+    /* four corner brackets, like a target lock */
+    background:
+        linear-gradient(var(--lavender), var(--lavender)) top left / 9px 1.5px,
+        linear-gradient(var(--lavender), var(--lavender)) top left / 1.5px 9px,
+        linear-gradient(var(--lavender), var(--lavender)) top right / 9px 1.5px,
+        linear-gradient(var(--lavender), var(--lavender)) top right / 1.5px 9px,
+        linear-gradient(var(--lavender), var(--lavender)) bottom left / 9px 1.5px,
+        linear-gradient(var(--lavender), var(--lavender)) bottom left / 1.5px 9px,
+        linear-gradient(var(--lavender), var(--lavender)) bottom right / 9px 1.5px,
+        linear-gradient(var(--lavender), var(--lavender)) bottom right / 1.5px 9px;
+    background-repeat: no-repeat;
+    opacity: 0.75;
+}
+.cursor.is-hot b {
+    opacity: 1;
+    border-radius: 4px;
+    filter: drop-shadow(0 0 6px rgba(214, 186, 236, 0.8));
+}
+.cursor.is-hot i {
+    background: var(--cardinal);
+    box-shadow: 0 0 10px var(--cardinal);
+}
+.cursor.is-down b {
+    scale: 0.9;
+}
+
+/* magnetic buttons ease back */
+.btn {
+    transition: transform 0.35s var(--ease-2), background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* cards that tilt, with a soft light that follows the pointer */
+html.has-cursor .tilt {
+    position: relative;
+    transform: perspective(1100px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+    transition: transform 0.5s var(--ease-2), border-color 0.35s ease, flex-grow 0.7s var(--ease-2), background-color 0.35s ease;
+}
+html.has-cursor .tilt:hover {
+    transform: perspective(1100px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)) translateY(-4px);
+}
+.tilt::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    pointer-events: none;
+    border-radius: inherit;
+    background: radial-gradient(420px circle at var(--mx, 50%) var(--my, 50%), rgba(214, 186, 236, 0.14), transparent 60%);
+    opacity: 0;
+    transition: opacity 0.4s ease;
+}
+.tilt:hover::after {
+    opacity: 1;
+}
+
+/* ---------------- page transitions (browsers that support them) ---------------- */
+@view-transition {
+    navigation: auto;
+}
+::view-transition-old(root) {
+    animation: vt-out 0.42s cubic-bezier(0.7, 0, 0.84, 0) both;
+}
+::view-transition-new(root) {
+    animation: vt-in 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes vt-out {
+    to {
+        opacity: 0;
+        transform: scale(0.985);
+        filter: blur(6px);
+    }
+}
+@keyframes vt-in {
+    from {
+        clip-path: inset(100% 0 0 0);
+    }
+    to {
+        clip-path: inset(0 0 0 0);
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    ::view-transition-old(root),
+    ::view-transition-new(root) {
+        animation: none;
+    }
+}

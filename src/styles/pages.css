@@ -29,9 +29,8 @@
     z-index: -2;
     pointer-events: none;
     background:
-        linear-gradient(180deg, rgba(7, 6, 13, 0.72) 0%, rgba(7, 6, 13, 0.1) 30%, rgba(7, 6, 13, 0.25) 55%, rgba(7, 6, 13, 0.95) 92%, var(--abyss) 100%),
-        linear-gradient(90deg, rgba(7, 6, 13, 0.75) 0%, rgba(7, 6, 13, 0.1) 60%),
-        radial-gradient(60% 50% at 70% 60%, rgba(124, 70, 156, 0.25), transparent 70%);
+        linear-gradient(180deg, rgba(7, 6, 13, 0.55) 0%, rgba(7, 6, 13, 0) 22%, rgba(7, 6, 13, 0) 62%, rgba(7, 6, 13, 0.7) 100%),
+        linear-gradient(90deg, rgba(7, 6, 13, 0.6) 0%, rgba(7, 6, 13, 0) 55%);
 }
 /* a LiDAR-like line that sweeps down over the video */
 .hero-scan {
@@ -72,6 +71,10 @@
 .hero-in {
     position: relative;
     z-index: 2;
+}
+.hero-title .line-mask:last-child {
+    padding-bottom: 0.22em;
+    margin-bottom: -0.22em;
 }
 .hero-title {
     margin-top: 22px;
@@ -1665,4 +1668,54 @@
         font-size: 14.5px;
         overflow-wrap: normal;
     }
+}
+
+
+/* =====================================================================
+   3D FIRST SCREEN (Argus page)
+   ===================================================================== */
+.hero-3d {
+    position: relative;
+    min-height: 100vh;
+    min-height: 100svh;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    overflow: hidden;
+    isolation: isolate;
+    padding: calc(var(--nav-h) + 34px) 0 clamp(40px, 7vh, 84px);
+}
+.hero-3d .hero-shade {
+    background:
+        linear-gradient(180deg, rgba(7, 6, 13, 0.5) 0%, rgba(7, 6, 13, 0) 24%, rgba(7, 6, 13, 0) 55%, rgba(7, 6, 13, 0.82) 100%);
+}
+.hero-3d-top {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    width: 100%;
+}
+.hero-3d-body {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+}
+.hero-3d .hero-foot {
+    margin-top: 0;
+}
+/* with WebGL the title is in the scene, behind the boat; the text stays for screen readers */
+html.has-3d-title .dom-title {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
+html:not(.has-3d-title) .hero-3d .dom-title {
+    margin-bottom: 30px;
 }

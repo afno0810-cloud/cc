@@ -40,6 +40,9 @@ export function createWater(segments) {
             uLav: { value: COLORS.lavender },
             uViolet: { value: COLORS.violet },
             uFogFar: { value: 320 },
+            uReflect: { value: null },
+            uReflectOn: { value: 0 },
+            uRes: { value: new THREE.Vector2(1, 1) },
         },
         vertexShader: /* glsl */ `
             uniform float uTime; uniform float uAmp;
@@ -59,6 +62,7 @@ export function createWater(segments) {
             uniform float uSweep; uniform float uSweepAngle; uniform float uGrid; uniform float uDim;
             uniform vec3 uCam; uniform vec3 uMoon; uniform vec3 uDeep; uniform vec3 uHorizon;
             uniform vec3 uLav; uniform vec3 uViolet; uniform float uFogFar;
+            uniform sampler2D uReflect; uniform float uReflectOn; uniform vec2 uRes;
             varying vec3 vPos; varying vec3 vN;
             void main() {
                 vec3 V = normalize(uCam - vPos);
@@ -89,6 +93,14 @@ export function createWater(segments) {
                 float lidar = (ring * 0.9 + sweep) * uSweep;
                 col += uLav * lidar * (0.25 + dots * 1.4);
                 col += uViolet * smoothstep(9.0, 0.0, r) * 0.18 * uSweep;
+
+                // Argus mirrored in the water (rendered upside down into its own buffer)
+                if (uReflectOn > 0.0) {
+                    vec2 suv = gl_FragCoord.xy / uRes + N.xz * 0.09;
+                    vec4 rf = texture2D(uReflect, suv);
+                    float k = uReflectOn * clamp(rf.a, 0.0, 1.0) * mix(0.35, 0.8, fres);
+                    col = mix(col, rf.rgb * 0.6, k * 0.85);
+                }
 
                 // distance fog into the horizon
                 float dist = length(vPos - uCam);

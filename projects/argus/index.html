@@ -1,38 +1,36 @@
 <!doctype html>
 <html lang="en">
 <head>
-<site-head title="Argus" description="Argus is the first autonomous surface vessel from Marinor NTNU: a catamaran with LiDAR, a stereo depth camera and a Kongsberg Seapath 130, built by students in Trondheim." image="/media/og/og-argus.jpg"></site-head>
+<site-head title="Argus" description="Our first autonomous boat. A catamaran built by students in Trondheim and tested in the harbour." image="/media/og/og-argus.jpg"></site-head>
 </head>
-<body data-page="argus" data-offset="0.16">
+<body data-page="argus" data-offset="0.16" data-loader>
 <site-nav></site-nav>
 
 <main id="main">
-  <div class="wrap">
-    <!-- ============ Hero ============ -->
-    <section class="hero-card" aria-label="Meet Argus">
-      <div class="media">
-        <video autoplay muted loop playsinline preload="auto" poster="/media/video/argus-orbit-poster.jpg" aria-hidden="true">
-          <source src="/media/video/argus-orbit-sm.mp4" type="video/mp4" media="(max-width: 900px)">
-          <source src="/media/video/argus-orbit.mp4" type="video/mp4">
-        </video>
-      </div>
-      <div class="hero-card-top">
-        <p class="eyebrow rise">Marinor NTNU · Project Argus</p>
-        <span class="tag rise" style="--d:.1s"><i class="dot dot-live"></i>Autonomous Surface Vessel</span>
-      </div>
-      <div class="hero-card-body">
-        <h1 class="h1 argus-title"><span class="line-mask"><span style="--d:.1s">Meet Argus</span></span></h1>
+  <!-- ============ Hero: Argus in 3D, scanned in by its own LiDAR ============ -->
+  <section class="hero-3d" id="top" aria-label="Meet Argus" data-stage="hero" data-view="argus" data-title="Meet Argus">
+    <div class="hero-shade" aria-hidden="true"></div>
+    <div class="hero-frame hud" aria-hidden="true"></div>
+    <div class="wrap hero-3d-top">
+      <p class="eyebrow rise">Marinor NTNU · Project Argus</p>
+      <span class="tag rise" style="--d:.1s"><i class="dot dot-live"></i>Autonomous Surface Vessel</span>
+    </div>
+    <div class="wrap hero-3d-body">
+      <h1 class="h1 argus-title dom-title"><span class="line-mask"><span style="--d:.1s">Meet Argus</span></span></h1>
+      <div class="hero-foot">
         <p class="lead rise" style="--d:.3s">Our first autonomous boat. A catamaran built by students in Trondheim and tested in the harbour.</p>
         <div class="btns rise" style="--d:.4s">
           <a class="btn btn-light is-out" href="https://gui.marinorntnu.no" target="_blank" rel="noopener noreferrer"><span>Open the interface</span>{{icon:out}}</a>
           <a class="btn btn-line is-down" href="#build"><span>See the build</span>{{icon:down}}</a>
         </div>
       </div>
-      <p class="hero-card-note mono">Video: our photo, animated with AI</p>
-    </section>
+    </div>
+    <a class="scroll-cue" href="#numbers" aria-label="Scroll down"><i></i><span class="mono">Scroll</span></a>
+  </section>
 
+  <div class="wrap">
     <!-- ============ Numbers ============ -->
-    <section class="sec-tight">
+    <section class="sec-tight" id="numbers">
       <div class="stats" data-reveal>
         <div class="stat"><b>1<small>st</small></b><span>autonomous surface vessel built by Marinor NTNU</span></div>
         <div class="stat"><b>2</b><span>hulls in a stable catamaran design</span></div>
@@ -73,7 +71,6 @@
     <div class="stage onboard" data-stage="argus" data-mode="list" data-offset="-0.27" data-parts="hull,props,gnss,camera,lidar,pixhawk,link,case">
       <div class="wrap onboard-grid">
         <div class="stage-sticky onboard-view" aria-hidden="true">
-          <p class="onboard-hint mono">3D model · made from our photos</p>
         </div>
         <div class="onboard-list">
           <figure class="media grade hud onboard-photo">

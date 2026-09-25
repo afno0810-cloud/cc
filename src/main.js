@@ -20,6 +20,50 @@ const grain = document.createElement("div")
 grain.className = "grain"
 grain.setAttribute("aria-hidden", "true")
 document.body.append(grain)
+window.addEventListener("scene:ready", () => document.documentElement.classList.add("has-scene"), { once: true })
+
+// ---------- loader (pages with a 3D first screen) ----------
+// Waits for the boat model and the fonts, at least a short moment, at most a few seconds.
+const loaderEl = $(".loader")
+if (loaderEl && document.documentElement.classList.contains("is-loading")) {
+    const pct = $("[data-pct]", loaderEl)
+    const bar = $(".loader-bar i", loaderEl)
+    let shown = 0
+    let target = 0.08
+    let done = false
+    const t0 = performance.now()
+    const tick = () => {
+        if (done) return
+        shown += (target - shown) * 0.12
+        if (pct) pct.textContent = String(Math.round(shown * 100))
+        if (bar) bar.style.transform = `scaleX(${shown})`
+        requestAnimationFrame(tick)
+    }
+    requestAnimationFrame(tick)
+    window.addEventListener("scene:progress", (e) => (target = Math.max(target, Math.min(0.92, e.detail * 0.92))))
+    const finish = () => {
+        if (done) return
+        const wait = Math.max(0, 900 - (performance.now() - t0))
+        target = 1
+        setTimeout(() => {
+            done = true
+            if (pct) pct.textContent = "100"
+            if (bar) bar.style.transform = "scaleX(1)"
+            loaderEl.classList.add("is-out")
+            document.documentElement.classList.remove("is-loading")
+            window.dispatchEvent(new Event("loader:done"))
+            setTimeout(() => loaderEl.remove(), 1200)
+        }, wait + 250)
+    }
+    const fonts = document.fonts ? document.fonts.ready : Promise.resolve()
+    const scene = new Promise((res) => {
+        window.addEventListener("scene:ready", res, { once: true })
+        window.addEventListener("scene:failed", res, { once: true })
+    })
+    Promise.all([fonts, scene]).then(finish)
+    setTimeout(finish, 6000)
+    window.__endLoader = finish
+} else if (loaderEl) loaderEl.remove()
 
 // ---------- smooth scroll (desktop with a mouse only) ----------
 let lenis = null
@@ -296,6 +340,170 @@ for (const v of $$("video")) {
 // ---------- year in the footer ----------
 $$("[data-year]").forEach((el) => (el.textContent = new Date().getFullYear()))
 
+// ---------- numbers count up when they come into view ----------
+// "2025" counts from 1990, the rest from 0; a suffix in <small> stays put
+const counters = $$(".stat b, .hero-facts b")
+if (counters.length && !reduced && "IntersectionObserver" in window) {
+    const run = (el) => {
+        const node = [...el.childNodes].find((n) => n.nodeType === 3 && /\d/.test(n.textContent))
+        if (!node) return
+        const m = node.textContent.match(/^(\s*)(\d+)(.*)$/s)
+        if (!m) return
+        const end = +m[2]
+        const from = end >= 1900 ? 1990 : 0
+        const dur = 1400
+        const t0 = performance.now()
+        const step = (now) => {
+            const k = Math.min(1, (now - t0) / dur)
+            const e = 1 - Math.pow(1 - k, 4)
+            node.textContent = m[1] + Math.round(from + (end - from) * e) + m[3]
+            if (k < 1) requestAnimationFrame(step)
+        }
+        requestAnimationFrame(step)
+    }
+    const io = new IntersectionObserver(
+        (es) =>
+            es.forEach((e) => {
+                if (!e.isIntersecting) return
+                io.unobserve(e.target)
+                run(e.target)
+            }),
+        { threshold: 0.6 }
+    )
+    counters.forEach((el) => io.observe(el))
+}
+
+// ---------- mono labels decode like a sensor read-out ----------
+const GLYPHS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789·/<>#*+"
+function decode(el) {
+    if (el.dataset.decoded) return
+    el.dataset.decoded = "1"
+    const nodes = []
+    const walk = (n) => n.childNodes.forEach((c) => (c.nodeType === 3 ? c.textContent.trim() && nodes.push(c) : c.nodeName !== "svg" && walk(c)))
+    walk(el)
+    nodes.forEach((node) => {
+        const final = node.textContent
+        const len = final.length
+        const t0 = performance.now()
+        const dur = 450 + len * 18
+        const step = (now) => {
+            const k = Math.min(1, (now - t0) / dur)
+            const shown = Math.floor(k * len)
+            let out = final.slice(0, shown)
+            for (let i = shown; i < len; i++) out += final[i] === " " ? " " : GLYPHS[(Math.random() * GLYPHS.length) | 0]
+            node.textContent = out
+            if (k < 1) requestAnimationFrame(step)
+            else node.textContent = final
+        }
+        requestAnimationFrame(step)
+    })
+}
+if (!reduced && "IntersectionObserver" in window) {
+    const labels = $$(".eyebrow, .route-label, .tl-date, .card-no, .hero-cap, .tag")
+    const io = new IntersectionObserver(
+        (es) =>
+            es.forEach((e) => {
+                if (!e.isIntersecting) return
+                io.unobserve(e.target)
+                // wait for the loader on the first screen
+                if (document.documentElement.classList.contains("is-loading")) window.addEventListener("loader:done", () => decode(e.target), { once: true })
+                else decode(e.target)
+            }),
+        { threshold: 0.8 }
+    )
+    labels.forEach((el) => io.observe(el))
+}
+
+// ---------- desktop: crosshair cursor, magnetic buttons, cards that tilt ----------
+if (fine && !reduced) {
+    const cur = document.createElement("div")
+    cur.className = "cursor"
+    cur.setAttribute("aria-hidden", "true")
+    cur.innerHTML = "<i></i><b></b>"
+    document.body.append(cur)
+    document.documentElement.classList.add("has-cursor")
+    let x = innerWidth / 2
+    let y = innerHeight / 2
+    let rx = x
+    let ry = y
+    let target = null
+    addEventListener(
+        "pointermove",
+        (e) => {
+            x = e.clientX
+            y = e.clientY
+            cur.classList.add("is-on")
+        },
+        { passive: true }
+    )
+    document.addEventListener("pointerleave", () => cur.classList.remove("is-on"))
+    document.addEventListener("pointerdown", () => cur.classList.add("is-down"))
+    document.addEventListener("pointerup", () => cur.classList.remove("is-down"))
+    const hot = "a, button, [data-lightbox], summary, label"
+    document.addEventListener("pointerover", (e) => {
+        target = e.target.closest(hot)
+        cur.classList.toggle("is-hot", !!target)
+    })
+    const ring = cur.querySelector("b")
+    const dot = cur.querySelector("i")
+    let last = performance.now()
+    const loop = (now = performance.now()) => {
+        const k = 1 - Math.exp(-Math.min(0.1, (now - last) / 1000) * 18)
+        last = now
+        let w = 34
+        let h = 34
+        let tx = x
+        let ty = y
+        if (target && target.isConnected) {
+            // lock on: the ring frames the button
+            const r = target.getBoundingClientRect()
+            if (r.width < 420 && r.height < 160) {
+                w = r.width + 14
+                h = r.height + 14
+                tx = r.left + r.width / 2
+                ty = r.top + r.height / 2
+            }
+        }
+        rx += (tx - rx) * k
+        ry += (ty - ry) * k
+        dot.style.transform = `translate3d(${x}px, ${y}px, 0)`
+        ring.style.transform = `translate3d(${rx}px, ${ry}px, 0)`
+        ring.style.width = `${w}px`
+        ring.style.height = `${h}px`
+        requestAnimationFrame(loop)
+    }
+    requestAnimationFrame(loop)
+
+    // buttons lean towards the pointer
+    $$(".btn").forEach((b) => {
+        b.addEventListener("pointermove", (e) => {
+            const r = b.getBoundingClientRect()
+            const dx = (e.clientX - (r.left + r.width / 2)) / r.width
+            const dy = (e.clientY - (r.top + r.height / 2)) / r.height
+            b.style.transform = `translate(${dx * 8}px, ${dy * 6}px)`
+        })
+        b.addEventListener("pointerleave", () => (b.style.transform = ""))
+    })
+
+    // photo cards tilt in 3D under the pointer
+    $$(".door, .season, .way, .lcard, .benefit.is-photo, .group, .do-card").forEach((c) => {
+        c.classList.add("tilt")
+        c.addEventListener("pointermove", (e) => {
+            const r = c.getBoundingClientRect()
+            const px = (e.clientX - r.left) / r.width - 0.5
+            const py = (e.clientY - r.top) / r.height - 0.5
+            c.style.setProperty("--rx", `${(-py * 6).toFixed(2)}deg`)
+            c.style.setProperty("--ry", `${(px * 8).toFixed(2)}deg`)
+            c.style.setProperty("--mx", `${((px + 0.5) * 100).toFixed(1)}%`)
+            c.style.setProperty("--my", `${((py + 0.5) * 100).toFixed(1)}%`)
+        })
+        c.addEventListener("pointerleave", () => {
+            c.style.setProperty("--rx", "0deg")
+            c.style.setProperty("--ry", "0deg")
+        })
+    })
+}
+
 // ---------- the 3D harbour ----------
 function webgl() {
     try {
@@ -306,7 +514,15 @@ function webgl() {
     }
 }
 if (webgl() && !document.body.hasAttribute("data-no-scene")) {
-    const go = () => import("./scene/index.js").then((m) => m.startScene({ reduced })).catch((err) => console.warn("3D scene off:", err))
-    if ("requestIdleCallback" in window) requestIdleCallback(go, { timeout: 1200 })
-    else setTimeout(go, 300)
-}
+    const go = () =>
+        import("./scene/index.js")
+            .then((m) => m.startScene({ reduced }))
+            .then((r) => r || window.__endLoader?.())
+            .catch((err) => {
+                console.warn("3D scene off:", err)
+                window.__endLoader?.()
+            })
+    // pages with a 3D first screen start at once, the others when the browser is idle
+    if (loaderEl || !("requestIdleCallback" in window)) setTimeout(go, 0)
+    else requestIdleCallback(go, { timeout: 1200 })
+} else window.__endLoader?.()

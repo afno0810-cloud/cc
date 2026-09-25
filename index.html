@@ -1,21 +1,15 @@
 <!doctype html>
 <html lang="en">
 <head>
-<site-head title="" description="Marinor NTNU is a student organisation at NTNU in Trondheim that builds autonomous boats. Meet Argus, our first autonomous surface vessel."></site-head>
+<site-head title="" description="We are a student organisation at NTNU that builds autonomous boats. Our first boat, Argus, sailed in the Njord Challenge in Trondheim in 2026."></site-head>
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"Organization","name":"Marinor NTNU","url":"https://marinorntnu.no","logo":"https://marinorntnu.no/apple-touch-icon.png","email":"marinorntnu@gmail.com","address":{"@type":"PostalAddress","streetAddress":"Høgskoleringen 1","postalCode":"7034","addressLocality":"Trondheim","addressCountry":"NO"},"sameAs":["https://www.instagram.com/marinorntnu/","https://www.linkedin.com/company/marinor-ntnu"],"taxID":"936064809"}</script>
 </head>
-<body data-page="home" data-scene="harbour">
+<body data-page="home" data-loader data-scene="harbour">
 <site-nav></site-nav>
 
 <main id="main">
   <!-- ============ Hero: Argus on the harbour ============ -->
-  <section class="hero-home" id="top" aria-label="Introduction">
-    <div class="hero-video media">
-      <video autoplay muted loop playsinline preload="auto" poster="/media/video/hero-argus-poster.jpg" aria-hidden="true">
-        <source src="/media/video/hero-argus-sm.mp4" type="video/mp4" media="(max-width: 900px)">
-        <source src="/media/video/hero-argus.mp4" type="video/mp4">
-      </video>
-    </div>
+  <section class="hero-home" id="top" aria-label="Introduction" data-stage="hero" data-view="home">
     <div class="hero-shade" aria-hidden="true"></div>
     <div class="hero-scan" aria-hidden="true"><i></i></div>
     <div class="hero-frame hud" aria-hidden="true"></div>
@@ -35,14 +29,7 @@
       </div>
     </div>
 
-    <p class="hero-cap mono rise" style="--d:1s">Argus on Trondheim harbour <span>· 63.44° N · 10.42° E · our photo, animated with AI</span></p>
-    <div class="telemetry hero-tele rise" style="--d:1.1s" aria-hidden="true">
-      <p class="telemetry-title"><i class="dot dot-live"></i>Argus · live view<span class="sim">Sim</span></p>
-      <p class="tl-kv">Mode<b data-t="mode">Station keeping</b></p>
-      <p class="tl-kv">Pos<b data-t="pos">63.4401° N 10.4203° E</b></p>
-      <p class="tl-kv">Hdg<b data-t="hdg">072°</b></p>
-      <p class="tl-kv">LiDAR<b data-t="pts">0 pts/s</b></p>
-    </div>
+    <p class="hero-cap mono rise" style="--d:1s">Argus on Trondheim harbour <span>· 63.44° N · 10.42° E</span></p>
     <a class="scroll-cue" href="#who" aria-label="Scroll down"><i></i><span class="mono">Scroll</span></a>
   </section>
 
@@ -73,9 +60,9 @@
   <section class="stage stage-argus" id="argus-3d" data-stage="argus" data-offset="0.2" data-parts="lidar,gnss,case,hull,props" aria-label="Argus in 3D">
     <div class="stage-sticky">
       <div class="wrap stage-copy">
-        <p class="eyebrow">Argus · 3D model</p>
+        <p class="eyebrow">Marinor NTNU · Project Argus</p>
         <h2 class="h2">Our first<br>autonomous boat.</h2>
-        <p class="lead">A catamaran with LiDAR, a stereo depth camera and a Kongsberg Seapath 130. Scroll to turn it around.</p>
+        <p class="lead">A catamaran with LiDAR, a stereo depth camera and a Kongsberg Seapath 130.</p>
         <div class="btns"><a class="btn btn-line" href="/projects/argus/"><span>Explore Argus</span>{{icon:arrow}}</a></div>
       </div>
       <ol class="stage-steps wrap" data-steps>
@@ -86,7 +73,6 @@
         <li data-part="props"><b>05</b>Four propellers</li>
       </ol>
       <div class="stage-labels" data-labels></div>
-      <p class="stage-note mono">3D model made from our own photos</p>
     </div>
   </section>
 

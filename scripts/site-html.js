@@ -80,8 +80,19 @@ const attrs = (s) => {
     return out
 }
 
+// the first screen waits for the 3D boat: a short loader with the logo
+const LOADER = `
+<div class="loader" aria-hidden="true">
+  <div class="loader-in">
+    ${MARK}
+    <p class="loader-word"><b>MARINOR</b> NTNU</p>
+    <div class="loader-bar"><i></i></div>
+    <p class="loader-pct mono"><span data-pct>0</span>%</p>
+  </div>
+</div>`
+
 function head(a, path) {
-    const title = a.title ? `${a.title} · ${SITE.name}` : `${SITE.name} – Autonomous boats from Trondheim`
+    const title = a.title ? `${a.title} · ${SITE.name}` : SITE.name
     const desc = a.description || "Marinor NTNU is a student organisation at NTNU in Trondheim that builds autonomous boats."
     const img = SITE.url + (a.image || "/media/og/og-default.jpg")
     const canonical = SITE.url + path
@@ -108,7 +119,7 @@ function head(a, path) {
 <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="manifest" href="/site.webmanifest">
-<script>document.documentElement.classList.add("js")</script>
+<script>document.documentElement.classList.add("js")${a.loader ? `;if(!matchMedia("(prefers-reduced-motion: reduce)").matches)document.documentElement.classList.add("is-loading")` : ""}</script>
 <link rel="stylesheet" href="/src/styles/main.css">
 <script type="module" src="/src/main.js"></script>`
 }
@@ -231,7 +242,7 @@ function footer() {
       ${col("Get involved", [["Join the crew", PATHS.join], ["Sponsor us", PATHS.sponsor], ["Email us", `mailto:${SITE.email}`]])}
     </div>
     <div class="ft-bottom">
-      <p><span>© <span data-year>2026</span> Marinor NTNU</span><span>Org.nr. ${SITE.orgNr}</span><span class="mono">63.44° N · 10.42° E</span></p>
+      <p><span>© <span data-year>2026</span> Marinor NTNU</span><span>Org.nr. ${SITE.orgNr}</span></p>
       <a class="ft-top" href="#top">Back to top<span>${ICONS.up}</span></a>
     </div>
   </div>
@@ -267,8 +278,10 @@ export function site({ imageManifest }) {
                 let path = ctx.path.replace(/index\.html$/, "")
                 if (path.endsWith(".html")) path = path.replace(/\.html$/, "")
                 if (path === "/404") path = "/404"
+                const loader = /<body[^>]*\sdata-loader/.test(html)
                 return html
-                    .replace(/<site-head([^>]*)><\/site-head>/, (_, a) => head(attrs(a), path))
+                    .replace(/<site-head([^>]*)><\/site-head>/, (_, a) => head({ ...attrs(a), loader }, path))
+                    .replace(/(<body[^>]*\sdata-loader[^>]*>)/, (m) => m + LOADER)
                     .replace(/<site-nav><\/site-nav>/, () => nav(path, imageManifest))
                     .replace(/<site-footer><\/site-footer>/, () => footer())
                     .replace(/<m-img([^>]*?)\/?>(?:<\/m-img>)?/g, (_, a) => img(attrs(a), imageManifest))
