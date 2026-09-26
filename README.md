@@ -116,3 +116,13 @@ Two parts of the 3D can be put on the old Framer site as code components:
 They load `framer/marinor-3d.js` and the models from this repo through jsDelivr, pinned to one commit, so a later change here does not change the Framer site. The Framer canvas shows `framer/*-poster.jpg`; the 3D runs in Preview and on the published site.
 
 To change the 3D: edit `src/embed/`, run `npm run build:embed`, commit, and put the new commit hash in the `BASE` line of both components.
+
+## Public website (GitHub Pages)
+
+`docs/` holds the whole site as one page with relative paths (the same build as the preview, `scripts/build-preview.mjs`), so GitHub Pages can serve it from this repo:
+
+1. On GitHub: **Settings → Pages → Build and deployment → Source: Deploy from a branch**.
+2. Branch: `claude/framer-website-analysis-5o84fj`, folder: `/docs`, then **Save**.
+3. After a minute the site is at `https://afno0810-cloud.github.io/cc/`.
+
+After changing the site, run `npm run build:pages`, then commit and push `docs/`.

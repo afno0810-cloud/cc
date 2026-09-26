@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "build:embed": "vite build --config vite.embed.config.js"
+    "build:embed": "vite build --config vite.embed.config.js",
+    "build:pages": "node scripts/build-preview.mjs .pages-tmp && rm -rf docs/assets docs/media docs/index.html && cp -r .pages-tmp/. docs/ && touch docs/.nojekyll && rm -rf .pages-tmp .pages-tmp-build"
   },
   "devDependencies": {
     "@gltf-transform/cli": "^4.5.0",
