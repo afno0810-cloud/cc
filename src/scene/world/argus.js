@@ -20,7 +20,7 @@ import { COLORS } from "./sea.js"
 export const CUT_ALL_SOLID = 0.62
 export const CUT_ALL_CLOUD = -0.62
 
-export function createArgus({ renderer, lowPower, onProgress }) {
+export function createArgus({ renderer, lowPower, onProgress, url: modelUrl }) {
     const model = new THREE.Group() // model units, centred, bow = +x
 
     const U = {
@@ -189,7 +189,7 @@ export function createArgus({ renderer, lowPower, onProgress }) {
 
     let cloud = null
     const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder)
-    const url = lowPower ? "/media/models/argus-lite.glb" : "/media/models/argus.glb"
+    const url = modelUrl || (lowPower ? "/media/models/argus-lite.glb" : "/media/models/argus.glb")
     // a host page can hand over the model bytes itself (the one-file preview does); normally we fetch the GLB
     const fromHost = typeof window.__modelSource === "function" ? window.__modelSource(lowPower) : null
     const load = fromHost
