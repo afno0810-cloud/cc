@@ -5,7 +5,7 @@ import { addPropertyControls, ControlType, useIsStaticRenderer } from "framer"
 // Request: "har du muligheten til og legge noen av 3d animasjonenen fra denne siden til framer nettsiden"
 // The 3D globe with the route Trondheim → Sarasota from the new Marinor site, as a Framer code component.
 // The 3D code is served from the repo by jsDelivr, pinned to one commit.
-const BASE = "https://cdn.jsdelivr.net/gh/afno0810-cloud/cc@2f3316d5a677a3ed4feaf6ae2266a6c7d80101b5/"
+const BASE = "https://cdn.jsdelivr.net/gh/afno0810-cloud/cc@dbd1d2a522164d17a88bf64be3d5ebb63ec99d5b/"
 const LIB = BASE + "framer/marinor-3d.js"
 const POSTER = BASE + "framer/globe-poster.jpg"
 
@@ -33,6 +33,9 @@ export default function MarinorGlobe(props: MarinorGlobeProps) {
     const isStatic = useIsStaticRenderer()
     const box = useRef<HTMLDivElement>(null)
     const api = useRef<any>(null)
+    // the newest settings, so props that change while the 3D is loading are not lost
+    const latest = useRef({ labels, loop })
+    latest.current = { labels, loop }
 
     // start the 3D once in the browser (the Framer canvas shows the poster)
     useEffect(() => {
@@ -41,7 +44,7 @@ export default function MarinorGlobe(props: MarinorGlobeProps) {
         import(/* @vite-ignore */ LIB)
             .then((m) => {
                 if (dead || !box.current) return
-                api.current = m.mountGlobe(box.current, { background: solid(box.current), labels, loop })
+                api.current = m.mountGlobe(box.current, { background: solid(box.current), ...latest.current })
             })
             .catch(() => {})
         return () => {

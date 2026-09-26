@@ -19,10 +19,12 @@ import { waveHeight, waveSlope } from "../scene/world/waves.js"
      view     "close" (Argus up close), "argus" (a bit lower), "wide" (the harbour)
      sun      height of the sun in degrees: 20 afternoon, 4 golden, 0 sunset, -5 dusk, -10 night
      offset   move the boat sideways on screen, -0.4 … 0.4 (room for text)
+     offsetY  move the boat up (plus) or down (minus) on screen, -0.4 … 0.4
      scan     play the LiDAR scan-in when it first comes into view
      mouse    the camera follows the pointer a little; click the water for ripples
      turn     how fast the camera drifts around the boat (0 = still)
      scroll   the camera swings around the boat a little as the box scrolls through the window
+     zoom     bigger than 1 brings the camera closer to the boat
    Returns { set(options), destroy() }.
    ================================================================ */
 
@@ -38,7 +40,7 @@ const VIEWS = {
 }
 
 export function mountHarbour(el, options = {}) {
-    const o = { models: "/media/models/", view: "close", sun: 16, offset: 0, scan: true, mouse: true, turn: 1, scroll: false, ...options }
+    const o = { models: "/media/models/", view: "close", sun: 16, offset: 0, scan: true, mouse: true, turn: 1, scroll: false, zoom: 1, offsetY: 0, ...options }
     const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches
     const lowPower = matchMedia("(pointer: coarse)").matches || (navigator.hardwareConcurrency || 8) <= 4
 
@@ -255,13 +257,13 @@ export function mountHarbour(el, options = {}) {
             sp = clamp(0.5 - (br.top + br.height / 2) / Math.max(1, innerHeight), -0.5, 0.5)
         }
         const a = v.a + (reduced ? 0 : Math.sin(t * 0.09 * o.turn) * 0.14 + t * 0.004 * o.turn) + pointerS.x * 0.2 - sp * 0.9
-        const r = v.r * fit + Math.abs(sp) * 3
+        const r = (v.r * fit) / clamp(o.zoom || 1, 0.3, 3) + Math.abs(sp) * 3
         camPos.set(Math.cos(a) * r, v.y + sp * 1.6 - pointerS.y * 0.35, Math.sin(a) * r)
         if (v.look === "far") camLook.set(-Math.cos(a) * 70, 3, -Math.sin(a) * 70)
         else camLook.fromArray(v.look)
         camera.position.copy(camPos)
         camera.lookAt(camLook)
-        const offY = fit > 1.2 ? 0 : v.offY
+        const offY = (fit > 1.2 ? 0 : v.offY) + (o.offsetY || 0)
         if (Math.abs(o.offset) > 0.002 || Math.abs(offY) > 0.002) camera.setViewOffset(W, H, -o.offset * W, offY * H, W, H)
         else camera.clearViewOffset()
 
