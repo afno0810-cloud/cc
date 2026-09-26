@@ -1,19 +1,34 @@
+import * as React from "react"
 import { useEffect, useRef } from "react"
 import { addPropertyControls, ControlType, useIsStaticRenderer } from "framer"
 
+// Request: "har du muligheten til og legge noen av 3d animasjonenen fra denne siden til framer nettsiden"
 // The 3D globe with the route Trondheim → Sarasota from the new Marinor site, as a Framer code component.
 // The 3D code is served from the repo by jsDelivr, pinned to one commit.
 const BASE = "https://cdn.jsdelivr.net/gh/afno0810-cloud/cc@2f3316d5a677a3ed4feaf6ae2266a6c7d80101b5/"
 const LIB = BASE + "framer/marinor-3d.js"
 const POSTER = BASE + "framer/globe-poster.jpg"
 
+// the colour as the browser resolved it (a Framer colour style arrives as a CSS variable)
+function solid(el: HTMLElement) {
+    return getComputedStyle(el).backgroundColor
+}
+
+type MarinorGlobeProps = {
+    background: string
+    labels: boolean
+    loop: boolean
+    radius: number
+    style?: React.CSSProperties
+}
+
 /**
- * @framerSupportedLayoutWidth any-prefer-fixed
- * @framerSupportedLayoutHeight any-prefer-fixed
+ * @framerSupportedLayoutWidth fixed
+ * @framerSupportedLayoutHeight fixed
  * @framerIntrinsicWidth 800
  * @framerIntrinsicHeight 800
  */
-export default function MarinorGlobe(props) {
+export default function MarinorGlobe(props: MarinorGlobeProps) {
     const { background = "#0d0c16", labels = true, loop = false, radius = 0, style } = props
     const isStatic = useIsStaticRenderer()
     const box = useRef<HTMLDivElement>(null)
@@ -26,7 +41,7 @@ export default function MarinorGlobe(props) {
         import(/* @vite-ignore */ LIB)
             .then((m) => {
                 if (dead || !box.current) return
-                api.current = m.mountGlobe(box.current, { background, labels, loop })
+                api.current = m.mountGlobe(box.current, { background: solid(box.current), labels, loop })
             })
             .catch(() => {})
         return () => {
@@ -37,7 +52,7 @@ export default function MarinorGlobe(props) {
     }, [isStatic])
 
     useEffect(() => {
-        api.current?.set({ background, labels, loop })
+        if (api.current && box.current) api.current.set({ background: solid(box.current), labels, loop })
     }, [background, labels, loop])
 
     return (

@@ -1,6 +1,8 @@
+import * as React from "react"
 import { useEffect, useRef } from "react"
 import { addPropertyControls, ControlType, useIsStaticRenderer } from "framer"
 
+// Request: "har du muligheten til og legge noen av 3d animasjonenen fra denne siden til framer nettsiden"
 // The 3D harbour with Argus from the new Marinor site, as a Framer code component.
 // The 3D code and the models are served from the repo by jsDelivr, pinned to one commit.
 const BASE = "https://cdn.jsdelivr.net/gh/afno0810-cloud/cc@2f3316d5a677a3ed4feaf6ae2266a6c7d80101b5/"
@@ -8,13 +10,24 @@ const LIB = BASE + "framer/marinor-3d.js"
 const MODELS = BASE + "public/media/models/"
 const POSTER = BASE + "framer/harbour-poster.jpg"
 
+type MarinorHarbourProps = {
+    view: "close" | "argus" | "wide"
+    sun: number
+    offset: number
+    scan: boolean
+    mouse: boolean
+    turn: number
+    radius: number
+    style?: React.CSSProperties
+}
+
 /**
- * @framerSupportedLayoutWidth any-prefer-fixed
- * @framerSupportedLayoutHeight any-prefer-fixed
+ * @framerSupportedLayoutWidth fixed
+ * @framerSupportedLayoutHeight fixed
  * @framerIntrinsicWidth 1200
  * @framerIntrinsicHeight 675
  */
-export default function MarinorHarbour(props) {
+export default function MarinorHarbour(props: MarinorHarbourProps) {
     const { view = "close", sun = 16, offset = 0, scan = true, mouse = true, turn = 1, radius = 0, style } = props
     const isStatic = useIsStaticRenderer()
     const box = useRef<HTMLDivElement>(null)
