@@ -101,3 +101,7 @@ All text, photos, team and sponsor info come from the old site; nothing is made 
 - **Higgsfield models** (`public/media/models/world/`, `props.js`): Munkholmen, the wharves, Nidaros cathedral, a lighthouse, a pontoon, boats, a coastal ship and buoys (image → 3D with SAM 3D). Argus itself was rebuilt with Tripo from four views made from our own photos.
 - **Drive mode** (`src/scene/drive.js`): "Drive Argus" on the home and Argus pages (and a button on every page). WASD/arrows, Shift, Space for a LiDAR ping, T for the time of day, drag to look around, a stick on touch screens.
 - **Camera** (`post.js`): auto exposure, bloom, sun rays and a lens flare that only shows when the sun is really visible.
+
+## Light pages (round 5)
+
+The pages are white and lilla like the old site again. The 3D harbour shows through rounded windows: the scene clips its canvas to every `.win-box` and `[data-win]` box on screen (`clipToWindows` in `src/scene/index.js`) and draws nothing when none is visible. Colours are tokens in `src/styles/main.css`; photos, the harbour and the dark panels are "dark islands" that set their own tokens. The normal mouse pointer is used.

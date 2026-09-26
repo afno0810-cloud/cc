@@ -49,7 +49,7 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, b
 
     // ---- the HUD ----
     const hud = document.createElement("div")
-    hud.className = "hud"
+    hud.className = "drive-hud"
     hud.setAttribute("role", "dialog")
     hud.setAttribute("aria-label", "Drive Argus")
     hud.innerHTML = `

@@ -30,7 +30,7 @@
     pointer-events: none;
     overflow: hidden;
     opacity: 0.8;
-    background: repeating-linear-gradient(0deg, rgba(200, 212, 232, 0.032) 0 1px, transparent 1px 4px);
+    background: repeating-linear-gradient(0deg, rgba(var(--ink-rgb), 0.032) 0 1px, transparent 1px 4px);
 }
 .hero-scan i {
     position: absolute;
@@ -38,7 +38,7 @@
     right: 0;
     height: 140px;
     top: -140px;
-    background: linear-gradient(180deg, transparent, rgba(200, 212, 232, 0.108) 80%, rgba(200, 212, 232, 0.45) 100%);
+    background: linear-gradient(180deg, transparent, rgba(var(--ink-rgb), 0.108) 80%, rgba(var(--ink-rgb), 0.45) 100%);
     animation: scan 6s cubic-bezier(0.45, 0, 0.55, 1) infinite;
 }
 @keyframes scan {
@@ -92,7 +92,7 @@
     stroke-dasharray: 1;
     stroke-dashoffset: 1;
     animation: draw 1.4s 1s ease-in-out forwards;
-    filter: drop-shadow(0 0 8px rgba(200, 212, 232, 0.72));
+    filter: drop-shadow(0 0 8px rgba(var(--ink-rgb), 0.72));
 }
 @keyframes draw {
     to {
@@ -109,7 +109,7 @@
 }
 .hero-foot .lead {
     max-width: 520px;
-    color: rgba(238, 242, 246, 0.88);
+    color: rgba(var(--fg-rgb), 0.88);
 }
 .hero-cap {
     position: absolute;
@@ -117,7 +117,7 @@
     top: calc(var(--nav-h) + 34px);
     z-index: 2;
     font-size: 11px;
-    color: rgba(238, 242, 246, 0.8);
+    color: rgba(var(--fg-rgb), 0.8);
 }
 .hero-cap span {
     color: var(--lavender);
@@ -316,7 +316,7 @@
     stroke-dasharray: 1;
     stroke-dashoffset: 1;
     transition: stroke-dashoffset 2.4s ease-in-out 0.3s;
-    filter: drop-shadow(0 0 6px rgba(200, 212, 232, 0.72));
+    filter: drop-shadow(0 0 6px rgba(var(--ink-rgb), 0.72));
 }
 .is-in .route-line {
     stroke-dashoffset: 0;
@@ -434,7 +434,7 @@
 }
 .way-body p {
     max-width: 440px;
-    color: rgba(238, 242, 246, 0.86);
+    color: rgba(var(--fg-rgb), 0.86);
 }
 .way-body .btn {
     pointer-events: none;
@@ -466,7 +466,7 @@
     right: clamp(20px, 3.4vw, 44px);
     bottom: 18px;
     font-size: 10px;
-    color: rgba(238, 242, 246, 0.5);
+    color: rgba(var(--fg-rgb), 0.5);
 }
 .onboard {
     margin-top: clamp(40px, 5vw, 72px);
@@ -497,7 +497,7 @@
     grid-template-columns: 44px minmax(0, 1fr);
     padding: 34px 18px;
     border-radius: 0;
-    background: rgba(5, 8, 12, 0.35);
+    background: #ffffff;
 }
 .onboard-list .row p {
     grid-column: 2;
@@ -551,7 +551,7 @@
         margin-bottom: 34svh;
         border: 1px solid var(--line);
         border-radius: 16px;
-        background: rgba(8, 11, 16, 0.86);
+        background: rgba(var(--paper-rgb), 0.86);
         -webkit-backdrop-filter: blur(8px);
         backdrop-filter: blur(8px);
     }
@@ -570,7 +570,7 @@
     overflow: hidden;
     background:
         radial-gradient(70% 60% at 100% 0%, rgba(124, 70, 156, 0.175), transparent 70%),
-        rgba(10, 13, 19, 0.78);
+        rgba(var(--paper-rgb), 0.78);
     border-color: var(--line-2);
 }
 .chain {
@@ -644,7 +644,7 @@
     margin-top: 16px;
     padding: 20px 24px;
     border-radius: 18px;
-    border: 1px dashed rgba(200, 212, 232, 0.36);
+    border: 1px dashed rgba(var(--ink-rgb), 0.36);
 }
 .link5g b {
     font-family: var(--display);
@@ -812,7 +812,7 @@
 }
 .chapter.is-next .chapter-year {
     color: var(--lavender);
-    text-shadow: 0 0 60px rgba(200, 212, 232, 0.315);
+    text-shadow: 0 0 60px rgba(var(--ink-rgb), 0.315);
 }
 .chapter.is-planned .chapter-year {
     color: transparent;
@@ -857,8 +857,8 @@
 .chapter-media.plan {
     position: relative;
     border-radius: var(--r-lg);
-    border: 1px dashed rgba(200, 212, 232, 0.315);
-    background: rgba(10, 13, 19, 0.6);
+    border: 1px dashed rgba(var(--ink-rgb), 0.315);
+    background: rgba(var(--paper-rgb), 0.6);
     overflow: hidden;
 }
 .chapter-media.plan svg {
@@ -919,7 +919,7 @@
     gap: 16px;
     padding: 14px 16px;
     border-radius: 14px;
-    background: rgba(8, 11, 16, 0.6);
+    background: rgba(var(--paper-rgb), 0.6);
     border: 1px solid var(--line);
     -webkit-backdrop-filter: blur(10px);
     backdrop-filter: blur(10px);
@@ -1090,7 +1090,7 @@
     line-height: 1;
     color: var(--lavender);
     opacity: 0.9;
-    text-shadow: 0 0 80px rgba(200, 212, 232, 0.315);
+    text-shadow: 0 0 80px rgba(var(--ink-rgb), 0.315);
 }
 .season-body {
     display: flex;
@@ -1164,7 +1164,7 @@
     font-weight: 800;
     text-transform: uppercase;
     font-size: 64px;
-    color: rgba(200, 212, 232, 0.162);
+    color: rgba(var(--ink-rgb), 0.162);
 }
 .group-body {
     display: flex;
@@ -1209,7 +1209,7 @@
     font-weight: 800;
     font-size: clamp(220px, 34vw, 520px);
     line-height: 1;
-    color: rgba(200, 212, 232, 0.063);
+    color: rgba(var(--ink-rgb), 0.063);
     pointer-events: none;
 }
 .coming-blueprint {
@@ -1241,8 +1241,8 @@
 }
 .chips .tag {
     height: 34px;
-    background: rgba(238, 242, 246, 0.12);
-    border-color: rgba(238, 242, 246, 0.22);
+    background: rgba(var(--fg-rgb), 0.12);
+    border-color: rgba(var(--fg-rgb), 0.22);
 }
 .comp-marinor {
     aspect-ratio: 4 / 3;
@@ -1286,7 +1286,7 @@
 .course-tasks li {
     padding: 44px 18px 18px;
     border-radius: 16px;
-    background: rgba(8, 11, 16, 0.62);
+    background: rgba(var(--paper-rgb), 0.62);
     border: 1px solid var(--line);
     -webkit-backdrop-filter: blur(10px);
     backdrop-filter: blur(10px);
@@ -1374,8 +1374,8 @@
     width: min(380px, 100%);
     padding: 24px;
     border-radius: 20px;
-    background: rgba(10, 13, 19, 0.55);
-    border: 1px solid rgba(238, 242, 246, 0.2);
+    background: rgba(var(--paper-rgb), 0.55);
+    border: 1px solid rgba(var(--fg-rgb), 0.2);
     -webkit-backdrop-filter: blur(16px);
     backdrop-filter: blur(16px);
 }
@@ -1448,7 +1448,7 @@
     padding: 26px 24px;
 }
 .benefit-body .text {
-    color: rgba(238, 242, 246, 0.84);
+    color: rgba(var(--fg-rgb), 0.84);
 }
 .benefits > :last-child {
     grid-column: span 2;
@@ -1741,7 +1741,7 @@ html:not(.has-3d-title) .hero-3d .dom-title {
     gap: 4px 14px;
     padding: 16px 18px;
     border-radius: 16px;
-    background: rgba(8, 11, 16, 0.6);
+    background: rgba(var(--paper-rgb), 0.6);
     border: 1px solid var(--line);
     -webkit-backdrop-filter: blur(12px);
     backdrop-filter: blur(12px);

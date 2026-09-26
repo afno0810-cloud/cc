@@ -414,65 +414,9 @@ if (!reduced && "IntersectionObserver" in window) {
     labels.forEach((el) => io.observe(el))
 }
 
-// ---------- desktop: crosshair cursor, magnetic buttons, cards that tilt ----------
+// ---------- desktop: magnetic buttons, cards that tilt (the normal mouse pointer stays) ----------
 if (fine && !reduced) {
-    const cur = document.createElement("div")
-    cur.className = "cursor"
-    cur.setAttribute("aria-hidden", "true")
-    cur.innerHTML = "<i></i><b></b>"
-    document.body.append(cur)
-    document.documentElement.classList.add("has-cursor")
-    let x = innerWidth / 2
-    let y = innerHeight / 2
-    let rx = x
-    let ry = y
-    let target = null
-    addEventListener(
-        "pointermove",
-        (e) => {
-            x = e.clientX
-            y = e.clientY
-            cur.classList.add("is-on")
-        },
-        { passive: true }
-    )
-    document.addEventListener("pointerleave", () => cur.classList.remove("is-on"))
-    document.addEventListener("pointerdown", () => cur.classList.add("is-down"))
-    document.addEventListener("pointerup", () => cur.classList.remove("is-down"))
-    const hot = "a, button, [data-lightbox], summary, label"
-    document.addEventListener("pointerover", (e) => {
-        target = e.target.closest(hot)
-        cur.classList.toggle("is-hot", !!target)
-    })
-    const ring = cur.querySelector("b")
-    const dot = cur.querySelector("i")
-    let last = performance.now()
-    const loop = (now = performance.now()) => {
-        const k = 1 - Math.exp(-Math.min(0.1, (now - last) / 1000) * 18)
-        last = now
-        let w = 34
-        let h = 34
-        let tx = x
-        let ty = y
-        if (target && target.isConnected) {
-            // lock on: the ring frames the button
-            const r = target.getBoundingClientRect()
-            if (r.width < 420 && r.height < 160) {
-                w = r.width + 14
-                h = r.height + 14
-                tx = r.left + r.width / 2
-                ty = r.top + r.height / 2
-            }
-        }
-        rx += (tx - rx) * k
-        ry += (ty - ry) * k
-        dot.style.transform = `translate3d(${x}px, ${y}px, 0)`
-        ring.style.transform = `translate3d(${rx}px, ${ry}px, 0)`
-        ring.style.width = `${w}px`
-        ring.style.height = `${h}px`
-        requestAnimationFrame(loop)
-    }
-    requestAnimationFrame(loop)
+    document.documentElement.classList.add("has-fine")
 
     // buttons lean towards the pointer
     $$(".btn").forEach((b) => {

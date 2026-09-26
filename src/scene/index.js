@@ -509,6 +509,38 @@ export async function startScene({ reduced = false } = {}) {
     })
     document.documentElement.classList.add("can-drive")
 
+    // ---- windows: the page is white, the harbour shows only in these boxes ----
+    const winEls = [...document.querySelectorAll(".win-box, [data-win]")]
+    const winR = new Map()
+    const readRadii = () => winEls.forEach((el) => winR.set(el, parseFloat(getComputedStyle(el).borderTopLeftRadius) || 0))
+    readRadii()
+    addEventListener("resize", readRadii)
+    let lastClip = ""
+    const rr = (x, y, w, h, r) => {
+        r = Math.min(r, w / 2, h / 2)
+        const f = (n) => Math.round(n * 10) / 10
+        return `M${f(x + r)} ${f(y)}H${f(x + w - r)}A${f(r)} ${f(r)} 0 0 1 ${f(x + w)} ${f(y + r)}V${f(y + h - r)}A${f(r)} ${f(r)} 0 0 1 ${f(x + w - r)} ${f(y + h)}H${f(x + r)}A${f(r)} ${f(r)} 0 0 1 ${f(x)} ${f(y + h - r)}V${f(y + r)}A${f(r)} ${f(r)} 0 0 1 ${f(x + r)} ${f(y)}Z`
+    }
+    // clip the canvas to the windows on screen; false when none is visible (then nothing is drawn)
+    function clipToWindows(full) {
+        let d = ""
+        if (full) d = "full"
+        else {
+            for (const el of winEls) {
+                const r = el.getBoundingClientRect()
+                if (r.bottom <= 0 || r.top >= innerHeight || r.width < 2 || r.height < 2) continue
+                if (el.closest(".is-formed")) continue // a photo that has formed: the real photo covers it
+                d += rr(r.left, r.top, r.width, r.height, winR.get(el) || 0)
+            }
+        }
+        const css = d === "full" ? "none" : d ? `path('${d}')` : "inset(50%)"
+        if (css !== lastClip) {
+            canvas.style.clipPath = css
+            lastClip = css
+        }
+        return !!d
+    }
+
     // ---- loop ----
     const clock = new THREE.Clock()
     let t = 0
@@ -535,6 +567,8 @@ export async function startScene({ reduced = false } = {}) {
         adapt(raw)
 
         measure()
+        // nothing of the harbour on screen: skip the frame
+        if (!clipToWindows(drive && (drive.active || drive.outBlend > 0)) && !(intro.start >= 0 && !intro.done)) return
         const docH = Math.max(1, document.documentElement.scrollHeight - innerHeight)
         const scrollP = clamp(scrollY / docH)
 
@@ -697,7 +731,8 @@ export async function startScene({ reduced = false } = {}) {
         let stageW = 0
         for (const s of stages) stageW = Math.max(stageW, s.w)
         if (drive && drive.active) stageW = 1
-        const contentDim = lerp(0.52, 1, stageW)
+        const contentDim = 1 // the harbour only shows in its own windows now
+        const freeLookNow = drive && drive.active ? 1 : hero ? hero.w : 0
         dim *= contentDim
 
         // boat rides the waves (or is driven)
@@ -823,8 +858,8 @@ export async function startScene({ reduced = false } = {}) {
         wu.uBody.value.setRGB(0.02, 0.075, 0.09).multiplyScalar(Math.max(zenLum, 0.0015) * 1.3)
         sky.uniforms.uDim.value = lerp(1, dim, 0.6)
         // behind text the sun is only a glow, not a blinding disc
-        sky.uniforms.uSunVis.value = 0.02 + 0.98 * smooth(clamp((contentDim - 0.6) / 0.4))
-        wu.uGlit.value = 0.08 + 0.92 * smooth(clamp((contentDim - 0.6) / 0.4))
+        sky.uniforms.uSunVis.value = 0.15 + 0.85 * freeLookNow
+        wu.uGlit.value = 0.3 + 0.7 * freeLookNow
         sky.update(t)
         beam.position.set(boat.position.x, 0.25, boat.position.z)
         beam.rotation.y = sweep
@@ -881,8 +916,10 @@ export async function startScene({ reduced = false } = {}) {
         g.uSunPos.value.set(tmp.x * 0.5 + 0.5, tmp.y * 0.5 + 0.5)
         g.uSunOn.value = S.elev > -1.5 && tmp.z < 1 ? 1 : 0
         g.uSunCol.value.copy(S.sunColor)
-        g.uRays.value = reduced ? 0 : 0.9 * (1 - smooth(clamp((S.elev - 6) / 18))) * smooth(clamp((contentDim - 0.6) / 0.4))
-        g.uFlare.value = smooth(clamp((contentDim - 0.6) / 0.4))
+        // sun rays and flare where you look around freely (the first screen and driving), not behind text
+        const freeLook = drive && drive.active ? 1 : hero ? hero.w : 0
+        g.uRays.value = reduced ? 0 : 0.9 * (1 - smooth(clamp((S.elev - 6) / 18))) * freeLook
+        g.uFlare.value = freeLook
 
         // 1) the mirror image, 2) the scene, bloom and grade
         if (wu.uReflectOn.value > 0) renderReflection()
@@ -989,11 +1026,16 @@ export async function startScene({ reduced = false } = {}) {
         wu.uRipple.value[rippleI].set(p.x, p.z, t, strength)
         rippleI = (rippleI + 1) % RIPPLE_N
     }
-    const interactive = "a,button,input,textarea,select,label,summary,[role=button],[tabindex],.hud"
+    const interactive = "a,button,input,textarea,select,label,summary,[role=button],[tabindex],.drive-hud"
+    const inWindow = (x, y) =>
+        winEls.some((el) => {
+            const r = el.getBoundingClientRect()
+            return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom
+        })
     addEventListener(
         "pointerdown",
         (e) => {
-            if (reduced || (e.target.closest && e.target.closest(interactive))) return
+            if (reduced || (e.target.closest && e.target.closest(interactive)) || !inWindow(e.clientX, e.clientY)) return
             const p = waterAt(e.clientX, e.clientY)
             if (p) {
                 ripple(p, 1.2)
@@ -1005,7 +1047,7 @@ export async function startScene({ reduced = false } = {}) {
     addEventListener(
         "pointermove",
         (e) => {
-            if (reduced || e.pointerType !== "mouse" || t - lastTrail < 0.22) return
+            if (reduced || e.pointerType !== "mouse" || t - lastTrail < 0.22 || !inWindow(e.clientX, e.clientY)) return
             const p = waterAt(e.clientX, e.clientY)
             if (!p) return
             lastTrail = t
