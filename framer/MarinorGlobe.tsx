@@ -1,0 +1,86 @@
+import { useEffect, useRef } from "react"
+import { addPropertyControls, ControlType, useIsStaticRenderer } from "framer"
+
+// The 3D globe with the route Trondheim → Sarasota from the new Marinor site, as a Framer code component.
+// The 3D code is served from the repo by jsDelivr, pinned to one commit.
+const BASE = "https://cdn.jsdelivr.net/gh/afno0810-cloud/cc@2f3316d5a677a3ed4feaf6ae2266a6c7d80101b5/"
+const LIB = BASE + "framer/marinor-3d.js"
+const POSTER = BASE + "framer/globe-poster.jpg"
+
+/**
+ * @framerSupportedLayoutWidth any-prefer-fixed
+ * @framerSupportedLayoutHeight any-prefer-fixed
+ * @framerIntrinsicWidth 800
+ * @framerIntrinsicHeight 800
+ */
+export default function MarinorGlobe(props) {
+    const { background = "#0d0c16", labels = true, loop = false, radius = 0, style } = props
+    const isStatic = useIsStaticRenderer()
+    const box = useRef<HTMLDivElement>(null)
+    const api = useRef<any>(null)
+
+    // start the 3D once in the browser (the Framer canvas shows the poster)
+    useEffect(() => {
+        if (isStatic || typeof window === "undefined" || !box.current) return
+        let dead = false
+        import(/* @vite-ignore */ LIB)
+            .then((m) => {
+                if (dead || !box.current) return
+                api.current = m.mountGlobe(box.current, { background, labels, loop })
+            })
+            .catch(() => {})
+        return () => {
+            dead = true
+            api.current?.destroy()
+            api.current = null
+        }
+    }, [isStatic])
+
+    useEffect(() => {
+        api.current?.set({ background, labels, loop })
+    }, [background, labels, loop])
+
+    return (
+        <div
+            ref={box}
+            style={{
+                ...style,
+                position: "relative",
+                overflow: "hidden",
+                borderRadius: radius,
+                background: isStatic ? `${background} url(${POSTER}) center / contain no-repeat` : background,
+            }}
+        />
+    )
+}
+
+addPropertyControls(MarinorGlobe, {
+    background: {
+        type: ControlType.Color,
+        title: "Bakgrunn",
+        defaultValue: "#0d0c16",
+    },
+    labels: {
+        type: ControlType.Boolean,
+        title: "Stedsnavn",
+        defaultValue: true,
+        enabledTitle: "Vis",
+        disabledTitle: "Skjul",
+    },
+    loop: {
+        type: ControlType.Boolean,
+        title: "Gjenta ruta",
+        defaultValue: false,
+        enabledTitle: "Ja",
+        disabledTitle: "Nei",
+    },
+    radius: {
+        type: ControlType.Number,
+        title: "Hjørner",
+        min: 0,
+        max: 64,
+        step: 1,
+        defaultValue: 0,
+        unit: "px",
+    },
+})
