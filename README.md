@@ -105,3 +105,14 @@ All text, photos, team and sponsor info come from the old site; nothing is made 
 ## Light pages (round 5)
 
 The pages are white and lilla like the old site again. The 3D harbour shows through rounded windows: the scene clips its canvas to every `.win-box` and `[data-win]` box on screen (`clipToWindows` in `src/scene/index.js`) and draws nothing when none is visible. Colours are tokens in `src/styles/main.css`; photos, the harbour and the dark panels are "dark islands" that set their own tokens. The normal mouse pointer is used.
+
+## 3D on the Framer site
+
+Two parts of the 3D can be put on the old Framer site as code components:
+
+- `framer/MarinorHarbour.tsx`: the harbour with Argus (view, sun height, move the boat sideways, LiDAR scan, mouse, camera speed).
+- `framer/MarinorGlobe.tsx`: the globe with the route Trondheim → Sarasota and the texts of the old site.
+
+They load `framer/marinor-3d.js` and the models from this repo through jsDelivr, pinned to one commit, so a later change here does not change the Framer site. The Framer canvas shows `framer/*-poster.jpg`; the 3D runs in Preview and on the published site.
+
+To change the 3D: edit `src/embed/`, run `npm run build:embed`, commit, and put the new commit hash in the `BASE` line of both components.

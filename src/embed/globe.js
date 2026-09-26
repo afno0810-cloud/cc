@@ -53,7 +53,7 @@ export function mountGlobe(el, options = {}) {
     style.textContent = `
         .mg-pin{position:absolute;left:0;top:0;z-index:2;display:flex;flex-direction:column;gap:2px;padding:7px 10px;border-radius:8px;
         background:rgba(12,11,18,.72);border:1px solid rgba(214,206,232,.22);color:#f4f2f8;font:500 12px/1.3 ui-sans-serif,system-ui,sans-serif;
-        white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .4s ease;transform:translate(var(--x),var(--y)) translate(12px,-50%)}
+        white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .4s ease;transform:translate(var(--x),var(--y))}
         .mg-pin.is-on{opacity:1}.mg-pin b{font-weight:600}.mg-pin span{font:500 10px/1.3 ui-monospace,Menlo,monospace;letter-spacing:.1em;text-transform:uppercase;color:#f2c230}`
     el.appendChild(style)
     const pinEls = LABELS.map((l) => {
@@ -130,19 +130,31 @@ export function mountGlobe(el, options = {}) {
         camera.position.set(GLOBE_CENTER.x, GLOBE_CENTER.y, GLOBE_CENTER.z + dist)
         camera.lookAt(GLOBE_CENTER)
 
-        // labels at the pins, only on the near side
+        // labels at the pins, only on the near side; a label that would run out of
+        // the box goes to the other side of its pin, and the distance moves out of the way
         globe.group.updateMatrixWorld(true)
         toCam.copy(camera.position).sub(GLOBE_CENTER).normalize()
+        const placed = []
         for (const p of pinEls) {
             if (p.key === "mid") gv.copy(globe.arcMid)
             else gv.copy(globe.pins.find((q) => q.key === p.key).top)
             globe.worldOf(gv, gv)
             const facing = gv.clone().sub(GLOBE_CENTER).normalize().dot(toCam)
             gv.project(camera)
-            p.el.style.setProperty("--x", `${Math.min((gv.x * 0.5 + 0.5) * W, W - 190)}px`)
-            p.el.style.setProperty("--y", `${(-gv.y * 0.5 + 0.5) * H}px`)
             const need = p.key === "trondheim" ? 0 : p.key === "mid" ? 0.55 : 0.97
-            p.el.classList.toggle("is-on", o.labels && facing > 0.05 && arcTo >= need)
+            const on = o.labels && facing > 0.05 && arcTo >= need
+            p.el.classList.toggle("is-on", on)
+            if (!p.w) (p.w = p.el.offsetWidth), (p.h = p.el.offsetHeight)
+            const px = (gv.x * 0.5 + 0.5) * W
+            let x = px + 12 + p.w > W - 8 ? px - 12 - p.w : px + 12
+            x = clamp(x, 8, W - 8 - p.w)
+            let y = (-gv.y * 0.5 + 0.5) * H - p.h / 2
+            for (const q of placed) {
+                if (x < q.x + q.w && x + p.w > q.x && y < q.y + q.h + 4 && y + p.h + 4 > q.y) y = q.y + q.h + 6
+            }
+            if (on) placed.push({ x, y, w: p.w, h: p.h })
+            p.el.style.setProperty("--x", `${x}px`)
+            p.el.style.setProperty("--y", `${y}px`)
         }
         post.render(t)
     }
