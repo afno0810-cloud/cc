@@ -22,6 +22,7 @@ import { waveHeight, waveSlope } from "../scene/world/waves.js"
      scan     play the LiDAR scan-in when it first comes into view
      mouse    the camera follows the pointer a little; click the water for ripples
      turn     how fast the camera drifts around the boat (0 = still)
+     scroll   the camera swings around the boat a little as the box scrolls through the window
    Returns { set(options), destroy() }.
    ================================================================ */
 
@@ -29,14 +30,15 @@ const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v))
 const lerp = (a, b, t) => a + (b - a) * t
 const ease = (t) => 1 - Math.pow(1 - clamp(t), 3)
 
+// the same framing as the first screen of the home and Argus pages (offY moves the picture down)
 const VIEWS = {
-    close: { a: -0.95, r: 15.5, y: 2.3, look: [0, 1.0, 0] },
-    argus: { a: -0.5, r: 13.5, y: 1.7, look: [0, 1.4, 0] },
-    wide: { a: -0.9, r: 40, y: 7, look: "far" },
+    close: { a: -0.95, r: 15.5, y: 2.3, look: [0, 1.0, 0], offY: 0.02 },
+    argus: { a: -0.5, r: 13.5, y: 1.7, look: [0, 1.4, 0], offY: -0.1 },
+    wide: { a: -0.9, r: 40, y: 7, look: "far", offY: 0 },
 }
 
 export function mountHarbour(el, options = {}) {
-    const o = { models: "/media/models/", view: "close", sun: 16, offset: 0, scan: true, mouse: true, turn: 1, ...options }
+    const o = { models: "/media/models/", view: "close", sun: 16, offset: 0, scan: true, mouse: true, turn: 1, scroll: false, ...options }
     const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches
     const lowPower = matchMedia("(pointer: coarse)").matches || (navigator.hardwareConcurrency || 8) <= 4
 
@@ -185,9 +187,13 @@ export function mountHarbour(el, options = {}) {
     const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
     const hit = new THREE.Vector3()
     let rippleI = 0
+    // on the window, so text and buttons laid over the box do not block the parallax
     const onMove = (e) => {
         const r = el.getBoundingClientRect()
-        pointer.set(((e.clientX - r.left) / r.width) * 2 - 1, ((e.clientY - r.top) / r.height) * 2 - 1)
+        const x = (e.clientX - r.left) / r.width
+        const y = (e.clientY - r.top) / r.height
+        if (x < 0 || x > 1 || y < 0 || y > 1) pointer.set(0, 0)
+        else pointer.set(x * 2 - 1, y * 2 - 1)
     }
     const onDown = (e) => {
         if (!o.mouse || reduced) return
@@ -198,7 +204,7 @@ export function mountHarbour(el, options = {}) {
         rippleI = (rippleI + 1) % RIPPLE_N
         spray.splash(hit.x, hit.z, 0.7)
     }
-    el.addEventListener("pointermove", onMove, { passive: true })
+    addEventListener("pointermove", onMove, { passive: true })
     el.addEventListener("pointerdown", onDown, { passive: true })
 
     // loop
@@ -240,13 +246,23 @@ export function mountHarbour(el, options = {}) {
         // camera
         pointerS.lerp(o.mouse ? pointer : pointer.set(0, 0), 1 - Math.exp(-dt * 2.8))
         const v = VIEWS[o.view] || VIEWS.close
-        const a = v.a + (reduced ? 0 : Math.sin(t * 0.09 * o.turn) * 0.14 + t * 0.004 * o.turn) + pointerS.x * 0.2
-        camPos.set(Math.cos(a) * v.r, v.y - pointerS.y * 0.35, Math.sin(a) * v.r)
+        // a tall box (a phone) moves the camera back so the whole boat fits
+        const fit = Math.max(1, 1.25 / (W / H))
+        // -0.5 when the box comes in at the bottom of the window, 0 in the middle, 0.5 at the top
+        let sp = 0
+        if (o.scroll && !reduced) {
+            const br = el.getBoundingClientRect()
+            sp = clamp(0.5 - (br.top + br.height / 2) / Math.max(1, innerHeight), -0.5, 0.5)
+        }
+        const a = v.a + (reduced ? 0 : Math.sin(t * 0.09 * o.turn) * 0.14 + t * 0.004 * o.turn) + pointerS.x * 0.2 - sp * 0.9
+        const r = v.r * fit + Math.abs(sp) * 3
+        camPos.set(Math.cos(a) * r, v.y + sp * 1.6 - pointerS.y * 0.35, Math.sin(a) * r)
         if (v.look === "far") camLook.set(-Math.cos(a) * 70, 3, -Math.sin(a) * 70)
         else camLook.fromArray(v.look)
         camera.position.copy(camPos)
         camera.lookAt(camLook)
-        if (Math.abs(o.offset) > 0.002) camera.setViewOffset(W, H, -o.offset * W, 0, W, H)
+        const offY = fit > 1.2 ? 0 : v.offY
+        if (Math.abs(o.offset) > 0.002 || Math.abs(offY) > 0.002) camera.setViewOffset(W, H, -o.offset * W, offY * H, W, H)
         else camera.clearViewOffset()
 
         // the scan-in: points fly in, then the LiDAR line turns them into the boat
@@ -324,7 +340,7 @@ export function mountHarbour(el, options = {}) {
             cancelAnimationFrame(raf)
             ro.disconnect()
             io.disconnect()
-            el.removeEventListener("pointermove", onMove)
+            removeEventListener("pointermove", onMove)
             el.removeEventListener("pointerdown", onDown)
             renderer.dispose()
             renderer.forceContextLoss()
