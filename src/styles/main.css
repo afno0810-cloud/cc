@@ -86,6 +86,7 @@
 .shot figcaption,
 .globe-pin,
 .route-map,
+.marquee[data-win],
 .hotspot,
 .telemetry,
 .route-pin,
@@ -2047,14 +2048,15 @@ html.has-scene .win-box {
 .hero-home,
 .hero-3d,
 .page-hero {
-    --win-inset: calc(var(--nav-h) + 2px) clamp(8px, 1.2vw, 16px) 0;
+    --win-edge: clamp(6px, 0.8vw, 10px);
+    --win-inset: calc(var(--nav-h) + 2px) var(--win-edge) 0;
 }
 /* sub page heroes sit inside .wrap: their window reaches out to the page edge */
 .wrap > .page-hero {
-    --win-inset: calc(var(--nav-h) + 2px) calc(clamp(8px, 1.2vw, 16px) - var(--gut)) 0;
+    --win-inset: calc(var(--nav-h) + 2px) calc(var(--win-edge) - var(--gut)) 0;
 }
 .stage-sticky {
-    --win-inset: 10px clamp(8px, 1.2vw, 16px);
+    --win-inset: 6px clamp(6px, 0.8vw, 10px);
 }
 .hero-home .hero-shade,
 .hero-3d .hero-shade,
@@ -2062,9 +2064,11 @@ html.has-scene .win-box {
     inset: var(--win-inset);
     border-radius: 28px;
 }
+/* sub page tops: tall, so there is a lot of harbour to see */
 .page-hero {
     isolation: isolate;
-    padding-bottom: clamp(56px, 8vw, 110px);
+    padding-top: calc(var(--nav-h) + clamp(120px, 24vh, 280px));
+    padding-bottom: clamp(72px, 11vh, 150px);
 }
 .page-hero::before {
     content: "";
@@ -2080,6 +2084,53 @@ html.has-scene .win-box {
 html.has-scene .route-map[data-win] {
     background: transparent;
 }
+/* the bands of big words run over the harbour */
+.marquee[data-win] {
+    margin-inline: clamp(6px, 0.8vw, 10px);
+    padding: clamp(90px, 17vh, 190px) 0;
+    border: 0;
+    border-radius: 28px;
+    background: transparent;
+    transform: none;
+}
+html:not(.has-scene) .marquee[data-win] {
+    background: linear-gradient(180deg, #2a1d3d, #0d0c16);
+}
+.marquee[data-win] span {
+    text-shadow: 0 2px 30px rgba(5, 8, 12, 0.35);
+}
+/* the footer opens with a window: the harbour at dusk and at night, at the end of every page.
+   Its lilla gradient sits below the window, so the window stays clear. */
+.footer {
+    padding-top: clamp(6px, 0.8vw, 10px);
+    border-top: 0;
+    background: none;
+    isolation: isolate;
+}
+.footer::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: calc(clamp(280px, 52vh, 560px) + clamp(6px, 0.8vw, 10px));
+    z-index: -1;
+    pointer-events: none;
+    background:
+        radial-gradient(70% 90% at 85% 120%, rgba(124, 70, 156, 0.2), transparent 70%),
+        linear-gradient(180deg, #efe9fb, #e2d5f3);
+}
+.ft-harbour {
+    position: relative;
+    height: clamp(280px, 52vh, 560px);
+    margin: 0 clamp(6px, 0.8vw, 10px) clamp(56px, 7vw, 96px);
+    border-radius: 28px;
+    background: linear-gradient(180deg, #2a1d3d, #0d0c16);
+}
+html.has-scene .ft-harbour {
+    background: transparent;
+}
+
 /* the old dark full-page backdrop and film grain are not used with the light pages */
 .scene-fallback,
 .grain {

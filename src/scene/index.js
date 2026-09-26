@@ -380,11 +380,13 @@ export async function startScene({ reduced = false } = {}) {
     )
 
     function harbourCam(t, scrollP, out, look) {
-        // turn towards the open fjord as you scroll, away from the low sun
-        const a = -0.9 - scrollP * 1.3 + t * 0.012
+        // a slow turn around the harbour as you scroll: out over the fjord first, the city
+        // with its lights at the end; it never looks straight into the low sun.
+        // It looks past the boat to the horizon, so the windows show sky, hills and water.
+        const a = -0.9 - scrollP * 4.33 + t * 0.012
         const r = small ? 30 : 40
-        out.set(Math.cos(a) * r, 8 + scrollP * 7, Math.sin(a) * r)
-        look.set(0, 1.2, 0)
+        out.set(Math.cos(a) * r, 7 + scrollP * 5, Math.sin(a) * r)
+        look.set(-Math.cos(a) * 70, 3, -Math.sin(a) * 70)
     }
     // the first screen: low over the water, close to the boat
     const HERO_VIEW = {
@@ -708,7 +710,7 @@ export async function startScene({ reduced = false } = {}) {
         argus.uniforms.uTime.value = t
 
         // ---- the time of day: afternoon at the top of the page, night at the bottom ----
-        const elevWant = drive && drive.active ? drive.sunElev : lerp(sunTop, -8.5, smooth(clamp((scrollP - 0.04) / 0.92)))
+        const elevWant = drive && drive.active ? drive.sunElev : lerp(sunTop, -5, smooth(clamp((scrollP - 0.04) / 0.92)))
         elev += (elevWant - elev) * (1 - Math.exp(-dt * 2.5))
         if (Math.abs(elev - sky.state.elev) > 0.03) sky.setSun(elev, SUN_AZIMUTH)
         if (sky.bake()) scene.environment = sky.env
@@ -985,7 +987,15 @@ export async function startScene({ reduced = false } = {}) {
             el.style.setProperty("--x", `${Math.min((gv.x * 0.5 + 0.5) * W, W - lw - 24)}px`)
             el.style.setProperty("--y", `${(-gv.y * 0.5 + 0.5) * H}px`)
             const need = key === "trondheim" ? 0 : key === "mid" ? 0.55 : 0.97
-            el.classList.toggle("is-shown", s.w > 0.82 && facing > 0.05 && arcTo >= need)
+            // only inside the globe's own window
+            const px = (gv.x * 0.5 + 0.5) * W
+            const py = (-gv.y * 0.5 + 0.5) * H
+            let inside = true
+            if (s.anchor) {
+                const r = s.anchor.getBoundingClientRect()
+                inside = px > r.left && px < r.right && py > r.top && py < r.bottom
+            }
+            el.classList.toggle("is-shown", s.w > 0.82 && facing > 0.05 && arcTo >= need && inside)
         }
     }
 

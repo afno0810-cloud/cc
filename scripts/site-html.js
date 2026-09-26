@@ -224,6 +224,7 @@ function footer() {
     const col = (title, links) =>
         `<div class="ft-col"><p class="ft-title">${title}</p><ul>${links.map(([l, h]) => `<li><a href="${h}">${l}</a></li>`).join("")}</ul></div>`
     return `<footer class="footer">
+  <div class="ft-harbour" data-win aria-hidden="true"></div>
   <div class="wrap">
     <div class="ft-grid">
       <div class="ft-brand">
