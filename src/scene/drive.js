@@ -4,13 +4,17 @@ import * as THREE from "three"
    Drive mode: take the helm of Argus in the harbour.
 
    W A S D or the arrow keys (or the stick on a touch screen) to drive,
-   Shift for more power, Space for a LiDAR ping, drag to look around,
-   T or the button for the time of day, Esc to go back to the page.
+   Q and E to turn the boat on the spot while it keeps its course (the
+   four thrusters can do that), Shift for more power, Space for a LiDAR
+   ping, drag to look around, T or the button for the time of day, Esc to
+   go back to the page.
 
    The boat has a little physics: thrust and water drag, it turns faster
    with speed, lifts its bows when it speeds up and leans into turns.
-   Buoys can be pushed away, and the shore stops you. A radar shows what
-   the LiDAR sees around the boat.
+   It moves along its course (A/D steer it), and the hull can point
+   another way (Q/E). The whole hull is solid: the shore, quays, wharves,
+   boats and the pontoon stop it and it slides along them. Buoys can be
+   pushed away. A radar shows what the LiDAR sees around the boat.
    ================================================================ */
 
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v))
@@ -18,13 +22,20 @@ const MAX = 13 // units/s (1 unit = 0.3 m)
 const BOOST = 21
 const RADAR_RANGE = 170
 
-export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, buoys, spray, onPing, reduced }) {
+// Argus in scene units: half length and half width of the outline of the two hulls
+const HALF_L = 3.1
+const HALF_W = 2.55
+
+export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, colliders, buoys, spray, onPing, reduced }) {
     const state = {
         active: false,
         pos: new THREE.Vector3(),
         heading: 0, // rotation about y; the bow points along (cos h, 0, -sin h)
-        speed: 0,
+        course: 0, // the way the boat travels; A/D turn it, Q/E only turn the hull
+        vel: new THREE.Vector3(),
+        speed: 0, // along the course
         yawRate: 0,
+        spinRate: 0,
         pitch: 0,
         roll: 0,
         camPos: new THREE.Vector3(),
@@ -62,7 +73,7 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, b
                 <button type="button" class="hud-btn hud-exit" data-hud="exit">Exit <kbd>Esc</kbd></button>
             </div>
         </div>
-        <p class="hud-help"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrows to drive · <kbd>Shift</kbd> more power · <kbd>Space</kbd> LiDAR ping · drag to look around</p>
+        <p class="hud-help"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrows to drive · <kbd>Q</kbd><kbd>E</kbd> turn the boat as it goes · <kbd>Shift</kbd> more power · <kbd>Space</kbd> LiDAR ping · drag to look around</p>
         <div class="hud-bottom">
             <div class="hud-gauges">
                 <div class="hud-gauge"><span>Throttle</span><i><b class="hud-thr"></b></i></div>
@@ -252,7 +263,10 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, b
         const b = getBoat()
         state.pos.copy(b.pos).setY(0)
         state.heading = b.heading
+        state.course = b.heading
+        state.vel.set(0, 0, 0)
         state.speed = 0
+        state.spinRate = 0
         state.sunElev = getElev()
         timeI = TIMES.reduce((best, v, i) => (Math.abs(v - state.sunElev) < Math.abs(TIMES[best] - state.sunElev) ? i : best), 0)
         camFrom.copy(camera.position)
@@ -280,6 +294,144 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, b
         dispatchEvent(new CustomEvent("drive:change", { detail: false }))
     }
 
+    // ---- collisions: Argus is a rectangle (the outline of the two hulls) ----
+    const bow = new THREE.Vector3()
+    const stb = new THREE.Vector3()
+    const push = new THREE.Vector3()
+    const nrm = new THREE.Vector3()
+    // probe points round the hulls for the shore (body frame: along the bow, to starboard)
+    const PROBES = [
+        [HALF_L, HALF_W - 0.2],
+        [HALF_L, -HALF_W + 0.2],
+        [-HALF_L, HALF_W - 0.2],
+        [-HALF_L, -HALF_W + 0.2],
+        [0, HALF_W],
+        [0, -HALF_W],
+        [HALF_L + 0.1, 1.8],
+        [HALF_L + 0.1, -1.8],
+        [-HALF_L - 0.1, 1.8],
+        [-HALF_L - 0.1, -1.8],
+        [HALF_L * 0.5, HALF_W],
+        [HALF_L * 0.5, -HALF_W],
+        [-HALF_L * 0.5, HALF_W],
+        [-HALF_L * 0.5, -HALF_W],
+    ]
+    const LAND = -1 // anything higher than this is shore
+    let lastHit = 0
+
+    // the boat rectangle against an oriented box: the shortest way out (2D separating axes)
+    function boxPush(b, out) {
+        const cr = Math.cos(b.rot)
+        const sr = Math.sin(b.rot)
+        const axes = [
+            [bow.x, bow.z],
+            [stb.x, stb.z],
+            [cr, -sr],
+            [sr, cr],
+        ]
+        const dx = state.pos.x - b.x
+        const dz = state.pos.z - b.z
+        let best = Infinity
+        let bx = 0
+        let bz = 0
+        for (const [ax, az] of axes) {
+            const rBoat = HALF_L * Math.abs(bow.x * ax + bow.z * az) + HALF_W * Math.abs(stb.x * ax + stb.z * az)
+            const rBox = b.hx * Math.abs(cr * ax - sr * az) + b.hz * Math.abs(sr * ax + cr * az)
+            const d = dx * ax + dz * az
+            const overlap = rBoat + rBox - Math.abs(d)
+            if (overlap <= 0) return false
+            if (overlap < best) {
+                best = overlap
+                const sgn = d < 0 ? -1 : 1
+                bx = ax * sgn
+                bz = az * sgn
+            }
+        }
+        out.set(bx * best, 0, bz * best)
+        return true
+    }
+    // against a circle: from the closest point of the rectangle
+    function circlePush(c, out) {
+        const dx = c.x - state.pos.x
+        const dz = c.z - state.pos.z
+        const lx = dx * bow.x + dz * bow.z
+        const lz = dx * stb.x + dz * stb.z
+        const qx = clamp(lx, -HALF_L, HALF_L)
+        const qz = clamp(lz, -HALF_W, HALF_W)
+        const ex = lx - qx
+        const ez = lz - qz
+        const d = Math.hypot(ex, ez)
+        if (d >= c.r) return false
+        if (d > 1e-4) {
+            // the centre is outside the boat: push away from it
+            const k = (c.r - d) / d
+            out.set(-(bow.x * ex + stb.x * ez) * k, 0, -(bow.z * ex + stb.z * ez) * k)
+        } else {
+            // the centre is inside the outline: out the shortest side
+            const px = HALF_L - Math.abs(lx) + c.r
+            const pz = HALF_W - Math.abs(lz) + c.r
+            if (px < pz) out.copy(bow).multiplyScalar(-Math.sign(lx || 1) * px)
+            else out.copy(stb).multiplyScalar(-Math.sign(lz || 1) * pz)
+        }
+        return true
+    }
+    // take the part of the velocity that goes into the thing away, keep the sliding part
+    function bounce(n, t) {
+        const into = state.vel.dot(n)
+        if (into < 0) {
+            state.vel.addScaledVector(n, -into * 1.15)
+            if (-into > 3 && spray && t - lastHit > 0.25) {
+                lastHit = t
+                spray.splash(state.pos.x - n.x * HALF_L, state.pos.z - n.z * HALF_L, Math.min(1.2, -into / 10))
+            }
+        }
+    }
+    function solve(t) {
+        for (let pass = 0; pass < 3; pass++) {
+            let moved = false
+            bow.set(Math.cos(state.heading), 0, -Math.sin(state.heading))
+            stb.set(Math.sin(state.heading), 0, Math.cos(state.heading))
+            // the shore: push each probe that is on land back towards the water
+            if (landHeight) {
+                for (const [fx, sz] of PROBES) {
+                    const px = state.pos.x + bow.x * fx + stb.x * sz
+                    const pz = state.pos.z + bow.z * fx + stb.z * sz
+                    if (landHeight(px, pz) <= LAND) continue
+                    // downhill is towards the water
+                    const e = 2.5
+                    nrm.set(landHeight(px - e, pz) - landHeight(px + e, pz), 0, landHeight(px, pz - e) - landHeight(px, pz + e))
+                    if (nrm.lengthSq() < 1e-6) nrm.set(-state.pos.x, 0, -state.pos.z)
+                    nrm.normalize()
+                    // step out until the probe is in the water again
+                    let k = 0
+                    while (k < 12 && landHeight(px + nrm.x * k * 0.4, pz + nrm.z * k * 0.4) > LAND) k++
+                    state.pos.addScaledVector(nrm, k * 0.4 + 0.05)
+                    bounce(nrm, t)
+                    moved = true
+                }
+            }
+            // quays, wharves, boats, the pontoon
+            const lists = colliders ? colliders() : []
+            for (const list of lists) {
+                for (const b of list) {
+                    if (Math.abs(b.x - state.pos.x) > b.hx + b.hz + 8 || Math.abs(b.z - state.pos.z) > b.hx + b.hz + 8) continue
+                    if (!boxPush(b, push)) continue
+                    state.pos.add(push)
+                    bounce(nrm.copy(push).normalize(), t)
+                    moved = true
+                }
+            }
+            for (const o of obstacles()) {
+                if (Math.abs(o.x - state.pos.x) > o.r + 6 || Math.abs(o.z - state.pos.z) > o.r + 6) continue
+                if (!circlePush(o, push)) continue
+                state.pos.add(push)
+                bounce(nrm.copy(push).normalize(), t)
+                moved = true
+            }
+            if (!moved) break
+        }
+    }
+
     const fwd = new THREE.Vector3()
     const side = new THREE.Vector3()
     const want = new THREE.Vector3()
@@ -291,10 +443,13 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, b
         // input
         let th = 0
         let st = 0
+        let spin = 0
         if (keys.has("w") || keys.has("arrowup")) th += 1
         if (keys.has("s") || keys.has("arrowdown")) th -= 1
         if (keys.has("a") || keys.has("arrowleft")) st += 1
         if (keys.has("d") || keys.has("arrowright")) st -= 1
+        if (keys.has("q")) spin += 1
+        if (keys.has("e")) spin -= 1
         th += -stick.y
         st += -stick.x
         th = clamp(th, -1, 1)
@@ -302,65 +457,65 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, b
         const boost = keys.has("shift")
         thr += (th - thr) * (1 - Math.exp(-dt * 4))
 
-        // physics: thrust against a drag that grows with speed
+        // along the course and across it
+        fwd.set(Math.cos(state.course), 0, -Math.sin(state.course))
+        side.set(Math.sin(state.course), 0, Math.cos(state.course))
+        let vf = state.vel.dot(fwd)
+        let vs = state.vel.dot(side)
+
+        // thrust against a drag that grows with speed
         const vmax = boost ? BOOST : MAX
         const acc = th > 0 ? th * vmax * 0.9 : th * vmax * 0.5
-        const drag = state.speed * (0.9 / vmax) * Math.abs(state.speed) * 0.9 + state.speed * 0.25
-        const prev = state.speed
-        state.speed += (acc - drag) * dt
-        // the four thrusters turn it even when it stands still
-        const turn = st * (0.55 + Math.min(1, Math.abs(state.speed) / MAX) * 0.6) * (state.speed < -0.5 ? -1 : 1)
-        state.yawRate += (turn - state.yawRate) * (1 - Math.exp(-dt * 3.5))
-        state.heading += state.yawRate * dt
-        fwd.set(Math.cos(state.heading), 0, -Math.sin(state.heading))
-        state.pos.addScaledVector(fwd, state.speed * dt)
+        const drag = vf * (0.9 / vmax) * Math.abs(vf) * 0.9 + vf * 0.25
+        const prev = vf
+        vf += (acc - drag) * dt
+        // sideways the water holds the boat: a slide (after a bump) dies out
+        vs *= Math.exp(-dt * 1.6)
 
-        // the shore, islands and moored things stop the boat
-        const bow = state.pos.clone().addScaledVector(fwd, 3.4 * Math.sign(state.speed || 1))
-        let hitSomething = false
-        if (landHeight && landHeight(bow.x, bow.z) > -1.2) hitSomething = true
-        for (const o of obstacles()) {
-            const dx = state.pos.x - o.x
-            const dz = state.pos.z - o.z
-            const d = Math.hypot(dx, dz)
-            if (d < o.r + 3.5) {
-                state.pos.x = o.x + (dx / d) * (o.r + 3.5)
-                state.pos.z = o.z + (dz / d) * (o.r + 3.5)
-                hitSomething = hitSomething || Math.abs(state.speed) > 1
-                state.speed *= 0.5
-            }
-        }
-        if (hitSomething) {
-            state.pos.addScaledVector(fwd, -state.speed * dt * 2)
-            if (Math.abs(state.speed) > 3 && spray) spray.splash(bow.x, bow.z, 0.8)
-            state.speed *= -0.25
-        }
+        // A/D steer the course (and the hull with it); it turns even standing still
+        const turn = st * (0.55 + Math.min(1, Math.abs(vf) / MAX) * 0.6) * (vf < -0.5 ? -1 : 1)
+        state.yawRate += (turn - state.yawRate) * (1 - Math.exp(-dt * 3.5))
+        state.course += state.yawRate * dt
+        // Q/E turn only the hull: it keeps going the same way
+        state.spinRate += (spin * 1.7 - state.spinRate) * (1 - Math.exp(-dt * 4))
+        state.heading += (state.yawRate + state.spinRate) * dt
+
+        fwd.set(Math.cos(state.course), 0, -Math.sin(state.course))
+        side.set(Math.sin(state.course), 0, Math.cos(state.course))
+        state.vel.copy(fwd).multiplyScalar(vf).addScaledVector(side, vs)
+        state.pos.addScaledVector(state.vel, dt)
+
+        // nothing to drive through
+        solve(t)
         // keep to the harbour
         const r = Math.hypot(state.pos.x, state.pos.z)
         if (r > 2400) state.pos.multiplyScalar(2400 / r)
+        state.speed = state.vel.dot(fwd)
 
         // how the boat sits: bows up when speeding up, lean into turns
         const accel = (state.speed - prev) / Math.max(dt, 1e-3)
         const pitchWant = clamp(state.speed / BOOST, -0.3, 1) * 0.07 + clamp(accel * 0.006, -0.03, 0.05)
-        const rollWant = clamp(-state.yawRate * state.speed * 0.012, -0.14, 0.14)
+        const rollWant = clamp(-state.yawRate * state.speed * 0.012 - state.spinRate * 0.02, -0.14, 0.14)
         state.pitch += (pitchWant - state.pitch) * (1 - Math.exp(-dt * 3))
         state.roll += (rollWant - state.roll) * (1 - Math.exp(-dt * 3))
 
-        // spray from the bows at speed
+        // spray from the bows of the hulls at speed (where the hulls point, thrown the way it goes)
         if (spray && !reduced && Math.abs(state.speed) > 6 && t - lastSpray > 0.03) {
             lastSpray = t
-            side.set(Math.sin(state.heading), 0, Math.cos(state.heading))
+            bow.set(Math.cos(state.heading), 0, -Math.sin(state.heading))
+            stb.set(Math.sin(state.heading), 0, Math.cos(state.heading))
             const k = (Math.abs(state.speed) - 6) / 10
             for (const s of [-1, 1]) {
-                const bx = state.pos.x + fwd.x * 3 + side.x * 1.85 * s
-                const bz = state.pos.z + fwd.z * 3 + side.z * 1.85 * s
-                spray.emit(bx, 0.2, bz, side.x * s * 2.4 + fwd.x * state.speed * 0.5, 3.2 + k * 3, side.z * s * 2.4 + fwd.z * state.speed * 0.5, Math.ceil(2 + k * 5), 1.2, 0.1)
+                const bx = state.pos.x + bow.x * 3 + stb.x * 1.85 * s
+                const bz = state.pos.z + bow.z * 3 + stb.z * 1.85 * s
+                spray.emit(bx, 0.2, bz, stb.x * s * 2.4 + state.vel.x * 0.5, 3.2 + k * 3, stb.z * s * 2.4 + state.vel.z * 0.5, Math.ceil(2 + k * 5), 1.2, 0.1)
             }
         }
 
         // chase camera, a little behind the turn, and you can look around
         if (!dragging && performance.now() - lastDrag > 2200) camYaw *= Math.exp(-dt * 1.2)
-        const a = state.heading + Math.PI + camYaw - state.yawRate * 0.25
+        // the camera follows the course, so it stays steady while the hull turns
+        const a = state.course + Math.PI + camYaw - state.yawRate * 0.25
         const flat = Math.cos(camPitch) * camDist
         want.set(state.pos.x + Math.cos(a) * flat, 1.2 + Math.sin(camPitch) * camDist, state.pos.z - Math.sin(a) * flat)
         wantLook.copy(state.pos).addScaledVector(fwd, 5).setY(1.6)
@@ -474,6 +629,22 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, b
             g.fill()
         }
         for (const o of obstacles()) dot(o.x, o.z, "rgba(232,238,248,0.7)", Math.max(4, (o.r / RADAR_RANGE) * R))
+        // boxes: quays, wharves, boats, the pontoon
+        g.fillStyle = "rgba(232,238,248,0.55)"
+        for (const list of colliders ? colliders() : []) {
+            for (const b of list) {
+                const [px, py] = toRadar(b.x, b.z)
+                if (px * px + py * py > R * R * 1.2) continue
+                g.save()
+                g.translate(px, py)
+                // the box's own x axis, seen with the bow up
+                g.rotate(-(b.rot - state.heading) - Math.PI / 2)
+                const sx = Math.max(2, (b.hx / RADAR_RANGE) * R)
+                const sz = Math.max(2, (b.hz / RADAR_RANGE) * R)
+                g.fillRect(-sx, -sz, sx * 2, sz * 2)
+                g.restore()
+            }
+        }
         for (const b of buoys()) dot(b.x, b.z, b.kind === "port" ? "#ff5a4a" : b.kind === "stbd" ? "#45d07f" : "#f2c230", 5)
         // Argus
         g.fillStyle = "#e8eef8"
@@ -495,10 +666,10 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, b
             const min = b.r + 3.2
             if (d < min && d > 0.001) {
                 const push = (min - d) * 6
-                b.vx += (dx / d) * push + Math.cos(state.heading) * state.speed * 0.3
-                b.vz += (dz / d) * push - Math.sin(state.heading) * state.speed * 0.3
-                if (Math.abs(state.speed) > 2.5 && spray) spray.splash(b.x, b.z, 0.5)
-                state.speed *= 0.92
+                b.vx += (dx / d) * push + state.vel.x * 0.3
+                b.vz += (dz / d) * push + state.vel.z * 0.3
+                if (state.vel.length() > 2.5 && spray) spray.splash(b.x, b.z, 0.5)
+                state.vel.multiplyScalar(0.96)
             }
         }
     }
@@ -513,6 +684,9 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, b
         },
         get heading() {
             return state.heading
+        },
+        get course() {
+            return state.course
         },
         get speed() {
             return state.speed

@@ -165,9 +165,9 @@ export function createTerrain({ lowPower = false } = {}) {
         rock: new THREE.Color(0.12, 0.115, 0.105),
         wetRock: new THREE.Color(0.05, 0.048, 0.045),
         weed: new THREE.Color(0.06, 0.05, 0.025),
-        spruce: new THREE.Color(0.018, 0.034, 0.018),
-        birch: new THREE.Color(0.05, 0.072, 0.028),
-        field: new THREE.Color(0.1, 0.11, 0.045),
+        spruce: new THREE.Color(0.022, 0.046, 0.022),
+        birch: new THREE.Color(0.07, 0.105, 0.034),
+        field: new THREE.Color(0.13, 0.15, 0.05),
         bare: new THREE.Color(0.1, 0.095, 0.085),
         snow: new THREE.Color(0.62, 0.65, 0.7),
         town: new THREE.Color(0.11, 0.1, 0.095),
@@ -191,14 +191,14 @@ export function createTerrain({ lowPower = false } = {}) {
         c.lerp(C.wetRock, smooth(14, 4, h))
         if (h < 6) c.lerp(C.weed, 0.4)
         // the city
-        const city = inCity(deg) * smooth(3000, 2200, Math.hypot(x, z) - shoreAt(deg)[0] * 0.95)
-        c.lerp(C.town, city * 0.7)
+        const city = inCity(deg) * smooth(1400, 900, Math.hypot(x, z) - shoreAt(deg)[0] * 0.95) * smooth(90, 40, h)
+        c.lerp(C.town, city * 0.6)
         col[k * 3] = c.r
         col[k * 3 + 1] = c.g
         col[k * 3 + 2] = c.b
     }
     geo.setAttribute("color", new THREE.BufferAttribute(col, 3))
-    const mat = withAir(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.96, metalness: 0 }))
+    const mat = withAir(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.96, metalness: 0 }), { terrain: true })
     const land = new THREE.Mesh(geo, mat)
     land.frustumCulled = false
 
@@ -206,6 +206,7 @@ export function createTerrain({ lowPower = false } = {}) {
     group.add(land)
     group.add(createTown({ lowPower }))
     group.add(createQuay())
+    group.add(createWharfRow({ lowPower }))
     return group
 }
 
@@ -254,16 +255,8 @@ function createTown({ lowPower }) {
     const geo = houseGeometry()
     const mat = withAir(new THREE.MeshStandardMaterial({ roughness: 0.85, metalness: 0 }), { windows: true })
     const mesh = new THREE.InstancedMesh(geo, mat, count)
-    const facades = [
-        [0.62, 0.6, 0.56],
-        [0.55, 0.36, 0.13],
-        [0.32, 0.075, 0.045],
-        [0.36, 0.36, 0.35],
-        [0.62, 0.52, 0.3],
-        [0.12, 0.12, 0.13],
-        [0.38, 0.42, 0.46],
-        [0.58, 0.58, 0.55],
-    ].map((a) => new THREE.Color(a[0], a[1], a[2]))
+    // painted wooden houses and light stone blocks, as in Trondheim (sRGB)
+    const facades = ["#e9e4d8", "#d9d2c2", "#c9b38a", "#b8442e", "#8f2f25", "#d6a640", "#e2c76e", "#8fa0a8", "#6f7f76", "#efe9dd", "#c6c0b4", "#a35a3a"].map((h) => new THREE.Color(h))
     const m = new THREE.Matrix4()
     const q = new THREE.Quaternion()
     const s = new THREE.Vector3()
@@ -279,7 +272,7 @@ function createTown({ lowPower }) {
         tries++
         const deg = CITY.from + 8 + rnd() * (CITY.to - CITY.from - 16)
         const S = shoreAt(deg)[0]
-        const over = 60 + Math.pow(rnd(), 1.6) * 2600
+        const over = 90 + Math.pow(rnd(), 2.1) * 1500
         const a = (deg * Math.PI) / 180
         const x = Math.cos(a) * (S + over)
         const z = Math.sin(a) * (S + over)
@@ -287,9 +280,9 @@ function createTown({ lowPower }) {
         if (h < 4) continue
         const central = over < 1100
         // blocks near the water, houses further up
-        const w = central ? 26 + rnd() * 40 : 16 + rnd() * 16
-        const d = central ? 26 + rnd() * 40 : 14 + rnd() * 12
-        const ht = central ? 22 + Math.pow(rnd(), 2) * 90 : 14 + rnd() * 12
+        const w = central ? 22 + rnd() * 30 : 14 + rnd() * 12
+        const d = central ? 22 + rnd() * 30 : 12 + rnd() * 10
+        const ht = central ? 18 + Math.pow(rnd(), 2.5) * 60 : 12 + rnd() * 10
         // streets roughly follow the shore
         q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), -a + (rnd() < 0.5 ? 0 : Math.PI / 2) + (rnd() - 0.5) * 0.3)
         s.set(w, ht, d)
@@ -300,6 +293,171 @@ function createTown({ lowPower }) {
         placed++
     }
     mesh.count = placed
+    mesh.frustumCulled = false
+    return mesh
+}
+
+/* Things the boat cannot drive through, besides the land itself:
+   oriented boxes { x, z, hx, hz, rot } (half sizes along the box's own x and z;
+   rot turns it like rotation.y does). Filled when the terrain is made. */
+export const COLLIDERS = []
+
+/* where the water meets the land along a direction, found by stepping out */
+function shoreRadius(deg) {
+    const a = (deg * Math.PI) / 180
+    const c = Math.cos(a)
+    const sn = Math.sin(a)
+    let r = shoreAt(deg)[0] * 0.8
+    while (r < 30000 && landHeight(c * r, sn * r) < 0) r += 4
+    return r
+}
+
+/* ---- the old wharves: a long row of painted wooden warehouses on piles ----
+   Gable ends face the water, as along Bryggen in Trondheim: oxblood red,
+   ochre, yellow, white, green and grey-blue, with dark roofs, windows in
+   rows, and many of them lit at night. */
+const WHARF_COLOURS = ["#7d2a22", "#a2382a", "#c98d2c", "#dcb24a", "#c96a2c", "#ece6d6", "#f2efe8", "#4d6b4f", "#6f8494", "#e3cf86", "#9c3c2c", "#d7c9a6"]
+const ROOF_COLOURS = ["#2a2a2c", "#33302e", "#4a2a24", "#2e3236"]
+
+function createWharfRow({ lowPower }) {
+    const pos = []
+    const nor = []
+    const col = []
+    const roof = []
+    const fac = []
+    let seed = 11
+    const rnd = () => {
+        seed = (seed * 16807) % 2147483647
+        return seed / 2147483647
+    }
+    const c3 = new THREE.Color()
+    // one quad (two triangles) with a normal, a colour, roof flag and facade coordinates
+    const quad = (a, b, c, d, n, colr, isRoof, fa, fb, fc, fd) => {
+        for (const [p, f] of [
+            [a, fa],
+            [b, fb],
+            [c, fc],
+            [a, fa],
+            [c, fc],
+            [d, fd],
+        ]) {
+            pos.push(p.x, p.y, p.z)
+            nor.push(n.x, n.y, n.z)
+            col.push(colr.r, colr.g, colr.b)
+            roof.push(isRoof)
+            fac.push(f[0], f[1])
+        }
+    }
+    const tri = (a, b, c, n, colr, fa, fb, fc) => {
+        for (const [p, f] of [
+            [a, fa],
+            [b, fb],
+            [c, fc],
+        ]) {
+            pos.push(p.x, p.y, p.z)
+            nor.push(n.x, n.y, n.z)
+            col.push(colr.r, colr.g, colr.b)
+            roof.push(0)
+            fac.push(f[0], f[1])
+        }
+    }
+    const V = (x, y, z) => new THREE.Vector3(x, y, z)
+    const m = new THREE.Matrix4()
+    const nm = new THREE.Matrix3()
+
+    // a house in its own frame: x across the front, y up, +z towards the water (the gable)
+    function house(w, d, h, floorY, colour, roofColour) {
+        const start = pos.length / 3
+        const x0 = -w / 2
+        const x1 = w / 2
+        const z0 = -d / 2
+        const z1 = d / 2
+        const y0 = floorY
+        const y1 = floorY + h
+        const ridge = y1 + w * 0.62
+        const over = 1.6 // the roof reaches a little past the walls
+        const cc = c3.set(colour).clone()
+        const rc = new THREE.Color(roofColour)
+        // walls: front gable (+z), back (-z), two long sides
+        quad(V(x0, y0, z1), V(x1, y0, z1), V(x1, y1, z1), V(x0, y1, z1), V(0, 0, 1), cc, 0, [0, 0], [w, 0], [w, h], [0, h])
+        tri(V(x0, y1, z1), V(x1, y1, z1), V(0, ridge, z1), V(0, 0, 1), cc, [0, h], [w, h], [w / 2, ridge - y0])
+        quad(V(x1, y0, z0), V(x0, y0, z0), V(x0, y1, z0), V(x1, y1, z0), V(0, 0, -1), cc, 0, [0, 0], [w, 0], [w, h], [0, h])
+        tri(V(x1, y1, z0), V(x0, y1, z0), V(0, ridge, z0), V(0, 0, -1), cc, [0, h], [w, h], [w / 2, ridge - y0])
+        quad(V(x1, y0, z1), V(x1, y0, z0), V(x1, y1, z0), V(x1, y1, z1), V(1, 0, 0), cc, 0, [0, 0], [d, 0], [d, h], [0, h])
+        quad(V(x0, y0, z0), V(x0, y0, z1), V(x0, y1, z1), V(x0, y1, z0), V(-1, 0, 0), cc, 0, [0, 0], [d, 0], [d, h], [0, h])
+        // the roof: two slopes, reaching past the walls
+        const sl = new THREE.Vector3(w / 2, ridge - y1, 0).normalize()
+        const nR = V(sl.y, sl.x, 0)
+        const nL = V(-sl.y, sl.x, 0)
+        const eave = y1 - over * ((ridge - y1) / (w / 2)) // same slope as the gable
+        quad(V(0, ridge, z1 + over), V(x1 + over, eave, z1 + over), V(x1 + over, eave, z0 - over), V(0, ridge, z0 - over), nR, rc, 1, [0, 0], [0, 0], [0, 0], [0, 0])
+        quad(V(x0 - over, eave, z1 + over), V(0, ridge, z1 + over), V(0, ridge, z0 - over), V(x0 - over, eave, z0 - over), nL, rc, 1, [0, 0], [0, 0], [0, 0], [0, 0])
+        // the floor under the house, seen from the water
+        quad(V(x0, y0, z0), V(x1, y0, z0), V(x1, y0, z1), V(x0, y0, z1), V(0, -1, 0), c3.setRGB(0.03, 0.025, 0.02).clone(), 0, [0, 0], [0, 0], [0, 0], [0, 0])
+        // piles under the front half, standing in the water
+        const pile = new THREE.Color(0.035, 0.028, 0.022)
+        for (let px = x0 + 1.5; px <= x1 - 1.4; px += 5.2) {
+            for (let pz = z1 - 1.5; pz > z1 - d * 0.55; pz -= 7) {
+                const s2 = 0.75
+                const yb = -4
+                quad(V(px - s2, yb, pz + s2), V(px + s2, yb, pz + s2), V(px + s2, y0, pz + s2), V(px - s2, y0, pz + s2), V(0, 0, 1), pile, 0, [0, 0], [0, 0], [0, 0], [0, 0])
+                quad(V(px + s2, yb, pz - s2), V(px - s2, yb, pz - s2), V(px - s2, y0, pz - s2), V(px + s2, y0, pz - s2), V(0, 0, -1), pile, 0, [0, 0], [0, 0], [0, 0], [0, 0])
+                quad(V(px + s2, yb, pz + s2), V(px + s2, yb, pz - s2), V(px + s2, y0, pz - s2), V(px + s2, y0, pz + s2), V(1, 0, 0), pile, 0, [0, 0], [0, 0], [0, 0], [0, 0])
+                quad(V(px - s2, yb, pz - s2), V(px - s2, yb, pz + s2), V(px - s2, y0, pz + s2), V(px - s2, y0, pz - s2), V(-1, 0, 0), pile, 0, [0, 0], [0, 0], [0, 0], [0, 0])
+            }
+        }
+        return start
+    }
+    // place a house: move what was just added into the world
+    function place(start, x, z, yaw) {
+        m.makeRotationY(yaw).setPosition(x, 0, z)
+        nm.getNormalMatrix(m)
+        const v = new THREE.Vector3()
+        for (let i = start; i < pos.length / 3; i++) {
+            v.set(pos[i * 3], pos[i * 3 + 1], pos[i * 3 + 2]).applyMatrix4(m)
+            pos[i * 3] = v.x
+            pos[i * 3 + 1] = v.y
+            pos[i * 3 + 2] = v.z
+            v.set(nor[i * 3], nor[i * 3 + 1], nor[i * 3 + 2]).applyMatrix3(nm).normalize()
+            nor[i * 3] = v.x
+            nor[i * 3 + 1] = v.y
+            nor[i * 3 + 2] = v.z
+        }
+    }
+
+    // two stretches of waterfront, either side of the quay with the cranes
+    const stretches = lowPower ? [[229, 249]] : [[229, 249], [303, 318]]
+    for (const [from, to] of stretches) {
+        let deg = from
+        while (deg < to) {
+            const w = 20 + rnd() * 10
+            const d = 46 + rnd() * 26
+            const h = 26 + Math.floor(rnd() * 3) * 7 + rnd() * 3
+            const r = shoreRadius(deg)
+            // the gable stands a little out over the water, some houses further out than others
+            const front = r - 10 - rnd() * 8
+            const cz = front + d / 2 // the house reaches back onto the land
+            const a = (deg * Math.PI) / 180
+            const x = Math.cos(a) * cz
+            const z = Math.sin(a) * cz
+            const yaw = Math.atan2(-x, -z) + (rnd() - 0.5) * 0.06
+            const colour = WHARF_COLOURS[Math.floor(rnd() * WHARF_COLOURS.length)]
+            const start = house(w, d, h, 6.5, colour, ROOF_COLOURS[Math.floor(rnd() * ROOF_COLOURS.length)])
+            place(start, x, z, yaw)
+            COLLIDERS.push({ x, z, hx: w / 2 + 0.5, hz: d / 2 + 0.5, rot: yaw })
+            // the next house, with a narrow gap now and then
+            deg += ((w + (rnd() < 0.25 ? 3 + rnd() * 5 : 0.4)) / cz) * (180 / Math.PI)
+        }
+    }
+
+    const g = new THREE.BufferGeometry()
+    g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3))
+    g.setAttribute("normal", new THREE.Float32BufferAttribute(nor, 3))
+    g.setAttribute("color", new THREE.Float32BufferAttribute(col, 3))
+    g.setAttribute("aRoof", new THREE.Float32BufferAttribute(roof, 1))
+    g.setAttribute("aFac", new THREE.Float32BufferAttribute(fac, 2))
+    const mat = withAir(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.82, metalness: 0 }), { windows: "facade" })
+    const mesh = new THREE.Mesh(g, mat)
     mesh.frustumCulled = false
     return mesh
 }
@@ -320,6 +478,7 @@ function createQuay() {
         b.position.set(Math.cos(a) * S, 4, Math.sin(a) * S)
         b.rotation.y = -a
         g.add(b)
+        COLLIDERS.push({ x: b.position.x, z: b.position.z, hx: 30, hz: 20, rot: -a })
     }
     // cranes
     const crane = (deg, mat, rot) => {

@@ -7,7 +7,7 @@ import { landHeight, shoreAt } from "./terrain.js"
 
 /* ================================================================
    Things in the harbour, all made with Higgsfield (image → 3D):
-   Munkholmen, the old wharves, Nidaros cathedral, a lighthouse, a
+   Munkholmen, Nidaros cathedral, a lighthouse, a
    pontoon, boats at anchor, a coastal ship on its way out the fjord,
    and navigation buoys (red to port, green to starboard, a yellow and
    black cardinal mark). The boats and buoys ride the same waves as Argus.
@@ -31,7 +31,6 @@ const LAYOUT = [
     { file: "buoy-cardinal", at: [58, -40], size: 11, float: true, sink: 0.3, buoy: "cardinal" },
     { file: "buoy-red", at: [120, 70], size: 10, float: true, sink: 0.3, buoy: "port" },
     { file: "buoy-green", at: [150, 30], size: 10, float: true, sink: 0.3, buoy: "stbd" },
-    { file: "wharves", at: "wharves", size: 150, sink: 0.04, faceOrigin: true },
     { file: "nidaros", at: "nidaros", size: 360, sink: 0.02, face: 1.2, land: true },
     { file: "ship", at: [0, 0], size: 420, sink: 0.14, ship: true },
 ]
@@ -40,6 +39,7 @@ export function createProps({ lowPower = false, base = "/media/models/world/" } 
     const group = new THREE.Group()
     const floaters = [] // { obj, x, z, lift, k }
     const obstacles = [] // for the drive mode: things you bump into { x, z, r }
+    const colliders = [] // and the same as boxes that fit them: { x, z, hx, hz, rot }
     const buoys = [] // for the drive mode: { obj, x, z, r, kind }
     const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder)
     const cache = new Map()
@@ -160,7 +160,13 @@ export function createProps({ lowPower = false, base = "/media/models/world/" } 
             group.add(holder)
 
             if (l.float) floaters.push({ obj: holder, x, z, lift: l.lift || 0, yaw: holder.rotation.y, k: l.size < 12 ? 1.4 : 0.6 })
-            if (!l.buoy && !l.ship && !l.land && l.at !== "wharves") obstacles.push({ x, z, r: l.rock ? l.rock * 1.1 : l.file === "munkholmen" ? l.size * 0.42 : l.size * (l.file === "pontoon" ? 0.32 : 0.36) })
+            if (!l.buoy && !l.ship && !l.land) {
+                if (l.rock || l.file === "munkholmen") obstacles.push({ x, z, r: l.rock ? l.rock * 1.1 : l.size * 0.42 })
+                else {
+                    // boats and the pontoon: a box as big as the model, turned with it
+                    colliders.push({ x, z, hx: (size.x * k) / 2, hz: (size.z * k) / 2, rot: holder.rotation.y })
+                }
+            }
             if (l.buoy) {
                 buoys.push({ obj: holder, x, z, r: 2.4, kind: l.buoy, vx: 0, vz: 0, ox: x, oz: z })
                 const light = glowSprite(l.buoy === "port" ? 0xff4030 : l.buoy === "stbd" ? 0x40ff70 : 0xffffff, 5)
@@ -224,6 +230,7 @@ export function createProps({ lowPower = false, base = "/media/models/world/" } 
         buoys,
         floaters,
         obstacles,
+        colliders,
         update(t, dt, night) {
             for (const f of floaters) {
                 const h = waveHeight(f.x, f.z, t, 1)

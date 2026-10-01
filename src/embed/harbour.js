@@ -106,7 +106,7 @@ export function mountHarbour(el, options = {}) {
     const SCALE = 6.2
     const argus = createArgus({ renderer, lowPower, url: o.models + (lowPower ? "argus-lite.glb" : "argus.glb") })
     argus.model.scale.setScalar(SCALE)
-    argus.model.position.y = 0.075 * SCALE
+    argus.model.position.y = 0.06 * SCALE
     boat.add(argus.model)
     let cut = o.scan && !reduced ? CUT_ALL_CLOUD : CUT_ALL_SOLID
     if (!(o.scan && !reduced)) argus.points.uAssemble.value = 1
@@ -243,7 +243,10 @@ export function mountHarbour(el, options = {}) {
         const expWant = clamp(Math.pow(0.1 / Math.max(zenLum, 1e-4), 0.5), 0.85, 4.2)
         exposure += (expWant - exposure) * (1 - Math.exp(-dt * 3))
         AIR.uNight.value = night
-        if (lights) lights.material.uniforms.uNight.value = night / exposure
+        if (lights) {
+            lights.material.uniforms.uNight.value = night / exposure
+            lights.visible = night > 0.02
+        }
 
         // camera
         pointerS.lerp(o.mouse ? pointer : pointer.set(0, 0), 1 - Math.exp(-dt * 2.8))

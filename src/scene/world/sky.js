@@ -436,8 +436,57 @@ export function createSky(renderer, { lowPower = false } = {}) {
         return p
     })()
 
+    // 5) the northern lights over the fjord on a clear night: curtains of green that
+    //    turn violet higher up, waving slowly, with fine rays (and reflected in the water)
+    const aurora = (() => {
+        const g = new THREE.Group()
+        const curtains = [
+            // radius, start angle, length of the arc, bottom height, height, seed
+            [30000, -1.45, 2.3, 700, 8000, 0.0],
+            [25000, -0.35, 1.7, 900, 6500, 3.7],
+            [34000, 0.55, 1.3, 800, 7500, 8.1],
+        ]
+        for (const [r, ts, tl, y0, h, seed] of curtains) {
+            const geo = new THREE.CylinderGeometry(r, r, h, lowPower ? 96 : 192, 1, true, ts, tl)
+            geo.translate(0, y0 + h / 2, 0)
+            const mat = new THREE.ShaderMaterial({
+                transparent: true,
+                depthWrite: false,
+                side: THREE.DoubleSide,
+                blending: THREE.AdditiveBlending,
+                uniforms: { uTime: { value: 0 }, uOpacity: { value: 0 }, uSeed: { value: seed } },
+                vertexShader: /* glsl */ `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+                fragmentShader: /* glsl */ `
+                    uniform float uTime; uniform float uOpacity; uniform float uSeed; varying vec2 vUv;
+                    float hh(float x) { return fract(sin(x * 127.1 + uSeed * 31.7) * 43758.5453); }
+                    float n1(float x) { float i = floor(x); float f = fract(x); f = f * f * (3.0 - 2.0 * f); return mix(hh(i), hh(i + 1.0), f); }
+                    void main() {
+                        float x = vUv.x;
+                        float t = uTime * 0.02;
+                        // the lower edge waves along the sky
+                        float edge = 0.06 + 0.2 * n1(x * 6.0 + t * 2.5 + uSeed) + 0.07 * n1(x * 21.0 - t * 4.0);
+                        float above = vUv.y - edge;
+                        if (above < 0.0) discard;
+                        float body = exp(-above * 4.2);
+                        float rays = 0.45 + 0.55 * n1(x * 170.0 + t * 14.0) * (0.5 + 0.5 * n1(x * 53.0 - t * 6.0));
+                        float folds = 0.25 + 0.75 * n1(x * 2.6 - t * 1.2 + uSeed * 2.0);
+                        vec3 col = mix(vec3(0.1, 1.0, 0.42), vec3(0.5, 0.22, 0.95), smoothstep(0.1, 0.65, above));
+                        float sideFade = smoothstep(0.0, 0.15, x) * smoothstep(1.0, 0.85, x);
+                        float a = body * rays * folds * sideFade * smoothstep(0.0, 0.025, above) * uOpacity;
+                        gl_FragColor = vec4(col * a * 0.1, 1.0);
+                    }
+                `,
+            })
+            const m = new THREE.Mesh(geo, mat)
+            m.frustumCulled = false
+            m.renderOrder = -8
+            g.add(m)
+        }
+        return g
+    })()
+
     const group = new THREE.Group()
-    group.add(sky, stars)
+    group.add(sky, stars, aurora)
 
     // the light that reaches the scene: sunlight and the sky around
     const ambient = new THREE.Color()
@@ -513,6 +562,12 @@ export function createSky(renderer, { lowPower = false } = {}) {
         update(t) {
             U.uTime.value = t
             stars.material.uniforms.uTime.value = t
+            const on = THREE.MathUtils.smoothstep(state.night, 0.55, 0.95)
+            aurora.visible = on > 0.01
+            for (const m of aurora.children) {
+                m.material.uniforms.uTime.value = t
+                m.material.uniforms.uOpacity.value = on
+            }
         },
     }
 }

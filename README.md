@@ -126,3 +126,10 @@ To change the 3D: edit `src/embed/`, run `npm run build:embed`, commit, and put 
 3. After a minute the site is at `https://afno0810-cloud.github.io/cc/`.
 
 After changing the site, run `npm run build:pages`, then commit and push `docs/`.
+
+## Argus model and the game (round 6)
+
+- **Argus** (`public/media/models/argus.glb`, `argus-lite.glb`) is built in code from photos of the real boat: `node scripts/argus/build.mjs`. Two hulls with hatches, the aluminium frame, the closed electronics case with a flat lid, the two Seapath GNSS antennas on wooden blocks at the stern, four ducted thrusters, the emergency stop, cable loops, the arrow and the sponsor names (`scripts/argus/decals.py`). Bow = +x, starboard = +z.
+- **The game** is the drive mode, also on its own page: `/game/` (on GitHub Pages: `/cc/spill/`). W A S D drive, **Q E turn the hull while it keeps its course**, Shift more power, Space LiDAR ping, T time of day.
+- **Solid world**: the whole hull collides with the shore, the quay, the wharves, the moored boats and the pontoon (`COLLIDERS` in `terrain.js`, `colliders` in `props.js`) and slides along them.
+- **Trondheim from the water**: a row of painted wharf houses on piles with windows that light up at night (`createWharfRow` in `terrain.js`), town colours, forest texture on the hills, northern lights on clear nights (`sky.js`).

@@ -44,14 +44,14 @@ const ease = (t) => 1 - Math.pow(1 - clamp(t), 3)
 /* Where the parts are on the Argus model (model units, centred model, bow = +x).
    Measured on the Higgsfield mesh (Tripo, from four views made from our photos). a/e = camera angle and height that show the part. */
 export const PARTS = {
-    lidar: { label: "LiDAR", p: [-0.07, 0.29, 0.0], a: 0.7, e: 4.6 },
-    gnss: { label: "Seapath 130 · GNSS", p: [-0.08, 0.2, 0.28], a: 2.0, e: 3.2 },
-    camera: { label: "Stereo depth camera", p: [0.1, 0.17, 0.0], a: 0.25, e: 2.2 },
-    case: { label: "Electronics case", p: [-0.06, 0.19, -0.12], a: -1.2, e: 3 },
-    hull: { label: "Two hulls", p: [0.3, -0.03, -0.27], a: -0.6, e: 1.6 },
-    props: { label: "Four propellers", p: [-0.46, -0.24, 0.25], a: 2.7, e: 0.9 },
-    pixhawk: { label: "Pixhawk", p: [-0.04, 0.2, 0.06], a: -0.3, e: 5.5 },
-    link: { label: "5G link", p: [-0.13, 0.22, -0.05], a: -1.8, e: 5 },
+    lidar: { label: "LiDAR", p: [0.0, 0.28, 0.0], a: 0.7, e: 4.6 },
+    gnss: { label: "Seapath 130 · GNSS", p: [-0.42, 0.13, 0.29], a: 2.0, e: 3.2 },
+    camera: { label: "Stereo depth camera", p: [0.14, 0.14, 0.0], a: 0.25, e: 2.2 },
+    case: { label: "Electronics case", p: [0.0, 0.2, -0.18], a: -1.2, e: 3 },
+    hull: { label: "Two hulls", p: [0.28, 0.0, -0.39], a: -0.6, e: 1.6 },
+    props: { label: "Four propellers", p: [-0.35, -0.23, 0.29], a: 2.7, e: 0.9 },
+    pixhawk: { label: "Pixhawk", p: [0.04, 0.26, 0.05], a: -0.3, e: 5.5 },
+    link: { label: "5G link", p: [-0.06, 0.26, -0.05], a: -1.8, e: 5 },
 }
 
 const emit = (name, detail) => window.dispatchEvent(new CustomEvent(name, { detail }))
@@ -148,10 +148,10 @@ export async function startScene({ reduced = false } = {}) {
     const model = argus.model
     model.scale.setScalar(SCALE)
     // waterline: a little below the middle of the hulls (the thrusters hang under the water)
-    model.position.y = 0.075 * SCALE
+    model.position.y = 0.06 * SCALE
     boat.add(model)
 
-    // LiDAR glow on top of the sensor
+    // soft round light for the navigation lights
     const glowTex = (() => {
         const c = document.createElement("canvas")
         c.width = c.height = 64
@@ -164,22 +164,17 @@ export async function startScene({ reduced = false } = {}) {
         g.fillRect(0, 0, 64, 64)
         return new THREE.CanvasTexture(c)
     })()
-    const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: new THREE.Color(1.25, 1.2, 1.45), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }))
-    glow.scale.setScalar(0.075)
-    glow.position.fromArray(PARTS.lidar.p)
-    model.add(glow)
 
     let drive = null
     let rippleI = 0
 
     // navigation lights for the night: red to port, green to starboard, white on top
     const navLights = [
-        [0.32, 0.05, -0.27, 0xff3a2a],
-        [0.32, 0.05, 0.27, 0x3aff6a],
-        [-0.07, 0.34, 0, 0xffffff],
+        [0.47, 0.085, -0.29, 0xff3a2a],
+        [0.47, 0.085, 0.29, 0x3aff6a],
     ].map(([x, y, z, c]) => {
         const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: new THREE.Color(c).multiplyScalar(2.5), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }))
-        s.scale.setScalar(c === 0xffffff ? 0.045 : 0.07)
+        s.scale.setScalar(0.05)
         s.position.set(x, y, z)
         model.add(s)
         return s
@@ -483,6 +478,7 @@ export async function startScene({ reduced = false } = {}) {
 
     // ---- drive mode ----
     let headingNow = 0
+    const colliderLists = [[], []]
     drive = createDrive({
         camera,
         reduced,
@@ -491,6 +487,12 @@ export async function startScene({ reduced = false } = {}) {
         getElev: () => elev,
         landHeight: (x, z) => (terrainMod ? terrainMod.landHeight(x, z) : -10),
         obstacles: () => (props ? props.obstacles : []),
+        // quays and wharves (from the terrain) and boats and the pontoon (from the props)
+        colliders: () => {
+            colliderLists[0] = terrainMod ? terrainMod.COLLIDERS : []
+            colliderLists[1] = props ? props.colliders : []
+            return colliderLists
+        },
         buoys: () => (props ? props.buoys : []),
         onPing: (p) => {
             wu.uRipple.value[rippleI].set(p.x, p.z, t, 2.4)
@@ -727,7 +729,11 @@ export async function startScene({ reduced = false } = {}) {
         moonLight.intensity = night * 0.35
         exposure += (expWant - exposure) * (1 - Math.exp(-dt * 3))
         AIR.uNight.value = night
-        if (shoreLights) shoreLights.material.uniforms.uNight.value = night / exposure
+        if (shoreLights) {
+            shoreLights.material.uniforms.uNight.value = night / exposure
+            // by day they would still mark the mirror image in the water: leave them out
+            shoreLights.visible = night > 0.02
+        }
 
         // outside the 3D moments the world steps back a little, so the text reads well
         let stageW = 0
@@ -866,7 +872,6 @@ export async function startScene({ reduced = false } = {}) {
         beam.position.set(boat.position.x, 0.25, boat.position.z)
         beam.rotation.y = sweep
         beam.material.uniforms.uOpacity.value = boatVis * (1 - coastO) * (intro.done ? 1 : 0) * (0.15 + night * 0.35) / exposure
-        glow.material.opacity = (0.65 + Math.sin(t * 6) * 0.25) * boatVis * (cut > 0 ? 1 : 0.2) * (0.3 + night * 0.7)
 
         if (course) {
             course.setOpacity(courseO)
@@ -906,7 +911,11 @@ export async function startScene({ reduced = false } = {}) {
         if (drive && drive.active && props) drive.collide(props.buoys)
 
         placeLabels()
-        if (motes) motes.update(t, camera.position, argus.points.uProj.value, (0.25 + 0.5 * night) * (1 - globeO * 0.6) / exposure)
+        // the floating specks of light belong to the page; at the helm they look like dirt on the lens
+        if (motes) {
+            motes.points.visible = !(drive && drive.active)
+            motes.update(t, camera.position, argus.points.uProj.value, (0.25 + 0.5 * night) * (1 - globeO * 0.6) / exposure)
+        }
 
         // ---- the camera: exposure, bloom, sun rays and flare ----
         const g = post.grade.uniforms
@@ -920,8 +929,10 @@ export async function startScene({ reduced = false } = {}) {
         g.uSunCol.value.copy(S.sunColor)
         // sun rays and flare where you look around freely (the first screen and driving), not behind text
         const freeLook = drive && drive.active ? 1 : hero ? hero.w : 0
-        g.uRays.value = reduced ? 0 : 0.9 * (1 - smooth(clamp((S.elev - 6) / 18))) * freeLook
-        g.uFlare.value = freeLook
+        // at the helm you look into the sun a lot: rays and flare a little softer
+        const helm = drive && drive.active ? 0.55 : 1
+        g.uRays.value = reduced ? 0 : 0.9 * (1 - smooth(clamp((S.elev - 6) / 18))) * freeLook * helm
+        g.uFlare.value = freeLook * helm
 
         // 1) the mirror image, 2) the scene, bloom and grade
         if (wu.uReflectOn.value > 0) renderReflection()
@@ -1084,6 +1095,10 @@ export async function startScene({ reduced = false } = {}) {
             },
             get props() {
                 return props
+            },
+            landHeight: (x, z) => (terrainMod ? terrainMod.landHeight(x, z) : null),
+            get colliders() {
+                return terrainMod ? terrainMod.COLLIDERS : []
             },
             setIntro: (v) => {
                 introFixed = v
