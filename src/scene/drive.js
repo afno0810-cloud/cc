@@ -24,7 +24,7 @@ const RADAR_RANGE = 170
 
 // Argus in scene units: half length and half width of the outline of the two hulls
 const HALF_L = 3.1
-const HALF_W = 2.55
+const HALF_W = 2.7
 
 export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, colliders, buoys, spray, onPing, reduced }) {
     const state = {

@@ -44,14 +44,14 @@ const ease = (t) => 1 - Math.pow(1 - clamp(t), 3)
 /* Where the parts are on the Argus model (model units, centred model, bow = +x).
    Measured on the Higgsfield mesh (Tripo, from four views made from our photos). a/e = camera angle and height that show the part. */
 export const PARTS = {
-    lidar: { label: "LiDAR", p: [0.0, 0.28, 0.0], a: 0.7, e: 4.6 },
-    gnss: { label: "Seapath 130 · GNSS", p: [-0.42, 0.13, 0.29], a: 2.0, e: 3.2 },
-    camera: { label: "Stereo depth camera", p: [0.14, 0.14, 0.0], a: 0.25, e: 2.2 },
-    case: { label: "Electronics case", p: [0.0, 0.2, -0.18], a: -1.2, e: 3 },
-    hull: { label: "Two hulls", p: [0.28, 0.0, -0.39], a: -0.6, e: 1.6 },
-    props: { label: "Four propellers", p: [-0.35, -0.23, 0.29], a: 2.7, e: 0.9 },
-    pixhawk: { label: "Pixhawk", p: [0.04, 0.26, 0.05], a: -0.3, e: 5.5 },
-    link: { label: "5G link", p: [-0.06, 0.26, -0.05], a: -1.8, e: 5 },
+    lidar: { label: "LiDAR", p: [-0.052, 0.373, 0.02], a: 0.7, e: 4.6 },
+    gnss: { label: "Seapath 130 · GNSS", p: [-0.416, 0.183, 0.296], a: 2.0, e: 3.2 },
+    camera: { label: "Stereo depth camera", p: [0.204, 0.217, 0.0], a: 0.25, e: 2.2 },
+    case: { label: "Electronics case", p: [0.008, 0.273, -0.152], a: -1.2, e: 3 },
+    hull: { label: "Two hulls", p: [0.224, 0.079, -0.424], a: -0.6, e: 1.6 },
+    props: { label: "Four propellers", p: [-0.368, -0.355, 0.296], a: 2.7, e: 0.9 },
+    pixhawk: { label: "Pixhawk", p: [0.048, 0.333, -0.04], a: -0.3, e: 5.5 },
+    link: { label: "5G link", p: [-0.032, 0.333, 0.064], a: -1.8, e: 5 },
 }
 
 const emit = (name, detail) => window.dispatchEvent(new CustomEvent(name, { detail }))
@@ -78,6 +78,10 @@ export async function startScene({ reduced = false } = {}) {
     renderer.setSize(innerWidth, innerHeight, false)
     renderer.outputColorSpace = THREE.SRGBColorSpace
     renderer.setClearColor(0x000000)
+    // the sun casts shadows on the boat (the case and frame on the hulls); drawn once per frame
+    renderer.shadowMap.enabled = true
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap
+    renderer.shadowMap.autoUpdate = false
 
     const scene = new THREE.Scene()
     const camera = new THREE.PerspectiveCamera(38, innerWidth / innerHeight, 0.5, 60000)
@@ -98,6 +102,14 @@ export async function startScene({ reduced = false } = {}) {
     const moonLight = new THREE.DirectionalLight(new THREE.Color(0.62, 0.7, 1.0), 0)
     moonLight.position.copy(MOON).multiplyScalar(1000)
     scene.add(sunLight, sunLight.target, moonLight)
+    // a small, sharp shadow map that follows the boat
+    sunLight.castShadow = true
+    sunLight.shadow.mapSize.set(lowPower ? 1024 : 2048, lowPower ? 1024 : 2048)
+    Object.assign(sunLight.shadow.camera, { left: -5.5, right: 5.5, top: 5.5, bottom: -5.5, near: 1, far: 120 })
+    sunLight.shadow.camera.updateProjectionMatrix()
+    sunLight.shadow.bias = -0.0004
+    sunLight.shadow.normalBias = 0.025
+    sunLight.shadow.radius = 2
     let zenLum = 0.1
     const lumOf = (c) => c.r * 0.2126 + c.g * 0.7152 + c.b * 0.0722
     const zenC = new THREE.Color()
@@ -148,7 +160,7 @@ export async function startScene({ reduced = false } = {}) {
     const model = argus.model
     model.scale.setScalar(SCALE)
     // waterline: a little below the middle of the hulls (the thrusters hang under the water)
-    model.position.y = 0.06 * SCALE
+    model.position.y = 0.0575 * SCALE
     boat.add(model)
 
     // soft round light for the navigation lights
@@ -170,8 +182,8 @@ export async function startScene({ reduced = false } = {}) {
 
     // navigation lights for the night: red to port, green to starboard, white on top
     const navLights = [
-        [0.47, 0.085, -0.29, 0xff3a2a],
-        [0.47, 0.085, 0.29, 0x3aff6a],
+        [0.49, 0.13, -0.296, 0xff3a2a],
+        [0.49, 0.13, 0.296, 0x3aff6a],
     ].map(([x, y, z, c]) => {
         const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: new THREE.Color(c).multiplyScalar(2.5), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }))
         s.scale.setScalar(0.05)
@@ -867,7 +879,8 @@ export async function startScene({ reduced = false } = {}) {
         sky.uniforms.uDim.value = lerp(1, dim, 0.6)
         // behind text the sun is only a glow, not a blinding disc
         sky.uniforms.uSunVis.value = 0.15 + 0.85 * freeLookNow
-        wu.uGlit.value = 0.3 + 0.7 * freeLookNow
+        // the sun glitter: full on the first screen, a little less at the helm where you often face the sun
+        wu.uGlit.value = (0.3 + 0.7 * freeLookNow) * (drive && drive.active ? 0.6 : 1)
         sky.update(t)
         beam.position.set(boat.position.x, 0.25, boat.position.z)
         beam.rotation.y = sweep
@@ -933,6 +946,12 @@ export async function startScene({ reduced = false } = {}) {
         const helm = drive && drive.active ? 0.55 : 1
         g.uRays.value = reduced ? 0 : 0.9 * (1 - smooth(clamp((S.elev - 6) / 18))) * freeLook * helm
         g.uFlare.value = freeLook * helm
+
+        // the sun's shadow follows the boat (none at night or while the boat is still a point cloud)
+        sunLight.position.copy(S.dir).multiplyScalar(50).add(boat.position)
+        sunLight.target.position.copy(boat.position)
+        sunLight.castShadow = S.elev > 0.3 && boat.visible && cut > CUT_ALL_SOLID - 0.02
+        renderer.shadowMap.needsUpdate = sunLight.castShadow
 
         // 1) the mirror image, 2) the scene, bloom and grade
         if (wu.uReflectOn.value > 0) renderReflection()
@@ -1109,6 +1128,9 @@ export async function startScene({ reduced = false } = {}) {
         }
 
     await argus.ready
+    model.traverse((o) => {
+        if (o.isMesh) o.castShadow = o.receiveShadow = true
+    })
     resize()
     emit("scene:ready")
     // the page's loader decides when the show starts (it waits for the fonts and a minimum time)

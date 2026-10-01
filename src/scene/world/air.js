@@ -107,6 +107,10 @@ export function withAir(material, { windows = false, terrain = false } = {}) {
                         float win = step(0.3, f.x) * step(f.x, 0.72) * step(0.35, f.y) * step(f.y, 0.78);
                         float on = step(0.76, airHash(cell + floor(vAirPos.xz / 40.0)));
                         totalEmissiveRadiance += vec3(1.0, 0.72, 0.42) * win * on * wall * uNight * 0.7;
+                        // by day: dark glass in light frames, so the walls read as houses, not boxes
+                        float frame = step(0.24, f.x) * step(f.x, 0.78) * step(0.29, f.y) * step(f.y, 0.84) * (1.0 - win);
+                        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.78, 0.78, 0.75), frame * wall * 0.6);
+                        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.035, 0.045, 0.055), win * wall * 0.85);
                         // facades a touch darker under the roofs
                         diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.045, 0.045, 0.05), vRoof);
                     }`

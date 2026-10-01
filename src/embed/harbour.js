@@ -57,6 +57,9 @@ export function mountHarbour(el, options = {}) {
     const dpr = Math.min(devicePixelRatio || 1, lowPower ? 1.25 : 1.5)
     renderer.setPixelRatio(dpr)
     renderer.outputColorSpace = THREE.SRGBColorSpace
+    renderer.shadowMap.enabled = true
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap
+    renderer.shadowMap.autoUpdate = false
     const scene = new THREE.Scene()
     const camera = new THREE.PerspectiveCamera(38, 1, 0.5, 60000)
 
@@ -73,6 +76,14 @@ export function mountHarbour(el, options = {}) {
     const moonLight = new THREE.DirectionalLight(new THREE.Color(0.62, 0.7, 1.0), 0)
     moonLight.position.copy(MOON).multiplyScalar(1000)
     scene.add(sunLight, sunLight.target, moonLight)
+    // the sun casts shadows on the boat (the case and frame on the hulls)
+    sunLight.castShadow = true
+    sunLight.shadow.mapSize.set(lowPower ? 1024 : 2048, lowPower ? 1024 : 2048)
+    Object.assign(sunLight.shadow.camera, { left: -5.5, right: 5.5, top: 5.5, bottom: -5.5, near: 1, far: 120 })
+    sunLight.shadow.camera.updateProjectionMatrix()
+    sunLight.shadow.bias = -0.0004
+    sunLight.shadow.normalBias = 0.025
+    sunLight.shadow.radius = 2
 
     // water
     const water = createWater({ lowPower })
@@ -106,7 +117,7 @@ export function mountHarbour(el, options = {}) {
     const SCALE = 6.2
     const argus = createArgus({ renderer, lowPower, url: o.models + (lowPower ? "argus-lite.glb" : "argus.glb") })
     argus.model.scale.setScalar(SCALE)
-    argus.model.position.y = 0.06 * SCALE
+    argus.model.position.y = 0.0575 * SCALE
     boat.add(argus.model)
     let cut = o.scan && !reduced ? CUT_ALL_CLOUD : CUT_ALL_SOLID
     if (!(o.scan && !reduced)) argus.points.uAssemble.value = 1
@@ -238,7 +249,10 @@ export function mountHarbour(el, options = {}) {
         sky.skyAt(0, 1, 0, zenC)
         zenLum += (lumOf(zenC) - zenLum) * 0.2
         sunLight.color.copy(S.sunColor)
-        sunLight.position.copy(S.dir).multiplyScalar(1000)
+        sunLight.position.copy(S.dir).multiplyScalar(50).add(boat.position)
+        sunLight.target.position.copy(boat.position)
+        sunLight.castShadow = S.elev > 0.3 && cut > CUT_ALL_SOLID - 0.02
+        renderer.shadowMap.needsUpdate = sunLight.castShadow
         moonLight.intensity = night * 0.35
         const expWant = clamp(Math.pow(0.1 / Math.max(zenLum, 1e-4), 0.5), 0.85, 4.2)
         exposure += (expWant - exposure) * (1 - Math.exp(-dt * 3))
@@ -333,6 +347,9 @@ export function mountHarbour(el, options = {}) {
         }
     }
     argus.ready.then(() => {
+        argus.model.traverse((o) => {
+            if (o.isMesh) o.castShadow = o.receiveShadow = true
+        })
         if (!dead) raf = requestAnimationFrame(frame)
     })
 

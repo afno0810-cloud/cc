@@ -260,6 +260,24 @@ export function createWater({ lowPower = false } = {}) {
                 float glit = pow(nh, 1400.0) * 22.0 + pow(nh, 160.0) * 0.35;
                 col += uSunCol * uSunPower * glit * F * 3.0 * step(0.0, uSun.y) * uGlit;
 
+                // the water is darker right against the hulls (they shade it and hide the sky)
+                if (uBoatOn > 0.0) {
+                    vec2 d0 = p - uBoat;
+                    vec2 lq = vec2(dot(d0, uBoatDir), dot(d0, vec2(-uBoatDir.y, uBoatDir.x)));
+                    float contact = 0.0;
+                    for (int k = 0; k < 2; k++) {
+                        float side = k == 0 ? 1.84 : -1.84;
+                        vec2 q = abs(vec2(lq.x, lq.y - side)) - vec2(2.75, 0.45);
+                        float dd = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - 0.34;
+                        contact = max(contact, exp(-max(dd, 0.0) * 1.6));
+                    }
+                    // and between the hulls, under the frame
+                    vec2 qm = abs(lq) - vec2(2.2, 1.0);
+                    float dm = length(max(qm, 0.0)) + min(max(qm.x, qm.y), 0.0);
+                    contact = max(contact, 0.6 * exp(-max(dm, 0.0) * 1.2));
+                    col *= 1.0 - 0.38 * contact * uBoatOn;
+                }
+
                 // foam: around the two hulls and behind the boat
                 float foam = rippleFoam;
                 if (uBoatOn > 0.0) {

@@ -77,23 +77,29 @@ def blur(a, r):
     return np.asarray(im.filter(ImageFilter.GaussianBlur(r))).astype(np.float32) / 255.0
 
 
-# ---------- hull: u along the hull (x), v around the cross-section (y) ----------
-mott = fbm(N, 4, 5, 1)  # soft unevenness of a hand-laid hull
-fibre = fbm(N, 3, 3, 2)
-fibre = 0.5 + 0.5 * np.sin(np.arange(N)[:, None] * 0.9 + fibre * 30.0)  # faint lines along the hull
-scuff_big = np.clip((fbm(N, 6, 4, 3) - 0.62) * 4.0, 0, 1)  # dull scuffed patches
-scr = streaks(N, "x", 260, 4, (0.01, 0.08)) * (rng.random((N, N)) > 0.2)
+# ---------- hull: u along the hull (x), v around the cross-section ----------
+# white paint over cloth: soft lumps, creases where the cloth folded, faint weave, scuffs
+mott = fbm(N, 4, 5, 1)
+weave = 0.5 + 0.25 * np.sin(np.arange(N)[None, :] * 1.7) + 0.25 * np.sin(np.arange(N)[:, None] * 1.9)
+# creases: long thin ridges, mostly along the hull, a few at an angle
+creases = np.zeros((N, N), np.float32)
+for i, (cnt, ang, ln) in enumerate([(70, "x", (0.04, 0.22)), (25, "y", (0.03, 0.1))]):
+    creases = np.maximum(creases, streaks(N, ang, cnt, 20 + i, ln, width=2))
+creases = blur(creases, 2.2)
+scuff_big = np.clip((fbm(N, 6, 4, 3) - 0.6) * 4.0, 0, 1)
+scr = streaks(N, "x", 180, 4, (0.01, 0.06)) * (rng.random((N, N)) > 0.25)
 scr = blur(scr, 0.6)
-dents = np.clip((fbm(N, 10, 3, 5) - 0.7) * 3.0, 0, 1)
+dirt = np.clip((fbm(N, 3, 4, 9) - 0.55) * 2.5, 0, 1)
 
-base = np.array([0.905, 0.895, 0.87], np.float32)  # sRGB-ish gelcoat
-alb = base[None, None, :] * (0.955 + 0.06 * mott[..., None]) * (0.995 + 0.01 * fibre[..., None])
-alb *= 1 - 0.07 * scuff_big[..., None]
-alb = alb * (1 - 0.18 * scr[..., None]) + np.array([0.55, 0.53, 0.5]) * 0.0
+base = np.array([0.93, 0.925, 0.905], np.float32)
+alb = base[None, None, :] * (0.96 + 0.05 * mott[..., None]) * (0.99 + 0.012 * weave[..., None])
+alb *= 1 - 0.06 * scuff_big[..., None] - 0.05 * dirt[..., None] * np.array([1.0, 1.0, 1.25])[None, None, :]
+alb *= 1 - 0.1 * scr[..., None]
+alb *= 1 - 0.04 * creases[..., None]
 save("hull_albedo.jpg", (np.clip(alb, 0, 1) * 255).astype(np.uint8))
-hh = mott * 0.6 + dents * 0.8 - scr * 0.5 + fibre * 0.05
-save("hull_normal.jpg", height_to_normal(blur(hh, 1.2), 2.2))
-rough = 0.28 + 0.18 * scuff_big + 0.25 * scr + 0.06 * mott
+hh = mott * 0.9 + creases * 1.6 - scr * 0.4 + weave * 0.03
+save("hull_normal.jpg", height_to_normal(blur(hh, 1.0), 2.6))
+rough = 0.55 + 0.15 * scuff_big + 0.15 * scr + 0.08 * mott
 orm = np.stack([np.ones_like(rough), rough, np.zeros_like(rough)], -1)
 save("hull_orm.jpg", (np.clip(orm, 0, 1) * 255).astype(np.uint8))
 
