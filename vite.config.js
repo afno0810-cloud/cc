@@ -25,6 +25,7 @@ const PAGES = [
     "competitions/roboboat/index.html",
     "sponsor/index.html",
     "join/index.html",
+    "game/index.html",
     "404.html",
 ]
 

@@ -2153,3 +2153,11 @@ html.has-scene .ft-harbour {
     background: #121019;
     border-color: #121019;
 }
+
+/* the game page (/game/) is only the drive mode: nothing to go back to */
+body[data-game] .hud-exit,
+body[data-game] .drive-fab,
+body[data-game] .nav,
+body[data-game] .menu {
+    display: none;
+}

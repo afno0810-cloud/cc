@@ -168,7 +168,7 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, b
         if (!state.active) return
         const k = e.key.toLowerCase()
         if (e.type === "keydown") {
-            if (k === "escape") return stop()
+            if (k === "escape") return document.body.hasAttribute("data-game") ? undefined : stop()
             if (k === "t") cycleTime()
             if (k === " ") {
                 ping = performance.now() / 1000

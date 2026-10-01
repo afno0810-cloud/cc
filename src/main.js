@@ -21,6 +21,8 @@ grain.className = "grain"
 grain.setAttribute("aria-hidden", "true")
 document.body.append(grain)
 window.addEventListener("scene:ready", () => document.documentElement.classList.add("has-scene"), { once: true })
+// the game page (/game/) is only the drive mode: take the helm as soon as the harbour is ready
+if (document.body.hasAttribute("data-game")) window.addEventListener("scene:ready", () => setTimeout(() => dispatchEvent(new Event("drive:start")), 200), { once: true })
 
 // ---------- loader (pages with a 3D first screen) ----------
 // Waits for the boat model and the fonts, at least a short moment, at most a few seconds.

@@ -37,6 +37,7 @@ const ROUTES = {
     "/competitions/roboboat/": "roboboat",
     "/sponsor/": "sponsor",
     "/join/": "join",
+    "/game/": "game",
 }
 
 const escAttr = (s) => s.replace(/&/g, "&amp;").replace(/'/g, "&#39;")
