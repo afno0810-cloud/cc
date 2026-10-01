@@ -5,7 +5,7 @@ import { addPropertyControls, ControlType, useIsStaticRenderer } from "framer"
 // Request: "har du muligheten til og legge noen av 3d animasjonenen fra denne siden til framer nettsiden"
 // The 3D globe with the route Trondheim → Sarasota from the new Marinor site, as a Framer code component.
 // The 3D code is served from the repo by jsDelivr, pinned to one commit.
-const BASE = "https://cdn.jsdelivr.net/gh/afno0810-cloud/cc@7abb778df1fab6e6ba401507c15444f7ad236721/"
+const BASE = "https://cdn.jsdelivr.net/gh/afno0810-cloud/cc@a4938793c077c4a0696fc7796cfcf2855501752b/"
 const LIB = BASE + "framer/marinor-3d.js"
 const POSTER = BASE + "framer/globe-poster.jpg"
 
