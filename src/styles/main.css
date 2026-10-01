@@ -2001,9 +2001,285 @@ html.is-driving .hotspot {
     background: rgba(232, 238, 248, 0.85);
     box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
 }
+/* ---- missions: the list, the bar with the clock, messages and the result ---- */
+.hud-missions,
+.hud-result {
+    position: absolute;
+    z-index: 3;
+    left: 50%;
+    top: 50%;
+    width: min(540px, calc(100% - 2 * var(--gut)));
+    max-height: calc(100% - 150px);
+    overflow: auto;
+    transform: translate(-50%, -46%);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: auto;
+    padding: 22px;
+    border-radius: 18px;
+    background: rgba(10, 13, 20, 0.72);
+    border: 1px solid rgba(232, 238, 248, 0.16);
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    transition:
+        opacity 0.3s ease,
+        transform 0.4s var(--ease-2),
+        visibility 0s linear 0.4s;
+}
+.hud-missions.is-on,
+.hud-result.is-on {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(-50%, -50%);
+    transition:
+        opacity 0.3s ease,
+        transform 0.4s var(--ease-2);
+}
+.hm-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+.hm-head h2,
+.hud-result h2 {
+    margin: 0;
+    font: 700 30px/1 var(--display);
+    letter-spacing: 0.01em;
+    text-transform: uppercase;
+}
+.hm-head span,
+.hr-tag {
+    font: 500 11px/1 var(--mono);
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: rgba(159, 212, 255, 0.85);
+}
+.hm-list {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.hm-item {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    padding: 14px 16px;
+    border-radius: 12px;
+    border: 1px solid rgba(232, 238, 248, 0.12);
+    background: rgba(255, 255, 255, 0.04);
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition:
+        border-color 0.2s ease,
+        background-color 0.2s ease;
+}
+.hm-item:hover,
+.hm-item:focus-visible {
+    border-color: rgba(242, 194, 48, 0.7);
+    background: rgba(255, 255, 255, 0.08);
+}
+.hm-n {
+    font: 500 12px/1 var(--mono);
+    color: #f2c230;
+}
+.hm-body {
+    display: grid;
+    gap: 4px;
+}
+.hm-body b {
+    font-size: 15.5px;
+}
+.hm-body span {
+    font-size: 13px;
+    line-height: 1.4;
+    color: rgba(232, 238, 248, 0.7);
+}
+.hm-best {
+    font: 500 11px/1.3 var(--mono);
+    color: rgba(232, 238, 248, 0.55);
+    text-align: right;
+    white-space: nowrap;
+}
+.hm-best b {
+    display: block;
+    font-size: 14px;
+    color: #e8eef8;
+    font-variant-numeric: tabular-nums;
+}
+.hm-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 14px;
+    font: 500 11px/1 var(--mono);
+    letter-spacing: 0.06em;
+    color: rgba(232, 238, 248, 0.55);
+}
+.hud-mission {
+    position: absolute;
+    z-index: 2;
+    left: 50%;
+    top: calc(18px + env(safe-area-inset-top, 0px));
+    display: none;
+    align-items: center;
+    gap: 14px;
+    transform: translateX(-50%);
+    padding: 8px 8px 8px 16px;
+    border-radius: 999px;
+    background: rgba(10, 13, 20, 0.62);
+    border: 1px solid rgba(232, 238, 248, 0.16);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    font: 500 12px/1 var(--mono);
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+    pointer-events: auto;
+}
+.hud-mission.is-on {
+    display: flex;
+}
+.hmb-name {
+    font: 600 13px/1 var(--body);
+    letter-spacing: 0;
+}
+.hmb-step {
+    color: rgba(159, 212, 255, 0.95);
+}
+.hmb-time {
+    min-width: 6ch;
+    font-size: 16px;
+    font-variant-numeric: tabular-nums;
+    color: #f2c230;
+}
+.hmb-pen {
+    color: #ff8a6c;
+}
+.hmb-pen:empty {
+    display: none;
+}
+.hmb-stop {
+    padding: 7px 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(232, 238, 248, 0.22);
+    background: transparent;
+    color: inherit;
+    font: 600 12px/1 var(--body);
+    cursor: pointer;
+}
+.hmb-stop:hover,
+.hmb-stop:focus-visible {
+    border-color: rgba(242, 194, 48, 0.75);
+}
+/* with a mission running, the HUD buttons make room for the bar on narrow screens */
+@media (max-width: 1100px) {
+    .hud-mission {
+        top: calc(74px + env(safe-area-inset-top, 0px));
+    }
+}
+.hud-flash {
+    position: absolute;
+    z-index: 2;
+    left: 50%;
+    top: 30%;
+    transform: translate(-50%, -50%) scale(0.92);
+    opacity: 0;
+    font: 700 34px/1 var(--display);
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    text-align: center;
+    color: #e8eef8;
+    text-shadow: 0 2px 24px rgba(0, 0, 0, 0.55);
+    pointer-events: none;
+    transition:
+        opacity 0.25s ease,
+        transform 0.35s var(--ease-2);
+}
+.hud-flash.is-on {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+}
+.hud-flash.is-count {
+    font-size: 88px;
+    color: #f2c230;
+}
+.hud-flash.is-good {
+    color: #9fe3b5;
+}
+.hud-flash.is-bad {
+    color: #ff8a6c;
+}
+.hud-result {
+    text-align: center;
+}
+.hud-result h2 {
+    margin-top: 10px;
+}
+.hr-time {
+    margin: 14px 0 6px;
+    font: 500 54px/1 var(--mono);
+    font-variant-numeric: tabular-nums;
+    color: #f2c230;
+}
+.hr-sub {
+    margin: 0 0 18px;
+    font-size: 13.5px;
+    color: rgba(232, 238, 248, 0.75);
+}
+.hr-sub b {
+    color: #9fe3b5;
+}
+.hr-btns {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.hr-main {
+    border-color: rgba(242, 194, 48, 0.75);
+}
+@media (max-width: 640px) {
+    .hud-missions,
+    .hud-result {
+        padding: 16px;
+        max-height: calc(100% - 210px);
+    }
+    .hm-item {
+        grid-template-columns: 1fr auto;
+        gap: 10px;
+        padding: 12px;
+    }
+    .hm-n {
+        display: none;
+    }
+    .hud-mission {
+        top: calc(166px + env(safe-area-inset-top, 0px));
+        gap: 10px;
+        padding-left: 12px;
+    }
+    .hmb-name {
+        display: none;
+    }
+    .hud-flash.is-count {
+        font-size: 64px;
+    }
+}
+
 @media (hover: none), (pointer: coarse) {
     .hud-stick {
         display: block;
+    }
+    .hud-btn kbd {
+        display: none;
     }
     .hud-help {
         display: none;

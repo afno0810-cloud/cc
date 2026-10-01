@@ -254,6 +254,7 @@ export function createSky(renderer, { lowPower = false } = {}) {
         uSun: { value: state.dir },
         uNight: { value: 0 },
         uMs: { value: new THREE.Vector3() },
+        uOver: { value: 0 }, // 0 clear … 1 overcast: a grey sky, brightest overhead
     }
     const bakeMat = new THREE.ShaderMaterial({
         uniforms: bakeU,
@@ -263,12 +264,19 @@ export function createSky(renderer, { lowPower = false } = {}) {
         fragmentShader: /* glsl */ `
             ${ATMOSPHERE_GLSL}
             ${PANO_GLSL}
-            uniform vec3 uSun; uniform float uNight;
+            uniform vec3 uSun; uniform float uNight; uniform float uOver;
             varying vec2 vUv;
             void main() {
                 vec3 d = panoDir(vUv);
                 vec3 dd = normalize(vec3(d.x, max(d.y, 0.0015), d.z));
                 vec3 col = atmosphere(dd, uSun, ${SUN_POWER.toFixed(1)});
+                // overcast: the cloud deck spreads the light evenly, three times brighter overhead than at the horizon
+                if (uOver > 0.0) {
+                    vec3 zen = atmosphere(vec3(0.0, 1.0, 0.0), uSun, ${SUN_POWER.toFixed(1)});
+                    float L = dot(zen, vec3(0.2126, 0.7152, 0.0722)) * 1.15 + 0.0004;
+                    vec3 grey = vec3(0.93, 0.96, 1.0) * L * (1.0 + 2.0 * max(dd.y, 0.0)) / 3.0;
+                    col = mix(col, grey, uOver);
+                }
                 // the night sky is not black: airglow and starlight
                 col += vec3(0.0045, 0.007, 0.015) * (0.4 + 0.6 * smoothstep(-0.1, 0.6, d.y)) * uNight;
                 // below the horizon: the land and the water under this sky
@@ -513,8 +521,14 @@ export function createSky(renderer, { lowPower = false } = {}) {
         stars.material.uniforms.uOpacity.value = THREE.MathUtils.smoothstep(-elev, 3, 11)
     }
 
+    let over = 0
+    let lastOverEnv = 0
+    function setOvercast(v) {
+        over = v
+        bakeU.uOver.value = v
+    }
     function bake(force = false) {
-        const key = `${state.elev.toFixed(2)}|${state.azim.toFixed(1)}`
+        const key = `${state.elev.toFixed(2)}|${state.azim.toFixed(1)}|${over.toFixed(2)}`
         if (key === lastBake && !force) return false
         lastBake = key
         const prev = renderer.getRenderTarget()
@@ -525,8 +539,9 @@ export function createSky(renderer, { lowPower = false } = {}) {
         skyAt(0, 1, 0, ambient)
         U.uAmbient.value.copy(ambient).multiplyScalar(1.4)
         // the lighting is rebuilt less often: it is slow and changes slowly
-        if (force || lastEnv === null || Math.abs(state.elev - lastEnv) > 0.6) {
+        if (force || lastEnv === null || Math.abs(state.elev - lastEnv) > 0.6 || Math.abs(over - lastOverEnv) > 0.04) {
             lastEnv = state.elev
+            lastOverEnv = over
             const old = env
             renderer.setRenderTarget(envSrc)
             renderer.render(copyScene, bakeCam)
@@ -542,7 +557,14 @@ export function createSky(renderer, { lowPower = false } = {}) {
     function skyAt(x, y, z, out = new THREE.Color()) {
         const v = atmosphereJS([x, Math.max(y, 0.0015), z], [state.dir.x, state.dir.y, state.dir.z], SUN_POWER, ms)
         const n = state.night * (0.4 + 0.6 * THREE.MathUtils.smoothstep(y, -0.1, 0.6))
-        return out.setRGB(v[0] + 0.0045 * n, v[1] + 0.007 * n, v[2] + 0.015 * n)
+        out.setRGB(v[0] + 0.0045 * n, v[1] + 0.007 * n, v[2] + 0.015 * n)
+        if (over > 0) {
+            const z = atmosphereJS([0, 1, 0], [state.dir.x, state.dir.y, state.dir.z], SUN_POWER, ms)
+            const L = (z[0] * 0.2126 + z[1] * 0.7152 + z[2] * 0.0722) * 1.15 + 0.0004
+            const k = (L * (1 + 2 * Math.max(y, 0))) / 3
+            out.lerp(new THREE.Color(0.93 * k, 0.96 * k, k), over)
+        }
+        return out
     }
 
     return {
@@ -558,11 +580,16 @@ export function createSky(renderer, { lowPower = false } = {}) {
         ambient,
         skyAt,
         setSun,
+        setOvercast,
         bake,
         update(t) {
             U.uTime.value = t
             stars.material.uniforms.uTime.value = t
-            const on = THREE.MathUtils.smoothstep(state.night, 0.55, 0.95)
+            // under a cloud deck there are no stars and no northern lights
+            const clear = 1 - THREE.MathUtils.smoothstep(over, 0.2, 0.7)
+            stars.material.uniforms.uOpacity.value = THREE.MathUtils.smoothstep(-state.elev, 3, 11) * clear
+            stars.visible = stars.material.uniforms.uOpacity.value > 0.005
+            const on = THREE.MathUtils.smoothstep(state.night, 0.55, 0.95) * clear
             aurora.visible = on > 0.01
             for (const m of aurora.children) {
                 m.material.uniforms.uTime.value = t

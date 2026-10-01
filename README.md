@@ -134,3 +134,11 @@ After changing the site, run `npm run build:pages`, then commit and push `docs/`
 - **Light**: the sun casts shadows on the boat (a shadow map that follows it), the water darkens against the hulls, the town has windows by day too.
 - **Solid world**: the whole hull collides with the shore, the quay, the wharves, the moored boats and the pontoon (`COLLIDERS` in `terrain.js`, `colliders` in `props.js`) and slides along them.
 - **Trondheim from the water**: a row of painted wharf houses on piles with windows that light up at night (`createWharfRow` in `terrain.js`), town colours, forest texture on the hills, northern lights on clear nights (`sky.js`).
+
+## Weather, missions and harbour life (round 7)
+
+- **Weather** (`V` or the Weather button at the helm): clear, cloudy, fog and rain. The sky panorama is baked with a grey cloud deck (`setOvercast` in `sky.js`), the air and the water fog close in, the sun and its shadows fade, rain falls past the camera (`world/rain.js`), drops ring the water and the sea gets choppier (`uRain`, `uChop` in `sea.js`), and the boat goes wet and glossy (`uWetAll` in `argus.js`). The site pages are always clear.
+- **Missions** (`M` or the Missions button; the game page opens with the list), after the Njord tasks, in `src/scene/missions.js`: Gates (red to port, green to starboard), Buoy channel, Give way (a boat crosses from starboard: pass behind it), and Docking (find the berth with the tag and stop in it, bow first). A countdown, a clock, +5 s for each buoy touched, +10 s for not giving way or for a collision, a light pillar and a line on the water at the next target, a blue mark on the compass and the radar. Best times are kept in the browser.
+- **Harbour life**: two small boats go round the harbour on slow loops; they are solid (`traffic` in `props.js`).
+- **Argus**: wet and darker at the waterline, dust and scuffs on the case, rain streaks on the hulls.
+- **Edges**: the mirror image in the water is softened (no stair steps), and phones without multisampling get FXAA (`post.js`).

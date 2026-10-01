@@ -41,6 +41,8 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
         camPos: new THREE.Vector3(),
         camLook: new THREE.Vector3(),
         sunElev: 12,
+        locked: false, // no throttle or steering (a countdown)
+        target: null, // { x, z }: where the mission wants you next (compass and radar)
         outBlend: 0, // 1 → 0 after leaving, so the page camera takes over smoothly
     }
     const keys = new Set()
@@ -57,6 +59,14 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
     let ping = -10
     const TIMES = [16, 5, 0.5, -3.5, -10]
     let timeI = 0
+    // the weather: how grey the sky is, how thick the fog, how hard it rains
+    const WEATHERS = [
+        { name: "Clear", over: 0, fog: 0, rain: 0 },
+        { name: "Cloudy", over: 0.75, fog: 0.15, rain: 0 },
+        { name: "Fog", over: 0.9, fog: 1, rain: 0 },
+        { name: "Rain", over: 1, fog: 0.45, rain: 1 },
+    ]
+    let weatherI = 0
 
     // ---- the HUD ----
     const hud = document.createElement("div")
@@ -69,11 +79,12 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
             <span class="hud-tag"><i></i>Drive Argus</span>
             <div class="hud-actions">
                 <button type="button" class="hud-btn" data-hud="time">Time of day</button>
+                <button type="button" class="hud-btn" data-hud="weather">Weather: <span class="hud-weather">Clear</span></button>
                 <button type="button" class="hud-btn" data-hud="sound" aria-pressed="false">Sound</button>
                 <button type="button" class="hud-btn hud-exit" data-hud="exit">Exit <kbd>Esc</kbd></button>
             </div>
         </div>
-        <p class="hud-help"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrows to drive · <kbd>Q</kbd><kbd>E</kbd> turn the boat as it goes · <kbd>Shift</kbd> more power · <kbd>Space</kbd> LiDAR ping · drag to look around</p>
+        <p class="hud-help"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrows to drive · <kbd>Q</kbd><kbd>E</kbd> turn the boat as it goes · <kbd>Shift</kbd> more power · <kbd>Space</kbd> LiDAR ping · <kbd>T</kbd> time · <kbd>V</kbd> weather · drag to look around</p>
         <div class="hud-bottom">
             <div class="hud-gauges">
                 <div class="hud-gauge"><span>Throttle</span><i><b class="hud-thr"></b></i></div>
@@ -100,6 +111,7 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
     const compass = hud.querySelector(".hud-compass").getContext("2d")
     const radar = hud.querySelector(".hud-radar").getContext("2d")
     const soundBtn = hud.querySelector('[data-hud="sound"]')
+    const weatherEl = hud.querySelector(".hud-weather")
     const stickEl = hud.querySelector(".hud-stick")
     const stickKnob = stickEl.querySelector("i")
 
@@ -109,11 +121,16 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
         const what = b.dataset.hud
         if (what === "exit") stop()
         if (what === "time") cycleTime()
+        if (what === "weather") cycleWeather()
         if (what === "sound") setSound(!soundOn)
     })
     function cycleTime() {
         timeI = (timeI + 1) % TIMES.length
         state.sunElev = TIMES[timeI]
+    }
+    function cycleWeather() {
+        weatherI = (weatherI + 1) % WEATHERS.length
+        weatherEl.textContent = WEATHERS[weatherI].name
     }
 
     // look around: drag anywhere
@@ -181,6 +198,7 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
         if (e.type === "keydown") {
             if (k === "escape") return document.body.hasAttribute("data-game") ? undefined : stop()
             if (k === "t") cycleTime()
+            if (k === "v") cycleWeather()
             if (k === " ") {
                 ping = performance.now() / 1000
                 onPing && onPing(state.pos)
@@ -454,6 +472,11 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
         st += -stick.x
         th = clamp(th, -1, 1)
         st = clamp(st, -1, 1)
+        if (state.locked) {
+            th = 0
+            st = 0
+            spin = 0
+        }
         const boost = keys.has("shift")
         thr += (th - thr) * (1 - Math.exp(-dt * 4))
 
@@ -568,6 +591,27 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
         }
         c.fillStyle = "#f2c230"
         c.fillRect(W / 2 - 1.5, 0, 3, 24)
+        // the way to the next mission target: a blue mark, or an arrow at the edge
+        if (state.target) {
+            const tb = ((Math.atan2(state.target.x - state.pos.x, state.target.z - state.pos.z) * 180) / Math.PI + 360) % 360
+            let d = ((tb - bearing + 540) % 360) - 180
+            const lim = (W / 2 - 14) / 3.4
+            const x = W / 2 + clamp(d, -lim, lim) * 3.4
+            c.fillStyle = "#7cc4ff"
+            c.beginPath()
+            if (Math.abs(d) < lim) {
+                c.moveTo(x, 22)
+                c.lineTo(x - 8, 6)
+                c.lineTo(x + 8, 6)
+            } else {
+                const s = Math.sign(d)
+                c.moveTo(x + s * 10, 14)
+                c.lineTo(x - s * 4, 4)
+                c.lineTo(x - s * 4, 24)
+            }
+            c.closePath()
+            c.fill()
+        }
         c.fillStyle = "rgba(232,238,248,0.95)"
         c.fillText(String(Math.round(bearing) % 360).padStart(3, "0") + "°", W / 2, 58)
 
@@ -646,6 +690,16 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
             }
         }
         for (const b of buoys()) dot(b.x, b.z, b.kind === "port" ? "#ff5a4a" : b.kind === "stbd" ? "#45d07f" : "#f2c230", 5)
+        if (state.target) {
+            const [px, py] = toRadar(state.target.x, state.target.z)
+            const l = Math.hypot(px, py)
+            const k = l > R - 10 ? (R - 10) / l : 1
+            g.strokeStyle = "#7cc4ff"
+            g.lineWidth = 3
+            g.beginPath()
+            g.arc(px * k, py * k, 9, 0, Math.PI * 2)
+            g.stroke()
+        }
         // Argus
         g.fillStyle = "#e8eef8"
         g.beginPath()
@@ -664,6 +718,9 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
             const dz = b.z - state.pos.z
             const d = Math.hypot(dx, dz)
             const min = b.r + 3.2
+            const touching = d < min
+            if (touching && !b.touching) b.hits = (b.hits || 0) + 1
+            b.touching = touching
             if (d < min && d > 0.001) {
                 const push = (min - d) * 6
                 b.vx += (dx / d) * push + state.vel.x * 0.3
@@ -691,6 +748,9 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
         get speed() {
             return state.speed
         },
+        get vel() {
+            return state.vel
+        },
         get pitch() {
             return state.pitch
         },
@@ -706,8 +766,30 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
         get sunElev() {
             return state.sunElev
         },
+        get weather() {
+            return WEATHERS[weatherI]
+        },
         get outBlend() {
             return state.outBlend
+        },
+        hud,
+        actions: hud.querySelector(".hud-actions"),
+        // put the boat somewhere at once, standing still (the start of a mission)
+        place(x, z, heading) {
+            state.pos.set(x, 0, z)
+            state.heading = heading
+            state.course = heading
+            state.vel.set(0, 0, 0)
+            state.speed = 0
+            state.yawRate = 0
+            state.spinRate = 0
+            thr = 0
+            camYaw = 0
+            const a = heading + Math.PI
+            const flat = Math.cos(camPitch) * camDist
+            state.camPos.set(x + Math.cos(a) * flat, 1.2 + Math.sin(camPitch) * camDist, z - Math.sin(a) * flat)
+            state.camLook.set(x + Math.cos(heading) * 5, 1.6, z - Math.sin(heading) * 5)
+            inBlend = 1
         },
         fade(dt) {
             state.outBlend = Math.max(0, state.outBlend - dt * 0.9)

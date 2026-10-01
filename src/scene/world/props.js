@@ -223,6 +223,76 @@ export function createProps({ lowPower = false, base = "/media/models/world/" } 
     const SHIP_A = new THREE.Vector3(...[polar(40, 5200)[0], 0, polar(40, 5200)[1]])
     const SHIP_B = new THREE.Vector3(...[polar(128, 7400)[0], 0, polar(128, 7400)[1]])
 
+    // put one more of a model in the water (for the missions and the boats going about the harbour)
+    async function spawn(file, { x = 0, z = 0, size = 10, sink = 0.3, yaw = 0, buoy = null, lift = 0 } = {}) {
+        let gltf
+        try {
+            gltf = await load(file)
+        } catch (e) {
+            return null
+        }
+        const obj = gltf.scene.clone(true)
+        obj.traverse((o) => {
+            if (!o.isMesh) return
+            const m = o.material.clone()
+            m.metalness = 0
+            m.roughness = 0.82
+            o.material = withAir(m)
+        })
+        const box = new THREE.Box3().setFromObject(obj)
+        const sz = box.getSize(new THREE.Vector3())
+        const c = box.getCenter(new THREE.Vector3())
+        obj.position.set(-c.x, -box.min.y, -c.z)
+        const k = size / Math.max(sz.x, sz.y, sz.z)
+        const holder = new THREE.Group()
+        const inner = new THREE.Group()
+        inner.add(obj)
+        inner.scale.setScalar(k)
+        inner.position.y = -sz.y * k * sink
+        holder.add(inner)
+        holder.position.set(x, 0, z)
+        holder.rotation.y = yaw
+        group.add(holder)
+        const item = { obj: holder, x, z, lift, yaw, k: size < 12 ? 1.4 : 0.6, hx: (sz.x * k) / 2, hz: (sz.z * k) / 2 }
+        floaters.push(item)
+        if (buoy) {
+            item.buoy = { obj: holder, x, z, r: size * 0.24, kind: buoy, vx: 0, vz: 0, ox: x, oz: z }
+            buoys.push(item.buoy)
+            const light = glowSprite(buoy === "port" ? 0xff4030 : buoy === "stbd" ? 0x40ff70 : 0xffffff, size * 0.5)
+            light.position.set(0, size * 0.93, 0)
+            holder.add(light)
+            item.lamp = { sprite: light, blink: buoy === "cardinal" ? 1.0 : 3.0, phase: Math.random() * 3 }
+            lamps.push(item.lamp)
+        }
+        return item
+    }
+    function despawn(item) {
+        if (!item) return
+        group.remove(item.obj)
+        const drop = (list, v) => {
+            const i = list.indexOf(v)
+            if (i >= 0) list.splice(i, 1)
+        }
+        drop(floaters, item)
+        if (item.buoy) drop(buoys, item.buoy)
+        if (item.lamp) drop(lamps, item.lamp)
+    }
+
+    // life in the harbour: two small boats going round on slow loops (they are solid too)
+    const traffic = []
+    const ROUTES = [
+        { file: "snekke", size: 17, cx: -20, cz: 170, rx: 90, rz: 50, w: 0.05, u: 0.3 },
+        { file: "snekke", size: 15, cx: 200, cz: -60, rx: 110, rz: 60, w: -0.04, u: 2.0 },
+    ]
+    for (const r of ROUTES) {
+        spawn(r.file, { size: r.size, sink: 0.3 }).then((it) => {
+            if (!it) return
+            const box = { x: 0, z: 0, hx: it.hx, hz: it.hz, rot: 0 }
+            colliders.push(box)
+            traffic.push({ ...r, it, box, alongX: it.hx > it.hz })
+        })
+    }
+
     const tmp = new THREE.Vector3()
     return {
         group,
@@ -231,7 +301,20 @@ export function createProps({ lowPower = false, base = "/media/models/world/" } 
         floaters,
         obstacles,
         colliders,
+        spawn,
+        despawn,
         update(t, dt, night) {
+            for (const b of traffic) {
+                b.u += b.w * dt
+                const x = b.cx + b.rx * Math.cos(b.u)
+                const z = b.cz + b.rz * Math.sin(b.u)
+                const vx = -b.rx * Math.sin(b.u) * Math.sign(b.w)
+                const vz = b.rz * Math.cos(b.u) * Math.sign(b.w)
+                const yaw = b.alongX ? Math.atan2(-vz, vx) : Math.atan2(vx, vz)
+                b.it.x = b.box.x = x
+                b.it.z = b.box.z = z
+                b.it.yaw = b.box.rot = yaw
+            }
             for (const f of floaters) {
                 const h = waveHeight(f.x, f.z, t, 1)
                 const [sx, sz] = waveSlope(f.x, f.z, t, 1)

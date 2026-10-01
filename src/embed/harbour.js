@@ -301,6 +301,7 @@ export function mountHarbour(el, options = {}) {
         const h = waveHeight(0, 0, t, 1)
         const [sx, sz] = waveSlope(0, 0, t, 1)
         boat.position.set(0, h * 0.8, 0)
+        argus.uniforms.uWater.value = h
         boat.rotation.set(0, 0, 0)
         boat.rotateZ(sx * 1.1)
         boat.rotateX(-sz * 1.1)

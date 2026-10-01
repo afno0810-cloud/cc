@@ -96,6 +96,10 @@ alb = base[None, None, :] * (0.96 + 0.05 * mott[..., None]) * (0.99 + 0.012 * we
 alb *= 1 - 0.06 * scuff_big[..., None] - 0.05 * dirt[..., None] * np.array([1.0, 1.0, 1.25])[None, None, :]
 alb *= 1 - 0.1 * scr[..., None]
 alb *= 1 - 0.04 * creases[..., None]
+# grey streaks where rain ran down the sides, and dirt in the creases
+runs = blur(streaks(N, "y", 90, 31, (0.05, 0.18), width=1), 1.4) * (fbm(N, 5, 3, 32) > 0.45)
+alb *= 1 - 0.07 * runs[..., None] * np.array([1.0, 0.98, 0.95])[None, None, :]
+alb *= 1 - 0.05 * blur(creases, 3.0)[..., None]
 save("hull_albedo.jpg", (np.clip(alb, 0, 1) * 255).astype(np.uint8))
 hh = mott * 0.9 + creases * 1.6 - scr * 0.4 + weave * 0.03
 save("hull_normal.jpg", height_to_normal(blur(hh, 1.0), 2.6))
@@ -108,8 +112,15 @@ M = N // 2
 peb = fbm(M, 64, 2, 11)
 peb = blur(peb, 0.8)
 save("case_normal.jpg", height_to_normal(peb, 3.5))
-calb = 0.075 + 0.02 * fbm(M, 8, 3, 12)
-save("case_albedo.jpg", (np.clip(np.stack([calb, calb, calb * 1.04], -1), 0, 1) * 255).astype(np.uint8))
+calb = 0.07 + 0.018 * fbm(M, 8, 3, 12)
+dust = np.clip((fbm(M, 5, 4, 13) - 0.5) * 2.2, 0, 1) * 0.06
+scuffs = blur(np.maximum(streaks(M, "x", 45, 14, (0.02, 0.09)), streaks(M, "y", 35, 16, (0.02, 0.07))), 0.8) * 0.12
+prints = np.clip((fbm(M, 24, 2, 15) - 0.62) * 3.0, 0, 1) * 0.03
+c = calb + dust + scuffs + prints
+save("case_albedo.jpg", (np.clip(np.stack([c, c, c * 1.04], -1), 0, 1) * 255).astype(np.uint8))
+cr = 0.5 + dust * 4.0 + scuffs * 1.5 - prints * 3.0
+corm = np.stack([np.ones_like(cr), np.clip(cr, 0.25, 0.95), np.zeros_like(cr)], -1)
+save("case_orm.jpg", (np.clip(corm, 0, 1) * 255).astype(np.uint8))
 
 # ---------- aluminium: brushed along u ----------
 br = np.repeat(rng.random((1, M)), M, axis=0)  # lines along image y = along the profile

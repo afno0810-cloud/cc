@@ -3,6 +3,7 @@ import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js"
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js"
 import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js"
+import { FXAAShader } from "three/examples/jsm/shaders/FXAAShader.js"
 
 /* ================================================================
    Post-processing, like a camera would see it: the scene is rendered in
@@ -145,6 +146,9 @@ export function createPost(renderer, scene, camera, { lowPower }) {
     composer.addPass(renderPass)
     composer.addPass(bloom)
     composer.addPass(grade)
+    // without multisampling (phones, small laptops) smooth the jagged edges afterwards
+    const fxaa = lowPower ? new ShaderPass(FXAAShader) : null
+    if (fxaa) composer.addPass(fxaa)
 
     return {
         composer,
@@ -156,6 +160,7 @@ export function createPost(renderer, scene, camera, { lowPower }) {
             const k = lowPower ? 0.35 : 0.5
             bloom.setSize(Math.round(w * dpr * k), Math.round(h * dpr * k))
             grade.uniforms.uRes.value.set(w * dpr, h * dpr)
+            if (fxaa) fxaa.uniforms.resolution.value.set(1 / (w * dpr), 1 / (h * dpr))
         },
         render(t) {
             grade.uniforms.uTime.value = t

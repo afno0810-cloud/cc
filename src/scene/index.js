@@ -10,6 +10,7 @@ import { createPost } from "./post.js"
 import { createMotes } from "./world/motes.js"
 import { createPhotoCloud, PHOTO_CENTER } from "./world/photocloud.js"
 import { createSpray } from "./world/spray.js"
+import { createRain } from "./world/rain.js"
 import { createDrive } from "./drive.js"
 
 /* ================================================================
@@ -125,10 +126,15 @@ export async function startScene({ reduced = false } = {}) {
 
     const spray = createSpray(lowPower ? 350 : 700)
     scene.add(spray.points)
+    const rain = createRain(lowPower ? 1500 : 3500)
+    scene.add(rain.lines)
+    // the weather, eased towards what the helm asks for (the pages are always clear)
+    const weather = { over: 0, fog: 0, rain: 0 }
 
     // ---- the land, the city and the harbour (built after the first frames) ----
     let terrainMod = null
     let props = null
+    let missions = null
     let birds = null
     let shoreLights = null
     const buildWorld = async () => {
@@ -141,6 +147,10 @@ export async function startScene({ reduced = false } = {}) {
         const { createProps } = await import("./world/props.js")
         props = createProps({ lowPower })
         scene.add(props.group)
+        if (drive) {
+            const { createMissions } = await import("./missions.js")
+            missions = createMissions({ scene, props, drive, isGame: document.body.hasAttribute("data-game") })
+        }
         if (!reduced) {
             const { createBirds } = await import("./world/birds.js")
             birds = createBirds(lowPower ? 10 : 22)
@@ -490,7 +500,7 @@ export async function startScene({ reduced = false } = {}) {
 
     // ---- drive mode ----
     let headingNow = 0
-    const colliderLists = [[], []]
+    const colliderLists = [[], [], []]
     drive = createDrive({
         camera,
         reduced,
@@ -503,6 +513,7 @@ export async function startScene({ reduced = false } = {}) {
         colliders: () => {
             colliderLists[0] = terrainMod ? terrainMod.COLLIDERS : []
             colliderLists[1] = props ? props.colliders : []
+            colliderLists[2] = missions ? missions.colliders : []
             return colliderLists
         },
         buoys: () => (props ? props.buoys : []),
@@ -578,7 +589,7 @@ export async function startScene({ reduced = false } = {}) {
         requestAnimationFrame(frame)
         if (!visible) return
         const raw = clock.getDelta()
-        const dt = Math.min(raw, 0.05)
+        const dt = Math.min(raw, window.__dtMax || 0.05) // (tests may allow longer steps)
         if (!reduced) t += dt
         adapt(raw)
 
@@ -723,6 +734,20 @@ export async function startScene({ reduced = false } = {}) {
         argus.points.uHiOn.value = hiOn
         argus.uniforms.uTime.value = t
 
+        // ---- the weather: a grey sky, fog and rain ----
+        const wWant = drive && (drive.active || drive.outBlend > 0) ? drive.weather : null
+        const kw = window.__snap ? 1 : 1 - Math.exp(-dt * 0.8)
+        for (const k of ["over", "fog", "rain"]) {
+            const v = wWant ? wWant[k] : 0
+            weather[k] += (v - weather[k]) * kw
+            if (Math.abs(v - weather[k]) < 0.002) weather[k] = v
+        }
+        const over = weather.over
+        sky.setOvercast(over) // the sky is only baked again when this has changed by a step
+        sky.uniforms.uCloud.value = lerp(0.56, 1.1, over)
+        // how far you see: 36 km on a clear day, about a kilometre in thick fog
+        AIR.uFog.value = 36000 * Math.pow(420 / 36000, weather.fog)
+
         // ---- the time of day: afternoon at the top of the page, night at the bottom ----
         const elevWant = drive && drive.active ? drive.sunElev : lerp(sunTop, -5, smooth(clamp((scrollP - 0.04) / 0.92)))
         elev += (elevWant - elev) * (1 - Math.exp(-dt * 2.5))
@@ -733,7 +758,7 @@ export async function startScene({ reduced = false } = {}) {
         sky.skyAt(0, 1, 0, zenC)
         zenLum += (lumOf(zenC) - zenLum) * 0.2
         sunLight.color.copy(S.sunColor)
-        sunLight.intensity = 3.2
+        sunLight.intensity = 3.2 * (1 - 0.9 * over)
         sunLight.position.copy(S.dir).multiplyScalar(1000).add(camLook)
         sunLight.target.position.copy(camLook)
         // a camera adapts to the light: brighter at dusk, but night stays night
@@ -793,6 +818,7 @@ export async function startScene({ reduced = false } = {}) {
         const h = waveHeight(bx, bz, t, 1)
         const [sx, sz] = waveSlope(bx, bz, t, 1)
         boat.position.set(bx, h * 0.8, bz)
+        argus.uniforms.uWater.value = h
         const pitch = drive && drive.active ? drive.pitch : 0
         const roll = drive && drive.active ? drive.roll : 0
         boat.rotation.set(0, 0, 0)
@@ -878,9 +904,22 @@ export async function startScene({ reduced = false } = {}) {
         wu.uBody.value.setRGB(0.02, 0.075, 0.09).multiplyScalar(Math.max(zenLum, 0.0015) * 1.3)
         sky.uniforms.uDim.value = lerp(1, dim, 0.6)
         // behind text the sun is only a glow, not a blinding disc
-        sky.uniforms.uSunVis.value = 0.15 + 0.85 * freeLookNow
+        sky.uniforms.uSunVis.value = (0.15 + 0.85 * freeLookNow) * (1 - smooth(clamp(over / 0.8)))
         // the sun glitter: full on the first screen, a little less at the helm where you often face the sun
-        wu.uGlit.value = (0.3 + 0.7 * freeLookNow) * (drive && drive.active ? 0.6 : 1)
+        wu.uGlit.value = (0.3 + 0.7 * freeLookNow) * (drive && drive.active ? 0.6 : 1) * (1 - over)
+        // fog over the water; rain rings and a choppier sea in bad weather
+        wu.uFog.value = 5200 * Math.pow(340 / 5200, weather.fog)
+        wu.uRain.value = weather.rain
+        wu.uChop.value = 1 + 0.35 * over + 0.5 * weather.rain
+        argus.uniforms.uWetAll.value = weather.rain
+        rain.lines.visible = weather.rain > 0.01
+        if (rain.lines.visible) {
+            rain.uniforms.uTime.value = t
+            rain.uniforms.uCam.value.copy(camera.position)
+            rain.uniforms.uAmount.value = weather.rain
+            // the drops catch the light of the grey sky (and the city and the boat's lights at night)
+            rain.uniforms.uCol.value.copy(zenC).multiplyScalar(1.5).addScalar(0.004 * night)
+        }
         sky.update(t)
         beam.position.set(boat.position.x, 0.25, boat.position.z)
         beam.rotation.y = sweep
@@ -917,6 +956,7 @@ export async function startScene({ reduced = false } = {}) {
             if (cs && cs.cities) placeCities(cs)
         }
         if (props) props.update(t, dt, night)
+        if (missions) missions.update(t, dt, exposure)
         spray.update(dt)
         spray.uniforms.uCol.value.copy(S.sunColor).multiplyScalar(Math.max(S.dir.y, 0) * 2.2).add(zenC).multiplyScalar(1.4)
         spray.uniforms.uProj.value = argus.points.uProj.value
@@ -944,13 +984,14 @@ export async function startScene({ reduced = false } = {}) {
         const freeLook = drive && drive.active ? 1 : hero ? hero.w : 0
         // at the helm you look into the sun a lot: rays and flare a little softer
         const helm = drive && drive.active ? 0.55 : 1
-        g.uRays.value = reduced ? 0 : 0.9 * (1 - smooth(clamp((S.elev - 6) / 18))) * freeLook * helm
-        g.uFlare.value = freeLook * helm
+        const sunOut = 1 - smooth(clamp(over / 0.6))
+        g.uRays.value = reduced ? 0 : 0.9 * (1 - smooth(clamp((S.elev - 6) / 18))) * freeLook * helm * sunOut
+        g.uFlare.value = freeLook * helm * sunOut
 
         // the sun's shadow follows the boat (none at night or while the boat is still a point cloud)
         sunLight.position.copy(S.dir).multiplyScalar(50).add(boat.position)
         sunLight.target.position.copy(boat.position)
-        sunLight.castShadow = S.elev > 0.3 && boat.visible && cut > CUT_ALL_SOLID - 0.02
+        sunLight.castShadow = S.elev > 0.3 && over < 0.6 && boat.visible && cut > CUT_ALL_SOLID - 0.02
         renderer.shadowMap.needsUpdate = sunLight.castShadow
 
         // 1) the mirror image, 2) the scene, bloom and grade
@@ -1114,6 +1155,9 @@ export async function startScene({ reduced = false } = {}) {
             },
             get props() {
                 return props
+            },
+            get missions() {
+                return missions
             },
             landHeight: (x, z) => (terrainMod ? terrainMod.landHeight(x, z) : null),
             get colliders() {

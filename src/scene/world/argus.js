@@ -29,6 +29,10 @@ export function createArgus({ renderer, lowPower, onProgress, url: modelUrl }) {
         uTime: { value: 0 },
         uEdgeCol: { value: COLORS.ice.clone() },
         uEdgeGain: { value: 1 },
+        // the height of the water in the world: below it and just above, the boat looks wet
+        uWater: { value: 0 },
+        uWet: { value: 1 },
+        uWetAll: { value: 0 }, // rain: the whole boat wet and glossy
     }
     const P = {
         uCut: U.uCut,
@@ -51,12 +55,24 @@ export function createArgus({ renderer, lowPower, onProgress, url: modelUrl }) {
         m.onBeforeCompile = (sh) => {
             Object.assign(sh.uniforms, U, { uMeshToModel: { value: meshToModel } })
             sh.vertexShader = sh.vertexShader
-                .replace("#include <common>", "#include <common>\nuniform mat4 uMeshToModel;\nvarying vec3 vModelPos;")
-                .replace("#include <begin_vertex>", "#include <begin_vertex>\nvModelPos = (uMeshToModel * vec4(transformed, 1.0)).xyz;")
+                .replace("#include <common>", "#include <common>\nuniform mat4 uMeshToModel;\nvarying vec3 vModelPos;\nvarying float vWorldY;")
+                .replace("#include <begin_vertex>", "#include <begin_vertex>\nvModelPos = (uMeshToModel * vec4(transformed, 1.0)).xyz;\nvWorldY = (modelMatrix * vec4(transformed, 1.0)).y;")
             sh.fragmentShader = sh.fragmentShader
                 .replace(
                     "#include <common>",
-                    "#include <common>\nuniform float uCut;\nuniform float uGhost;\nuniform float uTime;\nuniform vec3 uEdgeCol;\nuniform float uEdgeGain;\nvarying vec3 vModelPos;"
+                    "#include <common>\nuniform float uCut;\nuniform float uGhost;\nuniform float uTime;\nuniform vec3 uEdgeCol;\nuniform float uEdgeGain;\nuniform float uWater;\nuniform float uWet;\nuniform float uWetAll;\nvarying vec3 vModelPos;\nvarying float vWorldY;"
+                )
+                .replace(
+                    "#include <roughnessmap_fragment>",
+                    `#include <roughnessmap_fragment>
+                    {
+                        // wet at the waterline: darker and glossy, drying a little above it (with a ragged edge)
+                        float h = vWorldY - uWater;
+                        float ragged = 0.05 * sin(vModelPos.x * 90.0 + vModelPos.z * 40.0) + 0.03 * sin(vModelPos.x * 230.0);
+                        float wet = max((1.0 - smoothstep(0.02, 0.22 + ragged, h)) * uWet, uWetAll * 0.6);
+                        diffuseColor.rgb *= mix(1.0, 0.8, wet);
+                        roughnessFactor = mix(roughnessFactor, 0.12, wet);
+                    }`
                 )
                 .replace(
                     "#include <clipping_planes_fragment>",

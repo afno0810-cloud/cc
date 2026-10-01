@@ -235,7 +235,7 @@ const MATS = {
     hatchFrame: { color: "#ececea", rough: 0.45 },
     alu: { color: "#d4d8dd", rough: 1, metal: 1, orm: "alu_orm.jpg" },
     steel: { color: "#c3c8ce", rough: 0.22, metal: 1 },
-    case: { color: "#ffffff", rough: 0.6, map: "case_albedo.jpg", normal: "case_normal.jpg" },
+    case: { color: "#ffffff", rough: 1, map: "case_albedo.jpg", normal: "case_normal.jpg", orm: "case_orm.jpg" },
     caseDetail: { color: "#202024", rough: 0.5, normal: "case_normal.jpg" },
     orange: { color: "#ff5a1a", rough: 0.55 },
     rubber: { color: "#121214", rough: 0.7 },

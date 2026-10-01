@@ -164,6 +164,8 @@ export function createWater({ lowPower = false } = {}) {
         uSweepAngle: { value: 0 },
         uLidar: { value: new THREE.Color("#9fd4ff") },
         uGlit: { value: 1 },
+        uRain: { value: 0 }, // raindrops: rings on the water, and a rougher surface
+        uChop: { value: 1 }, // the small waves: stronger in bad weather
     }
     const mat = new THREE.ShaderMaterial({
         uniforms: U,
@@ -194,8 +196,10 @@ export function createWater({ lowPower = false } = {}) {
             uniform vec2 uBoat; uniform vec2 uBoatDir; uniform float uBoatSpeed; uniform float uBoatOn;
             uniform vec4 uWake[WAKE_N]; uniform vec4 uRipple[RIPPLE_N];
             uniform float uSweep; uniform float uSweepAngle; uniform vec3 uLidar; uniform float uGlit;
+            uniform float uRain; uniform float uChop;
             varying vec3 vPos; varying vec2 vSlope; varying float vH;
 
+            float rh(vec2 q) { return fract(sin(dot(q, vec2(127.1, 311.7))) * 43758.5453); }
             vec3 sky(vec3 d) { return texture2D(uPano, panoUV(normalize(vec3(d.x, max(d.y, 0.002), d.z)))).rgb; }
 
             void main() {
@@ -209,7 +213,32 @@ export function createWater({ lowPower = false } = {}) {
                 vec3 w2 = texture2D(uWaves, p / 9.5 + vec2(-0.019, 0.013) * uTime).xyz * 2.0 - 1.0;
                 vec3 w3 = texture2D(uWaves, p / 140.0 + vec2(0.003, -0.002) * uTime).xyz * 2.0 - 1.0;
                 float near = 1.0 / (1.0 + dist * 0.0035);
-                vec2 slope = vSlope + (w1.xy * 0.15 + w2.xy * 0.12 * near + w3.xy * 0.045) * (0.3 + 0.7 * near);
+                vec2 slope = vSlope + (w1.xy * 0.15 + w2.xy * 0.12 * near + w3.xy * 0.045) * (0.3 + 0.7 * near) * uChop;
+
+                // raindrops: little rings spreading where each drop lands (close by; far off they blur into a rough sheen)
+                if (uRain > 0.01) {
+                    float rn = 1.0 - smoothstep(25.0, 140.0, dist);
+                    if (rn > 0.0) {
+                        for (int layer = 0; layer < 2; layer++) {
+                            vec2 rp = p * (layer == 0 ? 1.6 : 2.3) + float(layer) * 17.3;
+                            vec2 base = floor(rp);
+                            for (int i = -1; i <= 1; i++) {
+                                for (int j = -1; j <= 1; j++) {
+                                    vec2 cell = base + vec2(float(i), float(j));
+                                    float h = rh(cell);
+                                    if (h > uRain * 0.9 + 0.1) continue;
+                                    vec2 c = cell + vec2(rh(cell + 1.7), rh(cell + 3.1));
+                                    float tt = fract(uTime * (0.9 + h * 0.6) + h * 7.0);
+                                    vec2 dd = rp - c;
+                                    float l = length(dd) + 1e-4;
+                                    float R = tt * 0.75;
+                                    float ring = exp(-pow((l - R) * 16.0, 2.0)) * (1.0 - tt) * (1.0 - tt);
+                                    slope += (dd / l) * ring * 0.55 * rn;
+                                }
+                            }
+                        }
+                    }
+                }
                 float foamNoise = w1.z * 0.5 + w2.z * 0.5;
 
                 // ripples where the water was touched
@@ -241,8 +270,18 @@ export function createWater({ lowPower = false } = {}) {
                     vec4 rc = uReflectMatrix * vec4(vPos.x, 0.0, vPos.z, 1.0);
                     vec2 ruv = rc.xy / rc.w + slope * vec2(0.035, 0.05) / (1.0 + dist * 0.012);
                     ruv = clamp(ruv, 0.001, 0.999);
-                    vec4 m = texture2D(uReflect, ruv);
-                    refl = mix(refl, m.rgb, m.a * uReflectOn);
+                    // a few taps: the mirror is never perfectly sharp, and its edges don't show the pixels
+                    // (weighted by coverage: where nothing was drawn the colour means nothing)
+                    vec2 px = 1.3 / vec2(textureSize(uReflect, 0));
+                    vec4 m0 = texture2D(uReflect, ruv);
+                    vec4 m1 = texture2D(uReflect, ruv + vec2(px.x, px.y));
+                    vec4 m2 = texture2D(uReflect, ruv + vec2(-px.x, px.y));
+                    vec4 m3 = texture2D(uReflect, ruv + vec2(px.x, -px.y));
+                    vec4 m4 = texture2D(uReflect, ruv + vec2(-px.x, -px.y));
+                    float a0 = clamp(m0.a, 0.0, 1.0), a1 = clamp(m1.a, 0.0, 1.0), a2 = clamp(m2.a, 0.0, 1.0), a3 = clamp(m3.a, 0.0, 1.0), a4 = clamp(m4.a, 0.0, 1.0);
+                    vec3 rgb = m0.rgb * a0 * 0.4 + (m1.rgb * a1 + m2.rgb * a2 + m3.rgb * a3 + m4.rgb * a4) * 0.15;
+                    float cov = a0 * 0.4 + (a1 + a2 + a3 + a4) * 0.15;
+                    refl = mix(refl, rgb / max(cov, 1e-3), cov * uReflectOn);
                 }
 
                 // the water itself: dark fjord water, lit by the sky
@@ -322,7 +361,7 @@ export function createWater({ lowPower = false } = {}) {
                 // the air between you and the water
                 vec3 air = sky(vec3(-V.x, 0.0, -V.z));
                 float fog = 1.0 - exp(-dist / uFog);
-                col = mix(col, air, fog * 0.92);
+                col = mix(col, air, fog * mix(1.0, 0.92, clamp(uFog / 5200.0, 0.0, 1.0)));
 
                 gl_FragColor = vec4(col * uDim, 1.0);
             }
