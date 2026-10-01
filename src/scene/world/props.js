@@ -24,6 +24,10 @@ const LAYOUT = [
     { file: "yacht", at: [-150, 118], size: 40, float: true, sink: 0.2, yaw: 0.9, tall: true },
     { file: "yacht", at: [-205, 64], size: 36, float: true, sink: 0.2, yaw: 2.4, tall: true },
     { file: "snekke", at: [-120, -44], size: 18, float: true, sink: 0.3, yaw: -0.6 },
+    // more boats lying in the harbour
+    { file: "snekke", at: [-62, -18], size: 17, float: true, sink: 0.3, yaw: 0.4 },
+    { file: "snekke", at: [-140, 20], size: 16, float: true, sink: 0.3, yaw: 2.6 },
+    { file: "yacht", at: [-175, 165], size: 34, float: true, sink: 0.2, yaw: 1.6, tall: true },
     { file: "buoy-red", at: [-70, 52], size: 10, float: true, sink: 0.3, buoy: "port" },
     { file: "buoy-green", at: [-58, 88], size: 10, float: true, sink: 0.3, buoy: "stbd" },
     { file: "buoy-red", at: [-128, 84], size: 10, float: true, sink: 0.3, buoy: "port" },

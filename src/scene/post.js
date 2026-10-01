@@ -91,12 +91,14 @@ const GradeShader = {
                     float w = 1.0;
                     for (int i = 0; i < 28; i++) {
                         p += st;
+                        // only what is on screen (the edge pixels repeated would wash a veil over everything)
+                        float inside = step(0.0, p.x) * step(p.x, 1.0) * step(0.0, p.y) * step(p.y, 1.0);
                         vec3 s = texture2D(tDiffuse, clamp(p, 0.0, 1.0)).rgb;
-                        acc += smoothstep(8.0, 60.0, lum(s)) * w;
+                        acc += smoothstep(25.0, 140.0, lum(s)) * w * inside;
                         w *= 0.955;
                     }
                     vec2 dd = toSun * vec2(aspect, 1.0);
-                    c += uSunCol * (acc / 28.0) * uRays * exp(-length(dd) * 2.6) * 0.35;
+                    c += uSunCol * (acc / 28.0) * uRays * exp(-length(dd) * 3.2) * 0.22;
                 }
                 // lens flare: ghosts on the line from the sun through the middle of the frame
                 if (vis > 0.001 && uFlare > 0.0) {
@@ -142,6 +144,21 @@ export function createPost(renderer, scene, camera, { lowPower }) {
     const composer = new EffectComposer(renderer, rt)
     const renderPass = new RenderPass(scene, camera)
     const bloom = new UnrealBloomPass(new THREE.Vector2(size.x, size.y), 0.55, 0.6, 2.0)
+    // what goes into the glow is capped: the sun and its glitter on the water would otherwise
+    // spread a white veil over the whole frame (they are thousands of times brighter than the rest)
+    bloom.materialHighPassFilter.fragmentShader = /* glsl */ `
+        uniform sampler2D tDiffuse; uniform vec3 defaultColor; uniform float defaultOpacity;
+        uniform float luminosityThreshold; uniform float smoothWidth;
+        varying vec2 vUv;
+        void main() {
+            vec4 texel = texture2D(tDiffuse, vUv);
+            float v = dot(texel.rgb, vec3(0.299, 0.587, 0.114));
+            texel.rgb *= min(1.0, luminosityThreshold * 3.0 / max(v, 1e-4));
+            float alpha = smoothstep(luminosityThreshold, luminosityThreshold + smoothWidth, v);
+            gl_FragColor = mix(vec4(defaultColor.rgb, defaultOpacity), texel, alpha);
+        }
+    `
+    bloom.materialHighPassFilter.needsUpdate = true
     const grade = new ShaderPass(GradeShader)
     composer.addPass(renderPass)
     composer.addPass(bloom)

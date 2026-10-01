@@ -42,13 +42,15 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
         camLook: new THREE.Vector3(),
         sunElev: 12,
         locked: false, // no throttle or steering (a countdown)
+        lidOpen: false, // the case lid is open: the camera comes close and the boat waits
+        inspect: 0, // 0 … 1, eased: how far the camera has gone to the open case
         target: null, // { x, z }: where the mission wants you next (compass and radar)
         outBlend: 0, // 1 → 0 after leaving, so the page camera takes over smoothly
     }
     const keys = new Set()
     const stick = new THREE.Vector2()
     let camYaw = 0
-    let camPitch = 0.28
+    let camPitch = 0.21 // low enough to see the shore and the town over the water
     let camDist = 17
     let dragging = false
     let lastDrag = 0
@@ -81,18 +83,48 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
                 <button type="button" class="hud-btn" data-hud="time">Time of day</button>
                 <button type="button" class="hud-btn" data-hud="weather">Weather: <span class="hud-weather">Clear</span></button>
                 <button type="button" class="hud-btn" data-hud="sound" aria-pressed="false">Sound</button>
+                <button type="button" class="hud-btn hud-q" data-hud="keys" aria-label="Controls" aria-expanded="false">?</button>
                 <button type="button" class="hud-btn hud-exit" data-hud="exit">Exit <kbd>Esc</kbd></button>
             </div>
         </div>
-        <p class="hud-help"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrows to drive · <kbd>Q</kbd><kbd>E</kbd> turn the boat as it goes · <kbd>Shift</kbd> more power · <kbd>Space</kbd> LiDAR ping · <kbd>T</kbd> time · <kbd>V</kbd> weather · drag to look around</p>
+        <p class="hud-help"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrows to drive · <kbd>H</kbd> all the controls</p>
         <div class="hud-bottom">
+            <div class="hud-left">
+            <button type="button" class="hud-btn hud-lid" data-hud="lid" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11h16v8H4z"/><path d="M4 11 7 4h13l-3 7"/></svg><span>Open lid</span> <kbd>L</kbd></button>
             <div class="hud-gauges">
                 <div class="hud-gauge"><span>Throttle</span><i><b class="hud-thr"></b></i></div>
                 <canvas class="hud-compass" width="440" height="60" aria-hidden="true"></canvas>
             </div>
+            </div>
             <div class="hud-radar-wrap"><canvas class="hud-radar" width="360" height="360" aria-hidden="true"></canvas><span>LiDAR</span></div>
         </div>
         <div class="hud-stick" aria-hidden="true"><i></i></div>
+        <div class="hud-keys" role="dialog" aria-label="Controls">
+            <div class="hk-head"><h2>Controls</h2><button type="button" class="hud-btn" data-hud="keys-close">Close <kbd>H</kbd></button></div>
+            <div class="hk-body">
+                <div class="hk-pad" aria-hidden="true">
+                    <div><kbd>Q</kbd><kbd class="is-main">W</kbd><kbd>E</kbd></div>
+                    <div><kbd class="is-main">A</kbd><kbd class="is-main">S</kbd><kbd class="is-main">D</kbd></div>
+                    <div><kbd class="is-wide">Shift</kbd><kbd class="is-space">Space</kbd></div>
+                </div>
+                <dl class="hk-list">
+                    <div><dt><kbd>W</kbd><kbd>↑</kbd></dt><dd>Forward</dd></div>
+                    <div><dt><kbd>S</kbd><kbd>↓</kbd></dt><dd>Slow down, then back</dd></div>
+                    <div><dt><kbd>A</kbd><kbd>D</kbd><kbd>←</kbd><kbd>→</kbd></dt><dd>Steer</dd></div>
+                    <div><dt><kbd>Q</kbd><kbd>E</kbd></dt><dd>Turn the boat while it keeps going straight</dd></div>
+                    <div><dt><kbd>Shift</kbd></dt><dd>More power</dd></div>
+                    <div><dt><kbd>Space</kbd></dt><dd>LiDAR ping</dd></div>
+                    <div><dt><kbd>L</kbd></dt><dd>Open the lid and look inside</dd></div>
+                    <div><dt><kbd>M</kbd></dt><dd>Missions</dd></div>
+                    <div><dt><kbd>T</kbd></dt><dd>Time of day</dd></div>
+                    <div><dt><kbd>V</kbd></dt><dd>Weather</dd></div>
+                    <div><dt><kbd>H</kbd></dt><dd>This list</dd></div>
+                    <div><dt>Drag</dt><dd>Look around</dd></div>
+                    <div class="hk-esc"><dt><kbd>Esc</kbd></dt><dd>Leave the helm</dd></div>
+                </dl>
+            </div>
+            <p class="hk-touch">On a phone or tablet: the round stick drives, drag anywhere else to look around.</p>
+        </div>
     `
     document.body.appendChild(hud)
 
@@ -112,6 +144,9 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
     const radar = hud.querySelector(".hud-radar").getContext("2d")
     const soundBtn = hud.querySelector('[data-hud="sound"]')
     const weatherEl = hud.querySelector(".hud-weather")
+    const lidBtn = hud.querySelector(".hud-lid")
+    const keysEl = hud.querySelector(".hud-keys")
+    const keysBtn = hud.querySelector('[data-hud="keys"]')
     const stickEl = hud.querySelector(".hud-stick")
     const stickKnob = stickEl.querySelector("i")
 
@@ -122,11 +157,23 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
         if (what === "exit") stop()
         if (what === "time") cycleTime()
         if (what === "weather") cycleWeather()
+        if (what === "lid") setLid(!state.lidOpen)
+        if (what === "keys" || what === "keys-close") showKeys(!keysEl.classList.contains("is-on"))
         if (what === "sound") setSound(!soundOn)
     })
     function cycleTime() {
         timeI = (timeI + 1) % TIMES.length
         state.sunElev = TIMES[timeI]
+    }
+    function setLid(on) {
+        state.lidOpen = on
+        lidBtn.setAttribute("aria-pressed", on ? "true" : "false")
+        lidBtn.querySelector("span").textContent = on ? "Close lid" : "Open lid"
+        hud.classList.toggle("is-inspecting", on)
+    }
+    function showKeys(on) {
+        keysEl.classList.toggle("is-on", on)
+        keysBtn.setAttribute("aria-expanded", on ? "true" : "false")
     }
     function cycleWeather() {
         weatherI = (weatherI + 1) % WEATHERS.length
@@ -196,9 +243,15 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
         if (!state.active) return
         const k = e.key.toLowerCase()
         if (e.type === "keydown") {
-            if (k === "escape") return document.body.hasAttribute("data-game") ? undefined : stop()
+            if (k === "escape") {
+                if (keysEl.classList.contains("is-on")) return showKeys(false)
+                if (state.lidOpen) return setLid(false)
+                return document.body.hasAttribute("data-game") ? undefined : stop()
+            }
             if (k === "t") cycleTime()
             if (k === "v") cycleWeather()
+            if (k === "l") setLid(!state.lidOpen)
+            if (k === "h" || k === "?") showKeys(!keysEl.classList.contains("is-on"))
             if (k === " ") {
                 ping = performance.now() / 1000
                 onPing && onPing(state.pos)
@@ -305,6 +358,8 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
         state.active = false
         state.outBlend = 1
         keys.clear()
+        setLid(false)
+        showKeys(false)
         document.documentElement.classList.remove("is-driving")
         hud.classList.remove("is-on")
         if (audio) audio.master.gain.setTargetAtTime(0, audio.ctx.currentTime, 0.15)
@@ -472,7 +527,7 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
         st += -stick.x
         th = clamp(th, -1, 1)
         st = clamp(st, -1, 1)
-        if (state.locked) {
+        if (state.locked || state.lidOpen) {
             th = 0
             st = 0
             spin = 0
@@ -538,10 +593,16 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
         // chase camera, a little behind the turn, and you can look around
         if (!dragging && performance.now() - lastDrag > 2200) camYaw *= Math.exp(-dt * 1.2)
         // the camera follows the course, so it stays steady while the hull turns
-        const a = state.course + Math.PI + camYaw - state.yawRate * 0.25
-        const flat = Math.cos(camPitch) * camDist
-        want.set(state.pos.x + Math.cos(a) * flat, 1.2 + Math.sin(camPitch) * camDist, state.pos.z - Math.sin(a) * flat)
-        wantLook.copy(state.pos).addScaledVector(fwd, 5).setY(1.6)
+        // with the lid open the camera comes close, from starboard (the lid opens away from you), above the case
+        state.inspect += ((state.lidOpen ? 1 : 0) - state.inspect) * (1 - Math.exp(-dt * 2.2))
+        const ki = state.inspect * state.inspect * (3 - 2 * state.inspect)
+        const a = state.course + Math.PI + camYaw - state.yawRate * 0.25 + ki * (-Math.PI / 2 - 0.45 + Math.PI)
+        const pitch = camPitch + (0.72 - camPitch) * ki
+        const dist = camDist + (6.4 - camDist) * ki
+        const flat = Math.cos(pitch) * dist
+        const lookY = 1.6 + (2.05 - 1.6) * ki
+        want.set(state.pos.x + Math.cos(a) * flat, 1.2 + (lookY - 1.6) + Math.sin(pitch) * dist, state.pos.z - Math.sin(a) * flat)
+        wantLook.copy(state.pos).addScaledVector(fwd, 5 * (1 - ki)).setY(lookY)
         inBlend = Math.min(1, inBlend + dt * 0.8)
         const k = inBlend * inBlend * (3 - 2 * inBlend)
         if (inBlend < 1) {
@@ -769,6 +830,10 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
         get weather() {
             return WEATHERS[weatherI]
         },
+        get lidOpen() {
+            return state.lidOpen
+        },
+        setLid,
         get outBlend() {
             return state.outBlend
         },

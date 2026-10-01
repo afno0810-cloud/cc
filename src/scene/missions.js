@@ -290,6 +290,7 @@ export function createMissions({ scene, props, drive, isGame = false }) {
 
     async function begin(id) {
         clear()
+        drive.setLid(false)
         openPanel(false)
         result.classList.remove("is-on")
         last = id
@@ -459,7 +460,7 @@ export function createMissions({ scene, props, drive, isGame = false }) {
             return
         }
         // the game page opens with the list
-        if (isGame && !opened) {
+        if (isGame && !opened && !window.__noPanel) {
             opened = true
             setTimeout(() => !run && drive.active && openPanel(true, false), 1400)
         }

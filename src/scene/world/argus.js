@@ -204,6 +204,8 @@ export function createArgus({ renderer, lowPower, onProgress, url: modelUrl }) {
     }
 
     let cloud = null
+    let lid = null // the case lid: turns about x to open (towards port)
+    const marks = {} // empty nodes where the named parts are
     const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder)
     const url = modelUrl || (lowPower ? "/media/models/argus-lite.glb" : "/media/models/argus.glb")
     // a host page can hand over the model bytes itself (the one-file preview does); normally we fetch the GLB
@@ -233,9 +235,13 @@ export function createArgus({ renderer, lowPower, onProgress, url: modelUrl }) {
             model.updateMatrixWorld(true)
             const inv = new THREE.Matrix4().copy(model.matrixWorld).invert()
             const meshes = []
+            lid = obj.getObjectByName("lid") || null
             obj.traverse((o) => {
+                if (o.name && o.name.startsWith("mark-")) marks[o.name.slice(5)] = o
                 if (!o.isMesh) return
                 o.userData.toModel = new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld)
+                // the stickers: smooth edges where there is multisampling
+                if (o.material.alphaTest > 0) o.material.alphaToCoverage = true
                 if (o.material.map) o.material.map.anisotropy = renderer.capabilities.getMaxAnisotropy()
                 o.material.envMapIntensity = 1
                 meshes.push(o)
@@ -259,5 +265,9 @@ export function createArgus({ renderer, lowPower, onProgress, url: modelUrl }) {
         get cloud() {
             return cloud
         },
+        get lid() {
+            return lid
+        },
+        marks,
     }
 }

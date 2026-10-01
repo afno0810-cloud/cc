@@ -2001,6 +2001,197 @@ html.is-driving .hotspot {
     background: rgba(232, 238, 248, 0.85);
     box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
 }
+/* ---- the lid button, the controls panel and the names inside the case ---- */
+.hud-left {
+    display: grid;
+    justify-items: start;
+    gap: 10px;
+}
+.hud-lid svg {
+    width: 18px;
+    height: 18px;
+}
+.hud-lid[aria-pressed="true"] {
+    border-color: rgba(242, 194, 48, 0.75);
+}
+.hud-q {
+    width: 40px;
+    justify-content: center;
+    padding: 0;
+    font-size: 16px;
+}
+.hud-keys {
+    position: absolute;
+    z-index: 4;
+    left: 50%;
+    top: 50%;
+    width: min(620px, calc(100% - 2 * var(--gut)));
+    max-height: calc(100% - 120px);
+    overflow: auto;
+    transform: translate(-50%, -46%);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: auto;
+    padding: 22px;
+    border-radius: 18px;
+    background: rgba(10, 13, 20, 0.78);
+    border: 1px solid rgba(232, 238, 248, 0.16);
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    transition:
+        opacity 0.3s ease,
+        transform 0.4s var(--ease-2),
+        visibility 0s linear 0.4s;
+}
+.hud-keys.is-on {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(-50%, -50%);
+    transition:
+        opacity 0.3s ease,
+        transform 0.4s var(--ease-2);
+}
+.hk-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+.hk-head h2 {
+    margin: 0;
+    font: 700 30px/1 var(--display);
+    text-transform: uppercase;
+}
+.hk-body {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 22px;
+    align-items: start;
+}
+.hk-pad {
+    display: grid;
+    gap: 6px;
+    justify-items: center;
+    padding: 14px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(232, 238, 248, 0.1);
+}
+.hk-pad div {
+    display: flex;
+    gap: 6px;
+}
+.drive-hud .hk-pad kbd {
+    min-width: 44px;
+    height: 44px;
+    display: inline-grid;
+    place-items: center;
+    padding: 0 8px;
+    border-radius: 9px;
+    font-size: 14px;
+    border-bottom-width: 3px;
+}
+.drive-hud .hk-pad kbd.is-main {
+    border-color: rgba(242, 194, 48, 0.8);
+    color: #f2c230;
+}
+.drive-hud .hk-pad kbd.is-space {
+    min-width: 120px;
+}
+.hk-list {
+    display: grid;
+    gap: 2px;
+    margin: 0;
+}
+.hk-list div {
+    display: grid;
+    grid-template-columns: 9.5em 1fr;
+    gap: 12px;
+    align-items: center;
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(232, 238, 248, 0.08);
+}
+.hk-list dt {
+    font: 500 12px/1 var(--mono);
+    color: rgba(232, 238, 248, 0.7);
+}
+.hk-list dd {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.35;
+}
+body[data-game] .hk-esc {
+    display: none !important;
+}
+.hk-touch {
+    margin: 14px 0 0;
+    font-size: 13px;
+    color: rgba(232, 238, 248, 0.65);
+}
+.lid-label {
+    position: absolute;
+    z-index: 1;
+    left: 0;
+    top: 0;
+    display: none;
+    /* the name in a pill up and to the right of the part, a yellow dot on the part */
+    margin: -32px 0 0 12px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(10, 13, 20, 0.72);
+    border: 1px solid rgba(242, 194, 48, 0.55);
+    font: 500 11px/1 var(--mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    color: #e8eef8;
+    pointer-events: none;
+}
+.lid-label.is-on {
+    display: block;
+    animation: hud-in 0.5s ease both;
+}
+.lid-label::before {
+    content: "";
+    position: absolute;
+    left: -16px;
+    top: 28px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #f2c230;
+    box-shadow: 0 0 0 3px rgba(242, 194, 48, 0.25);
+}
+.lid-label.is-below {
+    margin-top: 10px;
+}
+.lid-label.is-left::before {
+    left: auto;
+    right: -16px;
+}
+.drive-hud.is-inspecting .hud-stick {
+    display: none;
+}
+.lid-label.is-below::before {
+    top: -14px;
+}
+@media (max-width: 640px) {
+    .hk-body {
+        grid-template-columns: 1fr;
+    }
+    .hk-pad {
+        display: none;
+    }
+    .hk-list div {
+        grid-template-columns: 7.5em 1fr;
+    }
+    .hud-lid kbd {
+        display: none;
+    }
+}
+
 /* ---- missions: the list, the bar with the clock, messages and the result ---- */
 .hud-missions,
 .hud-result {

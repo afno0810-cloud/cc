@@ -142,3 +142,12 @@ After changing the site, run `npm run build:pages`, then commit and push `docs/`
 - **Harbour life**: two small boats go round the harbour on slow loops; they are solid (`traffic` in `props.js`).
 - **Argus**: wet and darker at the waterline, dust and scuffs on the case, rain streaks on the hulls.
 - **Edges**: the mirror image in the water is softened (no stair steps), and phones without multisampling get FXAA (`post.js`).
+
+## Inside Argus, the e-stop and the stickers (round 8)
+
+- **Open the lid** at the helm (`L` or the button by the throttle): the lid of the case turns on its hinges (port side) and the camera comes close from starboard. Inside, as on the boat: in the lid the finned heat sinks, the 5G router, the red flight controller and an orange relay board, with the orange gasket round the rim; in the box the battery, the computer boards and the wiring. The names from the site (Pixhawk flight controller, 5G link, Computer, Power) are shown on the parts. The lid is its own node in the GLB (`lid`), and empty `mark-*` nodes mark where the parts are.
+- **Controls** (`H` or `?` at the helm): every key and what it does, and how to drive on a phone.
+- **The emergency stop**: a yellow box with a red mushroom button on the port hull, just ahead of the bow beam.
+- **The sponsor stickers** on the starboard hull are made from the logo files the site already uses, laid out as on the boat: DNV, the Kongsberg crest beside the name, telenor (`scripts/argus/decals.py`). The Kongsberg logo was upscaled with Higgsfield (`scripts/argus/kongsberg-2k.png`) so it stays sharp up close.
+- The latches and handle of the case face starboard and the hinges port, as on the boat.
+- **Picture**: the glow (bloom) no longer takes in the full brightness of the sun and its glitter, so looking towards the sun stays clear; the sun rays only gather from what is on screen; the chase camera sits lower so the shore and the town show over the water; more boats lie in the harbour.

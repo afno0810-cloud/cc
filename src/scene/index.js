@@ -43,16 +43,16 @@ const lerp = (a, b, t) => a + (b - a) * t
 const ease = (t) => 1 - Math.pow(1 - clamp(t), 3)
 
 /* Where the parts are on the Argus model (model units, centred model, bow = +x).
-   Measured on the Higgsfield mesh (Tripo, from four views made from our photos). a/e = camera angle and height that show the part. */
+   Printed by scripts/argus/build.mjs (the model is built from photos of the boat). a/e = camera angle and height that show the part. */
 export const PARTS = {
     lidar: { label: "LiDAR", p: [-0.052, 0.373, 0.02], a: 0.7, e: 4.6 },
     gnss: { label: "Seapath 130 · GNSS", p: [-0.416, 0.183, 0.296], a: 2.0, e: 3.2 },
     camera: { label: "Stereo depth camera", p: [0.204, 0.217, 0.0], a: 0.25, e: 2.2 },
-    case: { label: "Electronics case", p: [0.008, 0.273, -0.152], a: -1.2, e: 3 },
+    case: { label: "Electronics case", p: [0.008, 0.273, 0.152], a: 1.2, e: 3 },
     hull: { label: "Two hulls", p: [0.224, 0.079, -0.424], a: -0.6, e: 1.6 },
     props: { label: "Four propellers", p: [-0.368, -0.355, 0.296], a: 2.7, e: 0.9 },
-    pixhawk: { label: "Pixhawk", p: [0.048, 0.333, -0.04], a: -0.3, e: 5.5 },
-    link: { label: "5G link", p: [-0.032, 0.333, 0.064], a: -1.8, e: 5 },
+    pixhawk: { label: "Pixhawk", p: [0.08, 0.285, -0.02], a: -0.3, e: 5.5 },
+    link: { label: "5G link", p: [0.032, 0.277, -0.004], a: -1.8, e: 5 },
 }
 
 const emit = (name, detail) => window.dispatchEvent(new CustomEvent(name, { detail }))
@@ -500,6 +500,17 @@ export async function startScene({ reduced = false } = {}) {
 
     // ---- drive mode ----
     let headingNow = 0
+    // the case lid (opened at the helm) and the names of what is inside
+    let lidT = 0
+    const LID_OPEN = 1.85
+    const LID_LABELS = [
+        ["pixhawk", "Pixhawk flight controller", "is-below"],
+        ["link", "5G link"],
+        ["computer", "Computer"],
+        ["power", "Power"],
+    ]
+    const lidLabels = []
+    const lidV = new THREE.Vector3()
     const colliderLists = [[], [], []]
     drive = createDrive({
         camera,
@@ -522,6 +533,13 @@ export async function startScene({ reduced = false } = {}) {
             rippleI = (rippleI + 1) % RIPPLE_N
         },
     })
+    for (const [mark, text, side] of LID_LABELS) {
+        const el = document.createElement("span")
+        el.className = "lid-label" + (side ? " " + side : "")
+        el.textContent = text
+        drive.hud.appendChild(el)
+        lidLabels.push({ mark, el })
+    }
     const startDrive = () => {
         intro.done = true
         cut = CUT_ALL_SOLID
@@ -888,6 +906,27 @@ export async function startScene({ reduced = false } = {}) {
         wu.uCam.value.copy(camera.position)
         wu.uDim.value = dim
         wu.uSweep.value = boatVis * (intro.done ? 1 : clamp(cut - CUT_ALL_CLOUD)) * (1 - xray * 0.5) * 0.6 / exposure
+        // the lid: opens about its hinges; with it open, the parts inside are named
+        lidT += ((drive && drive.active && drive.lidOpen ? 1 : 0) - lidT) * (1 - Math.exp(-dt * 2.6))
+        if (argus.lid) argus.lid.rotation.x = -LID_OPEN * (lidT * lidT * (3 - 2 * lidT))
+        const showLabels = lidT > 0.85 && boat.visible
+        for (const l of lidLabels) {
+            const m = argus.marks[l.mark]
+            let on = showLabels && !!m
+            if (on) {
+                m.getWorldPosition(lidV).project(camera)
+                on = lidV.z < 1 && Math.abs(lidV.x) < 1.1 && Math.abs(lidV.y) < 1.1
+                if (on) {
+                    // near the right edge the name goes on the left of its dot
+                    let x = (lidV.x * 0.5 + 0.5) * innerWidth
+                    const left = x + 12 + l.el.offsetWidth > innerWidth - 8
+                    if (left) x -= l.el.offsetWidth + 24
+                    l.el.classList.toggle("is-left", left)
+                    l.el.style.transform = `translate(${x.toFixed(1)}px, ${((-lidV.y * 0.5 + 0.5) * innerHeight).toFixed(1)}px)`
+                }
+            }
+            l.el.classList.toggle("is-on", on)
+        }
         for (const l of navLights) {
             l.material.opacity = night * boatVis
             l.visible = night > 0.05 && boat.visible
@@ -975,7 +1014,7 @@ export async function startScene({ reduced = false } = {}) {
         g.uExposure.value = exposure
         g.uDim.value = contentDim > 0.99 ? 1 : lerp(0.6, 1, contentDim)
         post.bloom.threshold = 2.4 / exposure
-        post.bloom.strength = (0.45 + night * 0.25) * lerp(0.5, 1, contentDim)
+        post.bloom.strength = (0.45 + night * 0.25) * lerp(0.5, 1, contentDim) * (window.__noBloom ? 0 : 1)
         tmp.copy(S.dir).multiplyScalar(1000).add(camera.position).project(camera)
         g.uSunPos.value.set(tmp.x * 0.5 + 0.5, tmp.y * 0.5 + 0.5)
         g.uSunOn.value = S.elev > -1.5 && tmp.z < 1 ? 1 : 0

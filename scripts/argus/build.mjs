@@ -9,16 +9,24 @@
      flat bars bolted to the hulls, two rails on top of them, grey duct tape
      where they cross,
    - the black hard case on the rails, long side along the boat: ribbed
-     lid, latches and a handle on the side, hinges on the other side, the
-     stereo camera in a black bracket on the bow end, cables and coloured
-     wires out of the stern end,
+     lid, latches and a handle on the starboard side, hinges on the port
+     side, the stereo camera in a black bracket on the bow end, cables and
+     coloured wires out of the stern end,
+   - the lid is its own node ("lid", turning about the hinge line along x),
+     and the case is hollow: inside the lid the electronics are screwed on
+     (finned heat sinks, the 5G router, the red flight controller, an orange
+     relay board), with the orange gasket round its rim; in the box the
+     battery, the computer boards and the wiring,
+   - the emergency stop, a yellow box with a red mushroom button, on the
+     port hull ahead of the bow beam,
    - on the lid the LiDAR (finned aluminium, black window) on a square
      plate on a green board, with a small white dome beside it,
    - at the stern of each hull a Seapath GNSS antenna: white dome with a
      black rim on a red post on a green block,
    - four thrusters under the hull ends: steel post, square motor mount and
      an eight-sided guard round the propeller,
-   - the arrow on the bow, and the sponsor names on the starboard hull.
+   - the arrow on the bow, and the sponsor stickers on the starboard hull
+     (DNV, Kongsberg, telenor; scripts/argus/decals.py).
 
    Surfaces: painted cloth, pebbled plastic and brushed aluminium
    textures (scripts/argus/textures.py), and the shadow in every corner
@@ -256,14 +264,28 @@ const MATS = {
     wireBlue: { color: "#2052c8", rough: 0.5 },
     wireYellow: { color: "#e6b81c", rough: 0.5 },
     mark: { color: "#0c0c0d", rough: 0.6 },
-    sponsors: { color: "#ffffff", rough: 0.45, map: "sponsors.png", alpha: true },
+    sponsors: { color: "#ffffff", rough: 0.38, map: "sponsors.png", alpha: true },
+    yellow: { color: "#f2c000", rough: 0.42 },
+    estopRed: { color: "#c80d16", rough: 0.22, clearcoat: [0.6, 0.12] },
+    sink: { color: "#c9ced4", rough: 0.36, metal: 1 },
+    pcbOrange: { color: "#e2601a", rough: 0.5 },
+    relay: { color: "#1f4ed0", rough: 0.32 },
+    battery: { color: "#2459c8", rough: 0.4, clearcoat: [0.4, 0.3] },
+    wireWhite: { color: "#e8e8e4", rough: 0.5 },
+    wireBlack: { color: "#151517", rough: 0.5 },
+    label: { color: "#f2f2ee", rough: 0.6 },
 }
+
+// the lid turns about this line (along x) when it opens, towards port
+export const HINGE = { y: 0, z: 0 }
 
 // where the parts are, for the labels on the site (metres, before centring)
 const MARKS = {}
 
 function build(lite) {
     const parts = Object.fromEntries(Object.keys(MATS).map((k) => [k, []]))
+    const lidParts = Object.fromEntries(Object.keys(MATS).map((k) => [k, []]))
+    let bucket = parts // what is being built goes on the boat, or on the lid
     const seg = (n) => Math.max(6, Math.round(lite ? n * 0.55 : n))
     const m4 = new THREE.Matrix4()
     const add = (mat, g, { p = [0, 0, 0], r = [0, 0, 0], s = [1, 1, 1], uv = 1 } = {}) => {
@@ -277,7 +299,7 @@ function build(lite) {
         }
         if (!gg.attributes.normal) gg.computeVertexNormals()
         for (const k of Object.keys(gg.attributes)) if (!["position", "normal", "uv"].includes(k)) gg.deleteAttribute(k)
-        parts[mat].push(gg)
+        bucket[mat].push(gg)
     }
     const screw = (p, r = 0.0042, up = [0, 1, 0]) => {
         const head = new THREE.CylinderGeometry(r, r * 1.05, r * 0.7, seg(10))
@@ -362,44 +384,164 @@ function build(lite) {
     // grey tape round the crossings, as on the boat
     for (const xs of [-1, 1]) for (const zs of [-1, 1]) tape([BEAM_X * xs, BEAM_Y + PROF * 0.5, RAIL_Z * zs], [0.055, 0.05, 0.06], 0.3 * xs * zs)
 
-    // ---------------- the case: long side along the boat ----------------
+    // ---------------- the case: long side along the boat, hollow, the lid on hinges ----------------
     const cx0 = CASE.cx
     const lowH = SEAM - CASE.bottom
     const lidH = TOP - SEAM
     const cuv = (w, h) => [w / 0.06, h / 0.06]
-    add("case", new RoundedBoxGeometry(CASE.x, lowH, CASE.z, seg(4), 0.02), { p: [cx0, CASE.bottom + lowH / 2, 0], uv: cuv(CASE.x, lowH) })
-    add("case", new RoundedBoxGeometry(CASE.x + 0.006, lidH, CASE.z + 0.006, seg(4), 0.022), { p: [cx0, SEAM + lidH / 2, 0], uv: cuv(CASE.x, lidH) })
-    add("caseDetail", new RoundedBoxGeometry(CASE.x + 0.012, 0.012, CASE.z + 0.012, 2, 0.005), { p: [cx0, SEAM + 0.006, 0], uv: 6 })
-    add("orange", new THREE.BoxGeometry(CASE.x + 0.002, 0.003, CASE.z + 0.002), { p: [cx0, SEAM - 0.001, 0] })
-    // the lid: a raised frame round the edge and two ribs along it
+    const W = 0.006 // wall
+    // a wall all round: a rounded-rect ring, extruded upwards from y0 to y1
+    const walls = (w, d, r, y0, y1, t = W) => {
+        const sh = roundedRectShape(w, d, r)
+        sh.holes.push(roundedRectPath(new THREE.Path(), w - 2 * t, d - 2 * t, Math.max(0.004, r - t), true))
+        const g = new THREE.ExtrudeGeometry(sh, { depth: y1 - y0, bevelEnabled: false, curveSegments: seg(6) })
+        g.rotateX(-Math.PI / 2)
+        g.translate(0, y0, 0)
+        return g
+    }
+    // a flat ring facing up (or down)
+    const ring = (w, d, r, wi, di, ri, down = false) => {
+        const sh = roundedRectShape(w, d, r)
+        sh.holes.push(roundedRectPath(new THREE.Path(), wi, di, ri, true))
+        const g = new THREE.ShapeGeometry(sh, seg(6))
+        g.rotateX(down ? Math.PI / 2 : -Math.PI / 2)
+        return g
+    }
+    // the box: a rounded bottom and the walls up to the seam; inside, the same black plastic
+    add("case", new RoundedBoxGeometry(CASE.x, 0.04, CASE.z, seg(4), 0.02), { p: [cx0, CASE.bottom + 0.02, 0], uv: cuv(CASE.x, 0.04) })
+    add("case", walls(CASE.x, CASE.z, 0.02, CASE.bottom + 0.02, SEAM), { p: [cx0, 0, 0], uv: 16 })
+    add("case", ring(CASE.x, CASE.z, 0.02, CASE.x - 2 * W, CASE.z - 2 * W, 0.014), { p: [cx0, SEAM, 0], uv: 16 })
+    add("caseDetail", walls(CASE.x + 0.012, CASE.z + 0.012, 0.024, SEAM - 0.013, SEAM - 0.001, 0.009), { p: [cx0, 0, 0], uv: 16 })
+    // ribs down the long sides, like the real case
+    for (const zs of [-1, 1]) {
+        for (const dx of [-0.17, -0.06, 0.06, 0.17]) add("case", new RoundedBoxGeometry(0.014, lowH - 0.03, 0.008, 2, 0.003), { p: [cx0 + dx, CASE.bottom + lowH / 2 + 0.01, zs * (CASE.z / 2 + 0.002)], uv: 6 })
+    }
+
+    // the lid: walls down to the seam, a rounded top; the orange gasket round its rim
+    bucket = lidParts
+    const LX = CASE.x + 0.006
+    const LZ = CASE.z + 0.006
+    add("case", new RoundedBoxGeometry(LX, 0.03, LZ, seg(4), 0.015), { p: [cx0, TOP - 0.015, 0], uv: cuv(LX, 0.03) })
+    add("case", walls(LX, LZ, 0.022, SEAM, TOP - 0.015), { p: [cx0, 0, 0], uv: 16 })
+    add("orange", ring(LX - 0.001, LZ - 0.001, 0.021, LX - 0.034, LZ - 0.034, 0.008, true), { p: [cx0, SEAM - 0.0008, 0] })
+    add("caseDetail", walls(LX + 0.006, LZ + 0.006, 0.025, SEAM + 0.001, SEAM + 0.008, 0.006), { p: [cx0, 0, 0], uv: 16 })
+    // a raised frame round the edge of the top and two ribs along it
     const lidFrame = roundedRectShape(CASE.x - 0.02, CASE.z - 0.02, 0.022)
     lidFrame.holes.push(roundedRectPath(new THREE.Path(), CASE.x - 0.055, CASE.z - 0.055, 0.012, true))
     const lf = new THREE.ExtrudeGeometry(lidFrame, { depth: 0.006, bevelEnabled: true, bevelThickness: 0.002, bevelSize: 0.002, bevelSegments: 1, curveSegments: seg(6) })
     lf.rotateX(-Math.PI / 2)
     add("case", lf, { p: [cx0, TOP - 0.001, 0], uv: 12 })
     for (const zs of [-1, 1]) add("case", new RoundedBoxGeometry(CASE.x - 0.07, 0.004, 0.024, 2, 0.0015), { p: [cx0, TOP + 0.002, 0.07 * zs], uv: 6 })
-    // ribs down the long sides and the ends, like the real case
-    for (const zs of [-1, 1]) {
-        for (const dx of [-0.17, -0.06, 0.06, 0.17]) add("case", new RoundedBoxGeometry(0.014, lowH - 0.03, 0.008, 2, 0.003), { p: [cx0 + dx, CASE.bottom + lowH / 2 + 0.01, zs * (CASE.z / 2 + 0.002)], uv: 6 })
-    }
-    // the "front" of the case faces port: two latches and the handle; hinges on the starboard side
-    const front = -CASE.z / 2
+    bucket = parts
+
+    // the front faces starboard: two latches and the handle; the hinges on the port side
+    const front = CASE.z / 2
     for (const dx of [-0.12, 0.12]) {
-        add("caseDetail", new RoundedBoxGeometry(0.06, 0.03, 0.014, 2, 0.003), { p: [cx0 + dx, SEAM - 0.022, front - 0.004], uv: 6 })
-        add("caseDetail", new RoundedBoxGeometry(0.052, 0.07, 0.016, 3, 0.005), { p: [cx0 + dx, SEAM + 0.004, front - 0.011], r: [0.08, 0, 0], uv: 6 })
+        add("caseDetail", new RoundedBoxGeometry(0.06, 0.03, 0.014, 2, 0.003), { p: [cx0 + dx, SEAM - 0.022, front + 0.004], uv: 6 })
+        add("caseDetail", new RoundedBoxGeometry(0.052, 0.07, 0.016, 3, 0.005), { p: [cx0 + dx, SEAM + 0.004, front + 0.011], r: [-0.08, 0, 0], uv: 6 })
     }
     const grip = new THREE.CapsuleGeometry(0.011, 0.11, seg(4), seg(12))
     grip.rotateZ(Math.PI / 2)
-    add("caseDetail", grip, { p: [cx0, SEAM + 0.015, front - 0.034], uv: 6 })
-    for (const dx of [-0.07, 0.07]) add("caseDetail", new RoundedBoxGeometry(0.02, 0.03, 0.036, 2, 0.006), { p: [cx0 + dx, SEAM + 0.015, front - 0.016], uv: 6 })
+    add("caseDetail", grip, { p: [cx0, SEAM - 0.03, front + 0.034], uv: 6 })
+    for (const dx of [-0.07, 0.07]) add("caseDetail", new RoundedBoxGeometry(0.02, 0.03, 0.036, 2, 0.006), { p: [cx0 + dx, SEAM - 0.03, front + 0.016], uv: 6 })
     // a round orange sticker on the side (the purge valve label)
-    add("orange", new THREE.TorusGeometry(0.013, 0.0022, 4, seg(20), Math.PI * 1.6), { p: [cx0 - 0.03, CASE.bottom + 0.045, front - 0.003] })
-    for (let k = -2; k <= 2; k++) add("caseDetail", new THREE.CylinderGeometry(0.008, 0.008, 0.06, seg(12)), { p: [cx0 + k * 0.08, SEAM + 0.004, -front + 0.008], r: [0, 0, Math.PI / 2], uv: 6 })
+    add("orange", new THREE.TorusGeometry(0.013, 0.0022, 4, seg(20), Math.PI * 1.6), { p: [cx0 - 0.03, CASE.bottom + 0.045, front + 0.003] })
+    // the hinges, and the line the lid turns about
+    HINGE.y = SEAM + 0.002
+    HINGE.z = -front - 0.012
+    for (let k = -2; k <= 2; k++) add("caseDetail", new THREE.CylinderGeometry(0.008, 0.008, 0.06, seg(12)), { p: [cx0 + k * 0.08, HINGE.y, HINGE.z], r: [0, 0, Math.PI / 2], uv: 6 })
     // feet on the rails
     for (const xs of [-1, 1]) for (const zs of [-1, 1]) add("plastic", new RoundedBoxGeometry(0.034, 0.006, 0.036, 2, 0.002), { p: [cx0 + 0.15 * xs, CASE.bottom - 0.002, RAIL_Z * zs] })
-    MARKS.case = [cx0, SEAM, front - 0.02]
-    MARKS.pixhawk = [cx0 + 0.05, TOP + 0.01, -0.05]
-    MARKS.link = [cx0 - 0.05, TOP + 0.01, 0.08]
+    MARKS.case = [cx0, SEAM, front + 0.02]
+
+    // ---------------- inside the box: battery, computer boards, wiring ----------------
+    const FLOOR = CASE.bottom + 0.04
+    // the battery, in blue shrink wrap, along the front
+    add("battery", new RoundedBoxGeometry(0.17, 0.036, 0.062, 3, 0.008), { p: [cx0 - 0.03, FLOOR + 0.018, 0.09] })
+    add("label", new THREE.BoxGeometry(0.06, 0.0008, 0.03), { p: [cx0 - 0.05, FLOOR + 0.0365, 0.09] })
+    MARKS.power = [cx0 - 0.03, FLOOR + 0.03, 0.09]
+    // the computer: two boards on standoffs, heat sink on top
+    const cbx = cx0 + 0.1
+    const cbz = -0.01
+    for (const [i, y] of [FLOOR + 0.012, FLOOR + 0.034].entries()) {
+        add("pcb", new RoundedBoxGeometry(0.09, 0.0018, 0.065, 2, 0.002), { p: [cbx, y, cbz] })
+        for (const sx of [-1, 1]) for (const sz of [-1, 1]) add("steel", new THREE.CylinderGeometry(0.0025, 0.0025, 0.012, seg(6)), { p: [cbx + sx * 0.04, y - 0.006, cbz + sz * 0.028] })
+        // connectors along one edge
+        add("plastic", new THREE.BoxGeometry(0.05, 0.008, 0.008), { p: [cbx - 0.005, y + 0.005, cbz + 0.026 - i * 0.05] })
+        add("label", new THREE.BoxGeometry(0.016, 0.007, 0.012), { p: [cbx + 0.03, y + 0.0045, cbz - 0.02] })
+    }
+    add("sink", new THREE.BoxGeometry(0.045, 0.004, 0.04), { p: [cbx - 0.01, FLOOR + 0.038, cbz] })
+    for (let i = 0; i < (lite ? 5 : 9); i++) add("sink", new THREE.BoxGeometry(0.045, 0.01, 0.0012), { p: [cbx - 0.01, FLOOR + 0.045, cbz - 0.018 + i * 0.0045] })
+    MARKS.computer = [cbx, FLOOR + 0.04, cbz]
+    // yellow power connectors and a couple of red ones
+    for (const [x, z, m] of [
+        [cx0 + 0.06, 0.1, "yellow"],
+        [cx0 + 0.075, 0.08, "yellow"],
+        [cx0 - 0.13, 0.03, "yellow"],
+        [cx0 - 0.1, -0.08, "red"],
+        [cx0 + 0.02, -0.1, "red"],
+    ])
+        add(m, new RoundedBoxGeometry(0.018, 0.009, 0.009, 2, 0.002), { p: [x, FLOOR + 0.006, z], r: [0, x * 9, 0] })
+    // wiring: red, black, yellow and white, in loose loops from part to part
+    const loose = (mat, pts, r = 0.0018) => cable(pts, r, mat)
+    const wireCols = ["wireRed", "wireBlack", "wireYellow", "wireWhite", "wireRed", "wireBlack"]
+    for (let i = 0; i < (lite ? 7 : 16); i++) {
+        const a = [cx0 - 0.16 + ((i * 37) % 30) / 100, FLOOR + 0.004, -0.13 + ((i * 53) % 26) / 100]
+        const b = [cx0 - 0.15 + ((i * 71) % 31) / 100, FLOOR + 0.006, -0.12 + ((i * 29) % 24) / 100]
+        const h = 0.02 + ((i * 13) % 5) * 0.008
+        loose(wireCols[i % wireCols.length], [a, [a[0] * 0.7 + b[0] * 0.3, FLOOR + h, a[2] * 0.6 + b[2] * 0.4], [a[0] * 0.3 + b[0] * 0.7, FLOOR + h * 0.8, a[2] * 0.3 + b[2] * 0.7], b])
+    }
+    // the wires come in from the glands at the stern end
+    for (let i = 0; i < (lite ? 3 : 6); i++) {
+        const z = -0.11 + i * 0.045
+        loose(i % 2 ? "wireBlack" : "wireRed", [[cx0 - CASE.x / 2 + W + 0.002, CASE.bottom + 0.05, z], [cx0 - 0.15, FLOOR + 0.03, z * 0.8], [cx0 - 0.1, FLOOR + 0.01, z * 0.5 + 0.02]], 0.0024)
+    }
+
+    // ---------------- inside the lid: the electronics screwed to it (hanging down when closed) ----------------
+    bucket = lidParts
+    const CEIL = TOP - 0.03
+    const hang = (mat, g, x, z, h, opts = {}) => add(mat, g, { ...opts, p: [x, CEIL - h / 2, z] })
+    // a finned heat sink: a base plate and fins pointing down
+    const heatSink = (x, z, w, d, h, fins) => {
+        hang("sink", new THREE.BoxGeometry(w, 0.006, d), x, z, 0.006)
+        for (let i = 0; i < fins; i++) hang("sink", new THREE.BoxGeometry(0.0016, h, d * 0.94), x - w / 2 + (w / (fins - 1)) * i, z, 0.012 + h)
+    }
+    heatSink(cx0 - 0.135, 0.1, 0.07, 0.055, 0.016, lite ? 7 : 12)
+    heatSink(cx0 - 0.13, -0.07, 0.085, 0.07, 0.02, lite ? 8 : 15)
+    // a small green board beside the first
+    hang("pcb", new RoundedBoxGeometry(0.045, 0.002, 0.028, 2, 0.001), cx0 - 0.075, 0.12, 0.004)
+    // red and black terminal blocks
+    for (let i = 0; i < 4; i++) hang(i % 2 ? "plastic" : "red", new RoundedBoxGeometry(0.012, 0.012, 0.03, 2, 0.002), cx0 - 0.08 + i * 0.014, 0.04, 0.012)
+    // a black round fan
+    hang("plastic", new THREE.CylinderGeometry(0.028, 0.028, 0.012, seg(28)), cx0 - 0.04, -0.075, 0.012)
+    hang("caseDetail", new THREE.CylinderGeometry(0.009, 0.009, 0.013, seg(16)), cx0 - 0.04, -0.075, 0.013)
+    // the 5G router: a black box with a white label and its sockets
+    const rx = cx0 + 0.03
+    const rz = -0.005
+    hang("plastic", new RoundedBoxGeometry(0.1, 0.03, 0.07, 3, 0.006), rx, rz, 0.03)
+    hang("label", new THREE.BoxGeometry(0.05, 0.0008, 0.012), rx - 0.01, rz + 0.01, 0.0312)
+    for (let i = 0; i < 4; i++) hang("steel", new THREE.CylinderGeometry(0.0035, 0.0035, 0.01, seg(8)), rx + 0.052, rz - 0.024 + i * 0.016, 0.02, { r: [0, 0, Math.PI / 2] })
+    MARKS.link = [rx, CEIL - 0.03, rz]
+    // the flight controller: the red unit with black plugs along its end
+    const fx = cx0 + 0.09
+    const fz = -0.025
+    hang("red", new RoundedBoxGeometry(0.036, 0.018, 0.075, 3, 0.005), fx, fz, 0.018)
+    for (let i = 0; i < 5; i++) hang("plastic", new THREE.BoxGeometry(0.01, 0.008, 0.008), fx - 0.012 + (i % 2) * 0.024, fz - 0.03 + i * 0.014, 0.024)
+    MARKS.pixhawk = [fx, CEIL - 0.02, fz]
+    // the orange relay board with its four blue relays
+    hang("pcbOrange", new RoundedBoxGeometry(0.075, 0.002, 0.05, 2, 0.002), cx0 + 0.145, 0.08, 0.004)
+    for (let i = 0; i < 4; i++) hang("relay", new RoundedBoxGeometry(0.015, 0.016, 0.019, 2, 0.002), cx0 + 0.118 + i * 0.018, 0.085, 0.02)
+    // wires across the lid: white USB leads and red and black power
+    for (const [mat, pts] of [
+        ["wireWhite", [[cx0 - 0.1, 0.1], [cx0 - 0.02, 0.07], [cx0 + 0.05, 0.05], [cx0 + 0.12, 0.06]]],
+        ["wireWhite", [[cx0 - 0.11, -0.04], [cx0 - 0.04, -0.02], [cx0 + 0.07, 0.03], [cx0 + 0.13, 0.04]]],
+        ["wireRed", [[cx0 - 0.08, 0.04], [cx0 - 0.02, 0.0], [cx0 + 0.08, -0.06], [cx0 + 0.15, -0.1]]],
+        ["wireBlack", [[cx0 - 0.07, 0.04], [cx0 - 0.0, -0.03], [cx0 + 0.05, -0.08], [cx0 + 0.14, -0.12]]],
+        ["wireRed", [[cx0 - 0.15, 0.12], [cx0 - 0.1, 0.13], [cx0 - 0.05, 0.12]]],
+        ["wireBlack", [[cx0 + 0.11, 0.07], [cx0 + 0.09, 0.02], [cx0 + 0.09, -0.06]]],
+    ])
+        loose(mat, pts.map(([x, z], i) => [x, CEIL - 0.004 - (i % 2) * 0.006, z]), 0.0019)
+    bucket = parts
 
     // ---------------- stereo camera in a black bracket on the bow end ----------------
     const bowFace = cx0 + CASE.x / 2
@@ -418,6 +560,7 @@ function build(lite) {
     MARKS.camera = [bowFace + 0.035, camY, 0]
 
     // ---------------- the LiDAR on the lid, towards the stern ----------------
+    bucket = lidParts
     const lx = cx0 - 0.075
     const lz = 0.025
     const ly = TOP + 0.006
@@ -447,20 +590,27 @@ function build(lite) {
         add("lidarAlu", new THREE.BoxGeometry(0.036, 0.014, 0.0016), { p: [lx + Math.cos(a) * 0.026, base + 0.073, lz + Math.sin(a) * 0.026], r: [0, -a, 0] })
     }
     add("lens", new THREE.SphereGeometry(0.008, seg(16), seg(8), 0, Math.PI * 2, 0, Math.PI / 2), { p: [lx, base + 0.074, lz] })
-    // the connector and its cable to the stern end of the case
+    // the connector and its cable over the stern edge of the lid, close to the hinge (so it bends, not stretches, when the lid opens)
     add("plastic", new THREE.CylinderGeometry(0.007, 0.007, 0.022, seg(12)), { p: [lx - 0.05, base + 0.012, lz + 0.01], r: [0, 0, Math.PI / 2] })
     add("red", new THREE.CylinderGeometry(0.0072, 0.0072, 0.004, seg(12)), { p: [lx - 0.062, base + 0.012, lz + 0.01], r: [0, 0, Math.PI / 2] })
+    const sternTop = cx0 - CASE.x / 2
     cable([
         [lx - 0.064, base + 0.012, lz + 0.01],
-        [lx - 0.09, base + 0.02, lz + 0.04],
-        [cx0 - CASE.x / 2 - 0.004, TOP + 0.006, 0.09],
-        [cx0 - CASE.x / 2 - 0.022, TOP - 0.05, 0.1],
-        [cx0 - CASE.x / 2 - 0.016, CASE.bottom + 0.06, 0.08],
+        [lx - 0.085, base + 0.008, lz - 0.05],
+        [sternTop - 0.002, TOP + 0.004, -0.14],
+        [sternTop - 0.012, SEAM + 0.025, -0.162],
+        [sternTop - 0.013, SEAM, -0.168],
     ], 0.0045)
     // the small white dome beside it
     add("dome", new THREE.SphereGeometry(0.017, seg(20), seg(10), 0, Math.PI * 2, 0, Math.PI / 2), { p: [lx + 0.055, ly + 0.004, lz + 0.055] })
     add("plastic", new THREE.CylinderGeometry(0.018, 0.018, 0.004, seg(20)), { p: [lx + 0.055, ly + 0.003, lz + 0.055] })
     MARKS.lidar = [lx, base + 0.04, lz]
+    bucket = parts
+    cable([
+        [sternTop - 0.013, SEAM, -0.168],
+        [sternTop - 0.016, CASE.bottom + 0.11, -0.15],
+        [sternTop - 0.014, CASE.bottom + 0.09, -0.1],
+    ], 0.0045)
 
     // ---------------- the stern end of the case: cables and coloured wires ----------------
     const sternFace = cx0 - CASE.x / 2
@@ -640,18 +790,74 @@ function build(lite) {
     const ag = new THREE.ShapeGeometry(arrow)
     ag.rotateX(-Math.PI / 2)
     add("blackTape", ag, { p: [HULL_L / 2 - 0.2, 0.0012, HULL_Z - 0.03], r: [0, -0.5, 0] })
-    const dec = new THREE.PlaneGeometry(0.74, 0.092, 24, 1)
+    // the stickers follow the side of the hull, just off it
+    const DW = 0.86
+    const DH = 0.1075
+    const dec = new THREE.PlaneGeometry(DW, DH, 64, 8)
     const duv = dec.attributes.uv
     for (let i = 0; i < duv.count; i++) duv.setY(i, 1 - duv.getY(i))
-    add("sponsors", dec, { p: [-0.02, -0.1, HULL_Z + HULL_W / 2 + 0.003] })
+    const dp = dec.attributes.position
+    for (let i = 0; i < dp.count; i++) {
+        const x = -0.455 + DW / 2 + dp.getX(i)
+        const y = -0.03 - DH / 2 + dp.getY(i)
+        // the hull's side at this height: the same superellipse the hull is made of
+        const yt = hullTop(x)
+        const yb = hullBottom(x)
+        const yc = (yt + yb) / 2
+        const h = (yt - yb) / 2
+        const sn = Math.min(1, Math.max(0, (y - yc) / h)) ** 4.5
+        const z = hullHalfWidth(x) * Math.sqrt(Math.max(0, 1 - sn * sn)) ** (1 / 6)
+        dp.setXYZ(i, x, y, HULL_Z + z + 0.0022)
+    }
+    dec.computeVertexNormals()
+    add("sponsors", dec)
 
-    return parts
+    // ---------------- the emergency stop: on the port hull, just ahead of the bow beam ----------------
+    const ex = BEAM_X + 0.075
+    const ez = -HULL_Z + 0.015
+    add("plastic", new RoundedBoxGeometry(0.08, 0.004, 0.08, 2, 0.002), { p: [ex, 0.002, ez] })
+    add("yellow", new RoundedBoxGeometry(0.068, 0.064, 0.068, 3, 0.006), { p: [ex, 0.036, ez] })
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) screw([ex + sx * 0.026, 0.068, ez + sz * 0.026], 0.0026)
+    add("yellow", new THREE.CylinderGeometry(0.02, 0.022, 0.01, seg(28)), { p: [ex, 0.073, ez] })
+    const mush = new THREE.LatheGeometry(
+        [
+            [0, 0],
+            [0.011, 0],
+            [0.011, 0.006],
+            [0.02, 0.007],
+            [0.0222, 0.0105],
+            [0.0212, 0.0155],
+            [0.016, 0.0195],
+            [0.008, 0.0215],
+            [0, 0.022],
+        ].map(([x, y]) => new THREE.Vector2(x, y)),
+        seg(36)
+    )
+    add("estopRed", mush, { p: [ex, 0.078, ez] })
+    // its cable: out of a gland on the inboard side, along the deck to the bow beam and up to the case
+    add("plastic", new THREE.CylinderGeometry(0.006, 0.007, 0.012, seg(10)), { p: [ex, 0.02, ez + 0.039], r: [Math.PI / 2, 0, 0] })
+    cable([
+        [ex, 0.02, ez + 0.046],
+        [ex - 0.012, 0.01, ez + 0.075],
+        [BEAM_X + 0.028, 0.006, ez + 0.11],
+        [BEAM_X + 0.022, BEAM_Y + 0.02, -0.21],
+        [BEAM_X + 0.0, RAIL_Y + 0.024, -0.16],
+        [CASE.cx + 0.16, CASE.bottom + 0.03, -CASE.z / 2 - 0.012],
+    ], 0.0038)
+    add("plastic", new THREE.CylinderGeometry(0.0065, 0.0075, 0.014, seg(10)), { p: [CASE.cx + 0.16, CASE.bottom + 0.03, -CASE.z / 2 - 0.005], r: [Math.PI / 2, 0, 0] })
+    MARKS.estop = [ex, 0.09, ez]
+
+    return { parts, lidParts }
 }
+
+// marks that sit on the lid (they turn with it)
+const LID_MARKS = ["lidar", "link", "pixhawk"]
 
 // ---------- ambient occlusion: how much of the sky each vertex sees ----------
 function bakeOcclusion(parts, rays) {
     const all = []
-    for (const list of Object.values(parts)) for (const g of list) all.push(g)
+    // stickers lie on the hull: they don't shade it
+    for (const [name, list] of Object.entries(parts)) if (name !== "sponsors") for (const g of list) all.push(g)
     const merged = mergeGeometries(all.map((g) => new THREE.BufferGeometry().setAttribute("position", g.attributes.position)))
     const bvh = new MeshBVH(merged)
     const ray = new THREE.Ray()
@@ -716,14 +922,24 @@ function bakeOcclusion(parts, rays) {
 
 async function write(lite, file) {
     const t0 = Date.now()
-    const parts = build(lite)
-    bakeOcclusion(parts, lite ? 14 : 28)
+    const { parts, lidParts } = build(lite)
+    // the shadow in the corners is baked with the lid open, so the inside is lit right when you look in
+    const OPEN = -1.85
+    const toHinge = new THREE.Matrix4().makeTranslation(0, -HINGE.y, -HINGE.z)
+    const fromHinge = new THREE.Matrix4().makeTranslation(0, HINGE.y, HINGE.z)
+    const open = new THREE.Matrix4().multiplyMatrices(fromHinge, new THREE.Matrix4().makeRotationX(OPEN)).multiply(toHinge)
+    const close = open.clone().invert()
+    for (const list of Object.values(lidParts)) for (const g of list) g.applyMatrix4(open)
+    const all = Object.fromEntries(Object.keys(parts).map((k) => [k, [...parts[k], ...lidParts[k]]]))
+    bakeOcclusion(all, lite ? 14 : 28)
+    for (const list of Object.values(lidParts)) for (const g of list) g.applyMatrix4(close)
     const box = new THREE.Box3()
-    for (const list of Object.values(parts))
-        for (const g of list) {
-            g.computeBoundingBox()
-            box.union(g.boundingBox)
-        }
+    for (const set of [parts, lidParts])
+        for (const list of Object.values(set))
+            for (const g of list) {
+                g.computeBoundingBox()
+                box.union(g.boundingBox)
+            }
     const size = box.getSize(new THREE.Vector3())
     const k = 1 / size.x
     // for the site: where the waterline and the parts are once the model is centred and 1 unit long
@@ -745,17 +961,36 @@ async function write(lite, file) {
         if (!textures.has(name)) textures.set(name, doc.createTexture(name).setImage(fs.readFileSync(path.join(here, name))).setMimeType(name.endsWith(".png") ? "image/png" : "image/jpeg"))
         return textures.get(name)
     }
-    for (const [name, list] of Object.entries(parts)) {
+    // the lid: its own node on the hinge line, its geometry relative to it
+    const lid = doc.createNode("lid").setTranslation([0, HINGE.y, HINGE.z])
+    root.addChild(lid)
+    for (const list of Object.values(lidParts)) for (const g of list) g.applyMatrix4(toHinge)
+    // empty nodes where the labelled parts are (inside the case they are only seen with the lid open)
+    for (const [name, p] of Object.entries(MARKS)) {
+        const onLid = LID_MARKS.includes(name)
+        const n = doc.createNode("mark-" + name).setTranslation(onLid ? [p[0], p[1] - HINGE.y, p[2] - HINGE.z] : p)
+        ;(onLid ? lid : root).addChild(n)
+    }
+    for (const [name, list, parent] of [...Object.entries(parts).map(([n, l]) => [n, l, root]), ...Object.entries(lidParts).map(([n, l]) => [n, l, lid])]) {
         if (!list.length) continue
         const g = mergeGeometries(list, false)
         const def = MATS[name]
         // tiled textures: keep the uvs in 0…1 (so they pack small) and repeat in the material instead
         const uva = g.attributes.uv
+        // shift by whole tiles so nothing is below 0 (the pattern stays the same)
+        let minU = 0
+        let minV = 0
+        for (let i = 0; i < uva.count; i++) {
+            minU = Math.min(minU, uva.getX(i))
+            minV = Math.min(minV, uva.getY(i))
+        }
+        if (minU < 0 || minV < 0) for (let i = 0; i < uva.count; i++) uva.setXY(i, uva.getX(i) - Math.floor(minU), uva.getY(i) - Math.floor(minV))
         let rep = 1
         for (let i = 0; i < uva.array.length; i++) rep = Math.max(rep, Math.abs(uva.array[i]))
         rep = Math.ceil(rep)
         if (rep > 1) for (let i = 0; i < uva.array.length; i++) uva.array[i] /= rep
         const c = new THREE.Color(def.color)
+        // (the lid has its own copies: its texture repeat can differ)
         const mat = doc
             .createMaterial(name)
             .setBaseColorFactor([c.r, c.g, c.b, 1])
@@ -778,10 +1013,10 @@ async function write(lite, file) {
             .setAttribute("NORMAL", doc.createAccessor().setType("VEC3").setArray(new Float32Array(g.attributes.normal.array)).setBuffer(buffer))
             .setAttribute("TEXCOORD_0", doc.createAccessor().setType("VEC2").setArray(new Float32Array(g.attributes.uv.array)).setBuffer(buffer))
             .setAttribute("COLOR_0", doc.createAccessor().setType("VEC3").setArray(new Float32Array(g.attributes.color.array)).setBuffer(buffer))
-        root.addChild(doc.createNode(name).setMesh(doc.createMesh(name).addPrimitive(prim)))
+        parent.addChild(doc.createNode(name).setMesh(doc.createMesh(name).addPrimitive(prim)))
     }
     await MeshoptEncoder.ready
-    await doc.transform(weld(), prune(), reorder({ encoder: MeshoptEncoder }), quantize({ quantizeColor: 8, quantizeNormal: 8 }), meshopt({ encoder: MeshoptEncoder, level: "high" }))
+    await doc.transform(weld(), prune({ keepLeaves: true }), reorder({ encoder: MeshoptEncoder }), quantize({ quantizeColor: 8, quantizeNormal: 8 }), meshopt({ encoder: MeshoptEncoder, level: "high" }))
     const io = new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({ "meshopt.encoder": MeshoptEncoder })
     await io.write(file, doc)
     const tris = doc
