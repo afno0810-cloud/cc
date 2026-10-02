@@ -206,3 +206,9 @@ After changing the site, run `npm run build:pages`, then commit and push `docs/`
 - `framer/MarinorGame.tsx` is a Framer code component with only the game in it: it shows a still of the harbour (`framer/game-poster.jpg`) and a **Drive Argus** button, and only then loads the game from GitHub Pages (`/cc/#page-game`, the drive mode alone, with no menu and no way out of it) in a frame that fills the component. A button makes it full screen.
 - The component tells the game its own address (`?site=…`), and the links in the places' panels (Read about Argus, About Marinor …) then open that site's own pages (`/projects/argus`, `/about`, `/competitions/njord-challange` …) instead of the GitHub Pages copy.
 - On the Framer site it is the page `/spill`.
+
+## A game menu (round 15)
+
+- **Title screen and pause menu** on the game page (`src/scene/gamemenu.js`): the game opens on a menu over the harbour, with the camera standing back and swinging slowly round Argus (`state.menu` in `drive.js`). The choices: Start sailing (Resume once you have started), Njord tasks, Autonomous mode, Places to visit, Logbook, Settings (time of day, weather and sound, changed with ← →) and Controls, with your points, level, medals and places on the right. Esc on the water opens it again; Esc in it goes back.
+- **A tidier helm**: time of day, weather and sound moved into the settings; a Menu button takes their place.
+- **Framer** (`framer/MarinorGame.tsx`): a title card over the still of the harbour (title, what there is to do, a Start sailing button, the keys) and "Loading the harbour" while the game loads.

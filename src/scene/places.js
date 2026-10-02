@@ -24,34 +24,100 @@ const BRAND = "#7c469c"
 // the site's pages, for the "read more" links (the one-page build has its own addresses)
 const KEYS = {
     "/about/": "about",
+    "/projects/": "projects",
     "/projects/argus/": "projects-argus",
     "/projects/proteus/": "projects-proteus",
+    "/team/": "team",
+    "/competitions/": "competitions",
     "/competitions/njord-challenge/": "njord",
     "/competitions/roboboat/": "roboboat",
     "/sponsor/": "sponsor",
     "/join/": "join",
 }
-// the game on the Framer site (in a frame, ?site=<its address>): the links go to that site's pages
+// the game on the Framer site (in a frame, ?site=<its address>): the links go to that site's pages.
+// The site sends its own page paths too (?pages=, JSON, keyed as in PAGE_KEYS); those win over these.
 const FRAMER = {
     "/about/": "/about",
+    "/projects/": "/projects",
     "/projects/argus/": "/projects/argus",
     "/projects/proteus/": "/projects/proteus",
+    "/team/": "/team",
+    "/competitions/": "/competitions",
     "/competitions/njord-challenge/": "/competitions/njord-challange",
     "/competitions/roboboat/": "/competitions/roboat",
     "/sponsor/": "/want-to-spons-us",
     "/join/": "/join",
 }
+const PAGE_KEYS = {
+    "/about/": "about",
+    "/projects/": "projects",
+    "/projects/argus/": "argus",
+    "/projects/proteus/": "proteus",
+    "/team/": "team",
+    "/competitions/": "competitions",
+    "/competitions/njord-challenge/": "njord",
+    "/competitions/roboboat/": "roboboat",
+    "/sponsor/": "sponsor",
+    "/join/": "join",
+}
+const PARAMS = new URLSearchParams(location.search)
 const SITE = (() => {
     try {
-        const u = new URL(new URLSearchParams(location.search).get("site") || "")
+        const u = new URL(PARAMS.get("site") || "")
         return u.protocol === "https:" || u.protocol === "http:" ? u.origin : null
     } catch (e) {
         return null
     }
 })()
+const SITE_PAGES = (() => {
+    try {
+        const o = JSON.parse(PARAMS.get("pages") || "{}")
+        return o && typeof o === "object" ? o : {}
+    } catch (e) {
+        return {}
+    }
+})()
+const isOut = (path) => /^https?:/.test(path)
+const sitePath = (path) => {
+    const own = SITE_PAGES[PAGE_KEYS[path]]
+    return typeof own === "string" && own.startsWith("/") ? own : FRAMER[path]
+}
 const linkTo = (path) => {
-    if (SITE && FRAMER[path]) return SITE + FRAMER[path]
+    if (isOut(path)) return path
+    if (SITE && sitePath(path)) return SITE + sitePath(path)
     return typeof window.__glbSource === "function" ? location.pathname + location.search + "#page-" + KEYS[path] : path
+}
+// a link to the site opens the page on the site itself, not inside the game's frame:
+// ask the page around the frame to go there, and if it does not, take the whole tab there
+const inFrame = (() => {
+    try {
+        return window.top !== window.self
+    } catch (e) {
+        return true
+    }
+})()
+let fallback = 0
+addEventListener("message", (e) => {
+    // the site took the link: no need for the fallback
+    if (e.origin === SITE && e.data && e.data.type === "marinor:navigating") clearTimeout(fallback)
+})
+function goToSite(path) {
+    const url = linkTo(path)
+    if (inFrame) {
+        try {
+            window.parent.postMessage({ type: "marinor:navigate", path: sitePath(path), url }, SITE)
+        } catch (e) {}
+        clearTimeout(fallback)
+        fallback = setTimeout(() => {
+            try {
+                window.top.location.href = url
+            } catch (e) {
+                window.open(url, "_blank", "noopener")
+            }
+        }, 250)
+    } else {
+        location.href = url
+    }
 }
 
 const GROUPS = [
@@ -72,12 +138,23 @@ const PLACES = [
         kicker: "Project Argus",
         title: "Argus",
         img: ["/media/img/argus-argus-on-water-dscf6237-800.webp", "Argus on the water"],
+        lead: "Our first autonomous boat, the one you are driving right now.",
         text: [
-            "Our first autonomous boat. A catamaran built by students in Trondheim and tested in the harbour.",
-            "Argus is our first autonomous surface vessel. It finds its way on the water with no one at the wheel.",
+            "Argus is a catamaran built by students in Trondheim. It finds its way on the water with no one at the wheel: the sensors see the harbour, the computer on board plans a course, and the motors steer it.",
+            "We built it from the first hull in the workshop to the first test in the harbour in under a year, for the Njord Challenge 2026.",
         ],
-        facts: ["Catamaran", "LiDAR", "Stereo camera", "Seapath 130"],
+        stats: [
+            ["2", "hulls"],
+            ["4", "motors"],
+            ["2026", "first race"],
+        ],
+        list: [
+            ["See", "LiDAR and a stereo camera give a 3D picture of what is around the boat."],
+            ["Know where it is", "A Kongsberg Seapath 130 gives position and heading, with correction data over 5G."],
+            ["Plan and steer", "A cost map and the Field D* planner find the route, and a Pixhawk drives the four motors."],
+        ],
         link: ["/projects/argus/", "Read about Argus"],
+        links: [["/projects/", "All our projects"]],
         action: ["lid", "Look inside"],
     },
     {
@@ -85,16 +162,22 @@ const PLACES = [
         group: "pages",
         x: -30,
         z: -150,
-        kicker: "About",
+        kicker: "About us",
         title: "Marinor NTNU",
         img: ["/media/img/team-team-2025-group-photo-800.webp", "The Marinor NTNU team"],
+        lead: "A student organisation at NTNU that builds autonomous boats.",
         text: [
-            "Marinor NTNU is a technical student organisation at NTNU. We build autonomous boats that find their way on the water without anyone steering.",
-            "Our members study robotics, automation, marine technology and other subjects. We work with the Department of Engineering Cybernetics.",
-            "Marinor was founded in 2025 and has more than 35 members.",
+            "Our members study robotics, cybernetics, marine technology, computer science, economics and more. We work with the Department of Engineering Cybernetics at NTNU.",
+            "The long term goal: a boat of about 25 feet, with room for a crew, that sails the whole way from Trondheim to Nordkapp on its own.",
         ],
-        facts: ["Founded 2025", "Trondheim"],
+        stats: [
+            ["2025", "founded"],
+            ["35+", "members"],
+            ["10", "groups"],
+        ],
+        facts: ["Trondheim", "NTNU", "Engineering Cybernetics"],
         link: ["/about/", "About Marinor"],
+        links: [["/team/", "Meet the team"]],
     },
     {
         id: "njord",
@@ -104,12 +187,24 @@ const PLACES = [
         kicker: "Competitions",
         title: "The Njord Challenge",
         img: ["/media/img/competitions-njord-all-teams-at-haven-800.webp", "All the teams at the Njord Challenge in Nyhavna"],
+        lead: "Autonomous boats from student teams, racing in Trondheim every August.",
         text: [
-            "A student competition for autonomous boats, held every August in Trondheim. Teams from several countries bring boats they have built and let them sail on their own.",
-            "Marinor NTNU is on the team list for the Njord Challenge 2026. We built Argus for these four tasks: find the way, see what is around it, avoid other boats and dock.",
+            "Teams from several countries bring boats they have built themselves and let them solve tasks on their own, with no one steering.",
+            "Marinor NTNU is on the team list for the Njord Challenge 2026. We built Argus for these four tasks, and you can try them here in the harbour.",
         ],
-        facts: ["Nyhavna, Trondheim", "Five days in August", "Student teams from many countries"],
+        stats: [
+            ["4", "tasks"],
+            ["5", "days"],
+            ["Aug", "every year"],
+        ],
+        list: [
+            ["Find the way", "Sail a course through gates of buoys."],
+            ["See what is around", "Find and report the marks on the course."],
+            ["Avoid other boats", "Keep clear of a vessel that crosses your path."],
+            ["Dock", "Find the right dock and lay alongside it."],
+        ],
         link: ["/competitions/njord-challenge/", "Read about Njord"],
+        links: [["/competitions/", "All competitions"]],
         action: ["tasks", "Try the four tasks"],
     },
     {
@@ -119,7 +214,8 @@ const PLACES = [
         z: 150,
         kicker: "Njord · On the course",
         title: "What is out on the course",
-        text: ["The course has the same kind of marks a boat meets at sea, and the boat has to read them."],
+        lead: "The course has the same kind of marks a boat meets at sea, and the boat has to read them.",
+        text: [],
         list: [
             ["Buoys", "Floating markers that show where the course goes and where the boat must not sail."],
             ["Cardinal marks", "Sea marks that show which side is safe to pass."],
@@ -137,19 +233,25 @@ const PLACES = [
         kicker: "Competitions",
         title: "RoboBoat",
         img: ["/media/img/competitions-roboboat-hero-boat-barka-800.webp", "A student boat at RoboBoat"],
+        lead: "The big international competition for autonomous boats, in Florida.",
         text: [
-            "An international student competition in Florida. Teams build small autonomous boats and let them solve a course on the water, with no one steering.",
-            "RoboBoat is run by RoboNation in the USA. Student teams from all over the world design, build and test their own autonomous surface vessel, and then bring it to Florida.",
+            "RoboBoat is run by RoboNation in the USA. Student teams from all over the world design, build and test their own autonomous surface vessel, and then bring it to Florida to solve a course on the water.",
+            "It is the next step for Marinor after Njord: a bigger stage, harder tasks and teams from the best universities in the world.",
         ],
-        facts: ["Sarasota, Florida", "Every February", "Run by RoboNation"],
+        stats: [
+            ["Feb", "every year"],
+            ["USA", "Sarasota, Florida"],
+        ],
+        facts: ["Run by RoboNation", "Teams from all over the world"],
         link: ["/competitions/roboboat/", "Read about RoboBoat"],
+        links: [["/competitions/", "All competitions"]],
     },
     {
         id: "partners",
         group: "pages",
         x: -262,
         z: -10,
-        kicker: "Our sponsors",
+        kicker: "Our partners",
         title: "Thanks to our partners",
         logos: [
             ["/media/img/sponsors-kongsberg.webp", "Kongsberg Discovery"],
@@ -158,7 +260,13 @@ const PLACES = [
             ["/media/img/sponsors-ntnu.webp", "NTNU"],
             ["/media/img/sponsors-frifond.webp", "Frifond"],
         ],
-        text: ["These companies and organisations support Marinor NTNU. Without them we could not build our boats or travel to competitions."],
+        lead: "These companies and organisations make it possible for us to build boats and travel to competitions.",
+        text: ["We are looking for more partners. As a partner you meet motivated students in robotics and marine technology, and your name sails with us on the water and at the competitions."],
+        list: [
+            ["Visibility", "Your logo on the boat, our site and at the competitions."],
+            ["Recruitment", "Get to know the students before they graduate."],
+            ["Knowledge", "Follow the work and share what you know."],
+        ],
         link: ["/sponsor/", "Become a partner"],
     },
     {
@@ -166,15 +274,20 @@ const PLACES = [
         group: "pages",
         x: 86,
         z: -205,
-        kicker: "Recruitment",
+        kicker: "Join us",
         title: "Join Marinor",
         img: ["/media/img/argus-dock-team-gathered-2026-04-19-800.webp", "The team behind Argus"],
+        lead: "All NTNU students can apply. You do not need to know anything about boats.",
         text: [
-            "We build autonomous boats in Trondheim. All NTNU students can apply, and you do not need to know anything about boats.",
-            "We are not recruiting right now. We take in new members at set times. Follow us on Instagram, where we post when applications open.",
+            "We take in new members at set times. Follow us on Instagram and LinkedIn, where we post when applications open.",
+            "We have ten groups. Pick the one that fits what you study, or what you want to learn:",
         ],
-        facts: ["Perception", "Autonomy", "Control", "GUI", "Hardware", "Economy", "PR"],
+        facts: ["Software", "Hardware", "Autonomy", "Control", "GUI", "Perception", "Simulation", "Electrical", "Hull", "Business"],
         link: ["/join/", "Our groups"],
+        links: [
+            ["https://www.instagram.com/marinorntnu/", "Instagram"],
+            ["https://www.linkedin.com/company/marinor-ntnu", "LinkedIn"],
+        ],
     },
     {
         id: "proteus",
@@ -183,9 +296,13 @@ const PLACES = [
         z: 226,
         kicker: "Project Proteus",
         title: "Proteus",
-        text: ["Our next boat. We are working on the design now.", "Everything we learn on Argus goes into Proteus."],
-        facts: ["Coming soon"],
+        lead: "Our next boat. We are working on the design now.",
+        text: [
+            "Everything we learn on Argus goes into Proteus. It is a step on the way to the 25 foot boat that will sail from Trondheim to Nordkapp on its own.",
+        ],
+        facts: ["In design", "Built on what we learn from Argus"],
         link: ["/projects/proteus/", "About Proteus"],
+        links: [["/projects/", "All our projects"]],
     },
     // ---- the timeline (the about page) ----
     {
@@ -226,7 +343,7 @@ const PLACES = [
         z: -55,
         badge: "2028",
         title: "A bigger boat",
-        text: ["In 2028 we plan to start building a much bigger boat. The long-term goal is a boat that can sail the Norwegian coast on its own with a crew on board."],
+        text: ["In 2028 we plan to start building a much bigger boat: about 25 feet long, with room for a crew, but built to sail fully on its own."],
         link: ["/about/", "About Marinor"],
     },
     {
@@ -236,8 +353,8 @@ const PLACES = [
         z: -55,
         badge: "→",
         kicker: "The long run",
-        title: "Along the Norwegian coast",
-        text: ["In the long run we want to scale up our competition boat. The goal is a boat that sails the whole Norwegian coast on its own, with people on board."],
+        title: "Trondheim to Nordkapp",
+        text: ["The long term goal: the 25 foot boat sails autonomously the whole way from Trondheim to Nordkapp, with a crew on board but no one at the wheel."],
         link: ["/about/", "About Marinor"],
     },
     // ---- how we built it (the Argus page) ----
@@ -661,8 +778,14 @@ export function createPlaces({ scene, props, drive, missions }) {
     hud.appendChild(card)
     drive.addMenu(card, { modal: false })
     let open = null
+    function linkHtml([path, label], main) {
+        const out = isOut(path)
+        const target = out || !SITE ? ' target="_blank" rel="noopener"' : ' target="_top"'
+        return `<a class="${main ? "hud-btn hpl-go" : "hpl-link"}" href="${linkTo(path)}"${target}${out ? "" : ` data-site="${path}"`}>${esc(label)} <span aria-hidden="true">${out ? "↗" : "→"}</span></a>`
+    }
     function openCard(p, isNew) {
         open = p
+        drive.showKeys(false) // the controls step aside for the post
         const n = items.filter((q) => visited.has(q.id)).length
         const k = items.filter((q) => q.group === p.group && visited.has(q.id)).length
         const kicker = p.gr.kind === "info" ? p.kicker : `${p.gr.name} · ${p.n} of ${p.of}`
@@ -672,14 +795,17 @@ export function createPlaces({ scene, props, drive, missions }) {
             <div class="hpl-top"><span class="hpl-kicker">${esc(kicker)}</span><button type="button" class="hpl-x" data-act="close" aria-label="Close">×</button></div>
             ${p.badge && p.gr.kind === "milestone" ? `<p class="hpl-year">${esc(p.kicker || p.badge)}</p>` : p.gr.kind === "photo" ? `<p class="hpl-year">${esc(p.kicker)}</p>` : ""}
             <h2>${esc(p.title)}</h2>
+            ${p.lead ? `<p class="hpl-lead">${esc(p.lead)}</p>` : ""}
+            ${p.stats ? `<ul class="hpl-stats">${p.stats.map(([a, b]) => `<li><b>${esc(a)}</b><span>${esc(b)}</span></li>`).join("")}</ul>` : ""}
             ${p.text.map((t) => `<p>${esc(t)}</p>`).join("")}
             ${p.list ? `<dl class="hpl-list">${p.list.map(([a, b]) => `<div><dt>${esc(a)}</dt><dd>${esc(b)}</dd></div>`).join("")}</dl>` : ""}
             ${p.logos ? `<ul class="hpl-logos">${p.logos.map(([src, alt]) => `<li><img src="${src}" alt="${esc(alt)}" loading="lazy"></li>`).join("")}</ul>` : ""}
             ${p.facts ? `<ul class="hpl-facts">${p.facts.map((f) => `<li>${esc(f)}</li>`).join("")}</ul>` : ""}
             <div class="hpl-btns">
                 ${p.action ? `<button type="button" class="hud-btn hr-main" data-act="${p.action[0]}">${p.action[1]}</button>` : ""}
-                <a class="hud-btn" href="${linkTo(p.link[0])}" target="_blank" rel="noopener">${p.link[1]} <span aria-hidden="true">↗</span></a>
+                ${linkHtml(p.link, true)}
             </div>
+            ${p.links ? `<div class="hpl-more">${p.links.map((l) => linkHtml(l)).join("")}</div>` : ""}
             <p class="hpl-foot">${isNew ? `<b>New place</b> · ` : ""}${p.gr.kind === "info" ? "" : `${k} of ${p.of} in this row · `}${n} of ${items.length} visited<span class="hud-keyhint" aria-hidden="true"> · <kbd>Enter</kbd> to choose</span></p>`
         card.scrollTop = 0
         card.classList.add("is-on")
@@ -690,6 +816,12 @@ export function createPlaces({ scene, props, drive, missions }) {
         if (card.contains(document.activeElement)) document.activeElement.blur()
     }
     card.addEventListener("click", (e) => {
+        const a = e.target.closest("a[data-site]")
+        if (a && SITE) {
+            e.preventDefault()
+            goToSite(a.dataset.site)
+            return
+        }
         const b = e.target.closest("[data-act]")
         if (!b) return
         const act = b.dataset.act
