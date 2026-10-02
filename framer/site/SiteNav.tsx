@@ -40,8 +40,9 @@ import type { Img } from "./SiteKit.tsx"
    so a phone gets the phone layout from the very first paint.
  · Clicks on our own pages go through Framer's router (works in Preview too).
  · Request: "bare legg til en drive argus knapp ikke noe mere" – a button to the
-   game page (/spill) on every page; "legg til test drive argus isteden for play
-   symbol" – it says Test drive Argus.
+   game page (/spill) on every page. Request: "play ikonet kan fjernes … drive argus og join
+   marinor kan puttes inn med de andre så alt ser likt ut" – Drive Argus and Join Marinor are
+   links in the same box as the others, with no icon.
  ================================================================ */
 
 type Thumb = { img?: string; fit?: "cover" | "contain"; text?: string; tone?: "dark" | "soft"; boat?: boolean }
@@ -73,11 +74,11 @@ interface Props {
 
 const EASE_CSS = "cubic-bezier(.22,1,.36,1)"
 const DESKTOP = 1080
-const GAME_LABEL = "Test drive Argus"
+const GAME_LABEL = "Drive Argus"
 
 /* Rules for the phone/tablet layout. The nav is its own container ("nav"),
  so the Framer Tablet/Phone frames switch too, not only real devices. */
-const COMPACT = `.nv-bar{padding:10px 14px 0}.nv-in{height:62px;padding:0 8px 0 16px;border-radius:18px}.nv-bar.is-solid .nv-in{height:58px}.nv .mr-logo,.nv-bar.is-solid .mr-logo{--logo-icon:36px;--logo-word:108px}.nv-links,.nv-join-full,.nv-game-full{display:none}.nv-join-short{display:inline-flex}.nv-game-short{display:inline-flex}.nv-burger{display:block}.nv-right{gap:6px}.nv-game,.nv-join,.nv-burger{height:42px}.nv-burger{width:42px}.nv-game .nv-play{width:30px;height:30px}`
+const COMPACT = `.nv-bar{padding:10px 14px 0}.nv-in{height:62px;padding:0 8px 0 16px;border-radius:18px}.nv-bar.is-solid .nv-in{height:58px}.nv .mr-logo,.nv-bar.is-solid .mr-logo{--logo-icon:36px;--logo-word:108px}.nv-links{display:none}.nv-burger{display:block;width:42px;height:42px}`
 
 const CSS =
     LOGO_CSS +
@@ -128,18 +129,8 @@ const CSS =
 .nv-thumb.is-sm{width:28px;height:28px;border-radius:8px;font-size:11px}
 .nv-thumb.is-sm.is-contain img{padding:3px}
 
-.nv-game{display:inline-flex;align-items:center;gap:10px;height:48px;padding:0 16px 0 7px;border-radius:15px;border:1px solid rgba(124,70,156,.28);background:#fff;color:${DARK};font-weight:600;font-size:14.5px;letter-spacing:-.01em;text-decoration:none;white-space:nowrap;flex:0 0 auto;box-shadow:0 6px 16px -12px rgba(60,30,100,.45);transition:border-color .25s ease,box-shadow .3s ease,transform .3s cubic-bezier(.2,.7,.2,1)}
-.nv-play{display:grid;place-items:center;flex:0 0 auto;width:34px;height:34px;border-radius:10px;background:var(--nv-accent);color:#fff;transition:background-color .25s ease}
-.nv-game:focus-visible{outline:2px solid var(--nv-accent);outline-offset:3px}
-.nv-game-short{display:none;padding:0 13px 0 6px}
-.nv.is-open .nv-game-short{display:none}
-
-.nv-join{display:inline-flex;align-items:center;gap:9px;height:48px;padding:0 18px 0 20px;border-radius:15px;background:var(--nv-accent);color:#fff;font-weight:600;font-size:14.5px;letter-spacing:-.01em;text-decoration:none;white-space:nowrap;flex:0 0 auto;box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 10px 22px -14px rgba(124,70,156,.9);transition:background-color .25s ease,box-shadow .3s ease,transform .3s cubic-bezier(.2,.7,.2,1)}
-.nv-join svg{transition:transform .25s ease}
-.nv-join-short{display:none;padding:0 14px}
-.nv.is-open .nv-join-short{display:none}
-@media (hover:hover){.nv-game:hover{border-color:var(--nv-accent);transform:translateY(-1px);box-shadow:0 12px 24px -14px rgba(60,30,100,.55)}.nv-game:hover .nv-play{background:${DARK}}.nv-join:hover{background:${DARK};transform:translateY(-1px);box-shadow:0 12px 24px -14px rgba(16,16,17,.6)}.nv-join:hover svg{transform:translateX(3px)}.nv-burger:hover{border-color:var(--nv-accent)}.nv-m-link:hover{color:var(--nv-accent)}.nv-m-join:hover{background:${DARK}}}
-.nv-join:focus-visible,.nv-burger:focus-visible{outline:2px solid var(--nv-accent);outline-offset:3px}
+@media (hover:hover){.nv-burger:hover{border-color:var(--nv-accent)}.nv-m-link:hover{color:var(--nv-accent)}.nv-m-join:hover{background:${DARK}}}
+.nv-burger:focus-visible{outline:2px solid var(--nv-accent);outline-offset:3px}
 
 .nv-burger{position:relative;display:none;width:46px;height:46px;padding:0;border-radius:14px;border:1px solid rgba(124,70,156,.25);background:#fff;cursor:pointer;flex:0 0 auto;transition:background-color .3s ease,border-color .3s ease}
 .nv-burger i{position:absolute;left:13px;right:13px;top:50%;height:1.8px;margin-top:-.9px;border-radius:2px;background:${DARK};transition:transform .3s ${EASE_CSS},background-color .3s ease}
@@ -150,8 +141,7 @@ const CSS =
 .nv.is-open .nv-burger i:first-child{transform:rotate(45deg)}
 .nv.is-open .nv-burger i:last-child{transform:rotate(-45deg)}
 
-.nv-m-game{display:flex;align-items:center;justify-content:space-between;padding:12px 14px 12px 22px;border-radius:16px;border:1px solid rgba(124,70,156,.3);background:#fff;color:${DARK};font-family:${DISPLAY};font-weight:600;font-size:19px;letter-spacing:-.02em;text-decoration:none}
-.nv-m-game .nv-play{width:38px;height:38px}
+.nv-m-game{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-radius:16px;border:1px solid rgba(124,70,156,.3);background:#fff;color:${DARK};font-family:${DISPLAY};font-weight:600;font-size:19px;letter-spacing:-.02em;text-decoration:none}
 .nv-menu{position:fixed;top:0;left:0;right:0;bottom:0;z-index:999;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;background:linear-gradient(180deg,#fff 0%,rgb(248,244,251) 50%,rgb(230,216,240) 100%);animation:nv-fade .3s ease both}
 .nv.is-canvas .nv-menu{position:absolute;bottom:auto;height:760px}
 @keyframes nv-fade{from{opacity:0}to{opacity:1}}
@@ -178,25 +168,14 @@ const CSS =
 @media (max-width:399px){.nv-m-link{font-size:27px}}
 
 @media (max-width:${DESKTOP - 1}px){.nv{height:76px}}
-${atName("nav", 1239, `.nv-in{padding:0 10px 0 16px;gap:12px}.nv-right{gap:8px}.nv-link{padding:0 10px;font-size:14px}.nv .mr-logo{--logo-icon:42px;--logo-word:122px}.nv-bar.is-solid .mr-logo{--logo-icon:38px;--logo-word:114px}.nv-game,.nv-join{font-size:14px}.nv-join{padding:0 14px 0 16px}`, 0)}
+${atName("nav", 1239, `.nv-in{padding:0 10px 0 16px;gap:12px}.nv-link{padding:0 10px;font-size:14px}.nv .mr-logo{--logo-icon:42px;--logo-word:122px}.nv-bar.is-solid .mr-logo{--logo-icon:38px;--logo-word:114px}`, 0)}
 ${atName("nav", DESKTOP - 1, COMPACT, 0)}
-${atName("nav", 479, `.nv-bar{padding:8px 10px 0}.nv-in{padding:0 6px 0 12px}.nv-join-short{display:none}.nv-game-short .nv-game-txt{display:none}.nv-game-short{padding:0 5px}`, 0)}
+${atName("nav", 479, `.nv-bar{padding:8px 10px 0}.nv-in{padding:0 6px 0 12px}`, 0)}
 
 .nv.is-still .nv-bar,.nv.is-still .nv-in,.nv.is-still .mr-logo-icon,.nv.is-still .mr-logo-word{transition:none}
 .nv.is-still .nv-drop,.nv.is-still .nv-menu,.nv.is-still .nv-m-item,.nv.is-still .nv-m-foot{animation:none}
 @media (prefers-reduced-motion:reduce){.nv-bar,.nv-in{transition:none}.nv-drop,.nv-menu,.nv-m-item,.nv-m-foot{animation:none}}
 `
-
-/* ---------- The play mark, in a small box ---------- */
-function PlayMark({ size = 12 }: { size?: number }) {
-    return (
-        <span className="nv-play" aria-hidden>
-            <svg width={size} height={size} viewBox="0 0 24 24">
-                <path d="M7 4.5v15l12.5-7.5z" fill="currentColor" />
-            </svg>
-        </span>
-    )
-}
 
 /* ---------- Small square picture in the menus ---------- */
 function ThumbBox({ t, small = false }: { t: Thumb; small?: boolean }) {
@@ -291,8 +270,8 @@ export default function SiteNav(props: Props) {
     const icon = props.logoIcon && props.logoIcon.src ? props.logoIcon.src : LOGO_ICON
     const word = props.logoWord && props.logoWord.src ? props.logoWord.src : LOGO_WORD
     const joinLabel = props.joinLabel || "Join Marinor"
-    // the old label on the pages ("Drive Argus") becomes the new one
-    const gameLabel = !props.gameLabel || props.gameLabel === "Drive Argus" ? GAME_LABEL : props.gameLabel
+    // the label for a while was "Test drive Argus"; it is "Drive Argus" again
+    const gameLabel = !props.gameLabel || props.gameLabel === "Test drive Argus" ? GAME_LABEL : props.gameLabel
     const gameLink = L(props.gameLink, "/spill")
 
     const items: Item[] = [
@@ -329,6 +308,8 @@ export default function SiteNav(props: Props) {
         },
         { key: "sponsor", label: "Sponsor us", href: links.sponsor },
     ]
+    // on a wide screen the game and joining sit in the same box as the pages
+    const barItems: Item[] = [...items, { key: "game", label: gameLabel, href: gameLink }, { key: "join", label: joinLabel, href: links.join }]
 
     const isActive = (it: Item) => {
         if (!path || hashOf(it.href)) return false
@@ -432,7 +413,7 @@ export default function SiteNav(props: Props) {
                     <SiteLogo href={links.home} icon={icon} word={word} />
                     <div className="nv-right">
                         <ul className="nv-links">
-                            {items.map((it) => {
+                            {barItems.map((it) => {
                                 const active = isActive(it)
                                 const open = openKey === it.key
                                 return (
@@ -470,22 +451,6 @@ export default function SiteNav(props: Props) {
                                 )
                             })}
                         </ul>
-                        <a href={gameLink} className="nv-game nv-game-full">
-                            <PlayMark />
-                            {gameLabel}
-                        </a>
-                        <a href={gameLink} className="nv-game nv-game-short" aria-label={gameLabel} title={gameLabel}>
-                            <PlayMark size={11} />
-                            <span className="nv-game-txt">Test drive</span>
-                        </a>
-                        <a href={links.join} className="nv-join nv-join-full">
-                            {joinLabel}
-                            <ArrowIcon color="#fff" size={13} />
-                        </a>
-                        <a href={links.join} className="nv-join nv-join-short">
-                            Join
-                            <ArrowIcon color="#fff" size={13} />
-                        </a>
                         <button type="button" className="nv-burger" aria-label={menuOpen ? "Close menu" : "Open menu"} aria-expanded={menuOpen} onClick={() => setMenuOpen((o) => !o)}>
                             <i />
                             <i />
@@ -536,7 +501,7 @@ export default function SiteNav(props: Props) {
                         <div className="nv-m-foot">
                             <a href={gameLink} className="nv-m-game" onClick={(e: React.MouseEvent) => onMenuLink(e, gameLink)}>
                                 {gameLabel}
-                                <PlayMark size={14} />
+                                <ArrowIcon color="var(--nv-accent)" size={16} />
                             </a>
                             <a href={links.join} className="nv-m-join" onClick={(e: React.MouseEvent) => onMenuLink(e, links.join)}>
                                 {joinLabel}
