@@ -31,7 +31,28 @@ const KEYS = {
     "/sponsor/": "sponsor",
     "/join/": "join",
 }
-const linkTo = (path) => (typeof window.__glbSource === "function" ? location.pathname + location.search + "#page-" + KEYS[path] : path)
+// the game on the Framer site (in a frame, ?site=<its address>): the links go to that site's pages
+const FRAMER = {
+    "/about/": "/about",
+    "/projects/argus/": "/projects/argus",
+    "/projects/proteus/": "/projects/proteus",
+    "/competitions/njord-challenge/": "/competitions/njord-challange",
+    "/competitions/roboboat/": "/competitions/roboat",
+    "/sponsor/": "/want-to-spons-us",
+    "/join/": "/join",
+}
+const SITE = (() => {
+    try {
+        const u = new URL(new URLSearchParams(location.search).get("site") || "")
+        return u.protocol === "https:" || u.protocol === "http:" ? u.origin : null
+    } catch (e) {
+        return null
+    }
+})()
+const linkTo = (path) => {
+    if (SITE && FRAMER[path]) return SITE + FRAMER[path]
+    return typeof window.__glbSource === "function" ? location.pathname + location.search + "#page-" + KEYS[path] : path
+}
 
 const GROUPS = [
     { id: "pages", kind: "info", name: "Info buoys", intro: "Sail up to a buoy to read about it.", color: "#c39cf0" },

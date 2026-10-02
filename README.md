@@ -200,3 +200,9 @@ After changing the site, run `npm run build:pages`, then commit and push `docs/`
 - **The Otter** has a rounded deck and house, a camera ahead, and the two GNSS domes on a cross bar.
 - What never moves on a boat is merged into one mesh per material, so the extra detail costs few draw calls.
 - The Higgsfield account had too few credits to make new models (and its ready-made catalogue has no people and only stylised boats), so the boats and people are built in code.
+
+## The game on the Framer site
+
+- `framer/MarinorGame.tsx` is a Framer code component with only the game in it: it shows a still of the harbour (`framer/game-poster.jpg`) and a **Drive Argus** button, and only then loads the game from GitHub Pages (`/cc/#page-game`, the drive mode alone, with no menu and no way out of it) in a frame that fills the component. A button makes it full screen.
+- The component tells the game its own address (`?site=…`), and the links in the places' panels (Read about Argus, About Marinor …) then open that site's own pages (`/projects/argus`, `/about`, `/competitions/njord-challange` …) instead of the GitHub Pages copy.
+- On the Framer site it is the page `/spill`.
