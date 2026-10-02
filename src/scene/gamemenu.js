@@ -146,6 +146,8 @@ export function createGameMenu({ drive, get }) {
             renderReady()
             show("main")
         } else {
+            // the first time out on the water: the controls come up first
+            if (!started) setTimeout(() => drive.active && !isOpen() && drive.showKeys(true), 200)
             started = true
             drive.state.menu = false
             if (saved) {
@@ -161,7 +163,9 @@ export function createGameMenu({ drive, get }) {
         drive.sfx && drive.sfx("click")
         if (id === "settings") return show("settings")
         if (id === "back") return show("main")
+        const first = !started
         open(false)
+        if (first && id !== "play") setTimeout(() => drive.showKeys(id === "keys"), 220)
         if (id === "njord" && g.missions) g.missions.openPanel(true)
         if (id === "auto" && g.autopilot) g.autopilot.openMenu(true)
         if (id === "places" && g.places) g.places.openPanel(true)
@@ -202,6 +206,7 @@ export function createGameMenu({ drive, get }) {
                 return
             }
             if (PANEL_KEYS.includes(k)) {
+                started = true // the key opens its own panel, not the controls
                 open(false)
                 return
             }

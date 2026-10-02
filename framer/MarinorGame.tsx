@@ -12,6 +12,7 @@ import { addPropertyControls, ControlType, useIsStaticRenderer } from "framer"
 const BASE = "https://cdn.jsdelivr.net/gh/afno0810-cloud/cc@2379071874dca65a96268a1daa53b07f6fcc20ad/"
 const POSTER = BASE + "framer/game-poster.jpg"
 const GAME = "https://afno0810-cloud.github.io/cc/"
+const GAME_ORIGIN = "https://afno0810-cloud.github.io"
 const FONT = '"Inter Display", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif'
 const MONO = 'ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace'
 const ACCENT = "rgb(124, 70, 156)"
@@ -121,6 +122,24 @@ export default function MarinorGame(props: MarinorGameProps) {
             document.removeEventListener("fullscreenchange", onChange)
             ro.disconnect()
         }
+    }, [isStatic])
+
+    // a post in the game asks for one of this site's pages: go there (only the game's own address, only our pages)
+    useEffect(() => {
+        if (isStatic || typeof window === "undefined") return
+        const ok = new Set(Object.values(SITE_PAGES))
+        const onMessage = (e: MessageEvent) => {
+            if (e.origin !== GAME_ORIGIN || !e.data || e.data.type !== "marinor:navigate") return
+            const path = String(e.data.path || "")
+            if (!ok.has(path)) return
+            try {
+                ;(e.source as Window | null)?.postMessage({ type: "marinor:navigating" }, GAME_ORIGIN)
+            } catch (err) {}
+            if (document.fullscreenElement) document.exitFullscreen().catch(() => {})
+            window.location.href = path
+        }
+        window.addEventListener("message", onMessage)
+        return () => window.removeEventListener("message", onMessage)
     }, [isStatic])
 
     useEffect(() => {
