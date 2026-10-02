@@ -45,6 +45,7 @@ const FACTS = [
 /* The title card: sized by both the width and the height of the component, so it
  always fits; the same type, colours and buttons as the rest of the site */
 const CSS = `
+.mg-root{container-type:inline-size}
 .mg-card{position:absolute;inset:0;display:flex;align-items:center;padding:0 clamp(24px,7cqi,96px);color:#fff;text-align:left;container-type:size}
 .mg-shade{position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,rgba(9,7,16,.92) 0%,rgba(9,7,16,.74) 32%,rgba(9,7,16,.18) 62%,rgba(9,7,16,0) 80%),linear-gradient(0deg,rgba(9,7,16,.6) 0%,rgba(9,7,16,0) 30%),radial-gradient(60% 80% at 10% 50%,rgba(124,70,156,.35) 0%,rgba(124,70,156,0) 70%)}
 .mg-in{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:clamp(14px,3.2cqh,28px);max-width:min(540px,92cqi)}
@@ -151,8 +152,8 @@ export default function MarinorGame(props: MarinorGameProps) {
                 borderRadius: full ? 0 : radius,
                 background: "#09070f",
                 fontFamily: FONT,
-                containerType: "inline-size",
             }}
+            className="mg-root"
         >
             <style dangerouslySetInnerHTML={{ __html: CSS }} />
             {on && src ? (
