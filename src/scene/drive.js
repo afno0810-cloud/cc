@@ -46,6 +46,7 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
         inspect: 0, // 0 … 1, eased: how far the camera has gone to the open case
         target: null, // { x, z }: where the mission wants you next (compass and radar)
         pois: null, // places to visit: [{ item: { x, z }, done }]
+        shake: 0, // camera shake after a hard bump, 0..1
         outBlend: 0, // 1 → 0 after leaving, so the page camera takes over smoothly
     }
     const keys = new Set()
@@ -101,29 +102,56 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
         </div>
         <div class="hud-stick" aria-hidden="true"><i></i></div>
         <div class="hud-keys" role="dialog" aria-label="Controls">
-            <div class="hk-head"><h2>Controls</h2><button type="button" class="hud-btn" data-hud="keys-close">Close <kbd>H</kbd></button></div>
+            <div class="hk-head"><div><span class="hk-kicker">How to play</span><h2>Controls</h2></div><button type="button" class="hud-btn" data-hud="keys-close">Close <kbd>H</kbd></button></div>
             <div class="hk-body">
                 <div class="hk-pad" aria-hidden="true">
-                    <div><kbd>Q</kbd><kbd class="is-main">W</kbd><kbd>E</kbd></div>
-                    <div><kbd class="is-main">A</kbd><kbd class="is-main">S</kbd><kbd class="is-main">D</kbd></div>
-                    <div><kbd class="is-wide">Shift</kbd><kbd class="is-space">Space</kbd></div>
+                    <div class="hk-pad-row"><kbd>Q</kbd><kbd class="is-main">W</kbd><kbd>E</kbd></div>
+                    <div class="hk-pad-row"><kbd class="is-main">A</kbd><kbd class="is-main">S</kbd><kbd class="is-main">D</kbd></div>
+                    <div class="hk-pad-row"><kbd class="is-wide">Shift</kbd><kbd class="is-space">Space</kbd></div>
+                    <span class="hk-pad-or">or</span>
+                    <div class="hk-pad-row"><kbd class="is-main">↑</kbd></div>
+                    <div class="hk-pad-row"><kbd class="is-main">←</kbd><kbd class="is-main">↓</kbd><kbd class="is-main">→</kbd></div>
                 </div>
-                <dl class="hk-list">
-                    <div><dt><kbd>W</kbd><kbd>↑</kbd></dt><dd>Forward</dd></div>
-                    <div><dt><kbd>S</kbd><kbd>↓</kbd></dt><dd>Slow down, then back</dd></div>
-                    <div><dt><kbd>A</kbd><kbd>D</kbd><kbd>←</kbd><kbd>→</kbd></dt><dd>Steer</dd></div>
-                    <div><dt><kbd>Q</kbd><kbd>E</kbd></dt><dd>Turn the boat while it keeps going straight</dd></div>
-                    <div><dt><kbd>Shift</kbd></dt><dd>More power</dd></div>
-                    <div><dt><kbd>Space</kbd></dt><dd>LiDAR ping</dd></div>
-                    <div><dt><kbd>L</kbd></dt><dd>Open the lid and look inside</dd></div>
-                    <div><dt><kbd>M</kbd></dt><dd>Njord tasks</dd></div>
-                    <div><dt><kbd>P</kbd></dt><dd>Places to visit</dd></div>
-                    <div><dt><kbd>T</kbd></dt><dd>Time of day</dd></div>
-                    <div><dt><kbd>V</kbd></dt><dd>Weather</dd></div>
-                    <div><dt><kbd>H</kbd></dt><dd>This list</dd></div>
-                    <div><dt>Drag</dt><dd>Look around</dd></div>
-                    <div class="hk-esc"><dt><kbd>Esc</kbd></dt><dd>Leave the helm</dd></div>
-                </dl>
+                <div class="hk-groups">
+                    <section class="hk-group">
+                        <h3>Drive</h3>
+                        <dl class="hk-list">
+                            <div><dt><kbd>W</kbd><kbd>↑</kbd></dt><dd>Forward</dd></div>
+                            <div><dt><kbd>S</kbd><kbd>↓</kbd></dt><dd>Slow down, then back</dd></div>
+                            <div><dt><kbd>A</kbd><kbd>D</kbd></dt><dd>Steer (or <kbd>←</kbd> <kbd>→</kbd>)</dd></div>
+                            <div><dt><kbd>Q</kbd><kbd>E</kbd></dt><dd>Turn the boat while it keeps going straight</dd></div>
+                            <div><dt><kbd>Shift</kbd></dt><dd>More power</dd></div>
+                        </dl>
+                    </section>
+                    <section class="hk-group">
+                        <h3>Argus</h3>
+                        <dl class="hk-list">
+                            <div><dt><kbd>Space</kbd></dt><dd>LiDAR ping</dd></div>
+                            <div><dt><kbd>L</kbd></dt><dd>Open the lid and look inside</dd></div>
+                            <div><dt>Drag</dt><dd>Look around</dd></div>
+                            <div><dt>Scroll</dt><dd>Camera closer or further away</dd></div>
+                        </dl>
+                    </section>
+                    <section class="hk-group">
+                        <h3>Game</h3>
+                        <dl class="hk-list">
+                            <div><dt><kbd>M</kbd></dt><dd>Njord tasks</dd></div>
+                            <div><dt><kbd>P</kbd></dt><dd>Places to visit</dd></div>
+                            <div><dt><kbd>T</kbd></dt><dd>Time of day</dd></div>
+                            <div><dt><kbd>V</kbd></dt><dd>Weather</dd></div>
+                            <div><dt><kbd>H</kbd></dt><dd>This list</dd></div>
+                            <div class="hk-esc"><dt><kbd>Esc</kbd></dt><dd>Leave the helm</dd></div>
+                        </dl>
+                    </section>
+                    <section class="hk-group">
+                        <h3>Menus</h3>
+                        <dl class="hk-list">
+                            <div><dt><kbd>↑</kbd><kbd>↓</kbd></dt><dd>Choose, or scroll</dd></div>
+                            <div><dt><kbd>Enter</kbd></dt><dd>Open what you chose</dd></div>
+                            <div><dt><kbd>Esc</kbd></dt><dd>Close the menu</dd></div>
+                        </dl>
+                    </section>
+                </div>
             </div>
             <p class="hk-touch">On a phone or tablet: the round stick drives, drag anywhere else to look around.</p>
         </div>
@@ -242,6 +270,52 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
     }
 
     const escapers = []
+    // ---- menus: the arrow keys move between the choices (and scroll the long ones), Enter picks ----
+    const menus = [{ el: keysEl, modal: true }]
+    function activeMenu() {
+        for (let i = menus.length - 1; i >= 0; i--) {
+            const m = menus[i]
+            if (!m.el.classList.contains("is-on")) continue
+            // a card that just pops up while you drive only takes the arrows once you are in it
+            if (m.modal || m.el.contains(document.activeElement)) return m.el
+        }
+        return null
+    }
+    function navigate(el, k) {
+        const items = [...el.querySelectorAll("button:not([disabled]), a[href]")].filter((b) => b.getClientRects().length)
+        const cur = items.includes(document.activeElement) ? document.activeElement : null
+        const go = (b) => {
+            b.focus({ preventScroll: true })
+            b.scrollIntoView({ block: "nearest", behavior: reduced ? "auto" : "smooth" })
+            sfx("click")
+        }
+        if (!cur) {
+            if (items.length) go(k === "arrowup" || k === "arrowleft" ? items[items.length - 1] : items[0])
+            return
+        }
+        const r = cur.getBoundingClientRect()
+        const cx = r.left + r.width / 2
+        const cy = r.top + r.height / 2
+        let best = null
+        let bestScore = Infinity
+        for (const b of items) {
+            if (b === cur) continue
+            const q = b.getBoundingClientRect()
+            const dx = q.left + q.width / 2 - cx
+            const dy = q.top + q.height / 2 - cy
+            const along = k === "arrowdown" ? dy : k === "arrowup" ? -dy : k === "arrowright" ? dx : -dx
+            const across = k === "arrowdown" || k === "arrowup" ? dx : dy
+            if (along <= 6) continue
+            const score = along + Math.abs(across) * 2
+            if (score < bestScore) {
+                bestScore = score
+                best = b
+            }
+        }
+        if (best) go(best)
+        // nothing further that way: read on (or back) in a long menu
+        else if (k === "arrowdown" || k === "arrowup") el.scrollBy({ top: k === "arrowdown" ? 90 : -90, behavior: reduced ? "auto" : "smooth" })
+    }
     function onKey(e) {
         if (!state.active) return
         const k = e.key.toLowerCase()
@@ -252,6 +326,14 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
                 for (const f of escapers) if (f()) return
                 if (state.lidOpen) return setLid(false)
                 return document.body.hasAttribute("data-game") ? undefined : stop()
+            }
+            if (k.startsWith("arrow")) {
+                const m = activeMenu()
+                if (m) {
+                    e.preventDefault()
+                    navigate(m, k)
+                    return
+                }
             }
             if (k === "t") cycleTime()
             if (k === "v") cycleWeather()
@@ -316,6 +398,52 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
         noise.start()
         audio = { ctx, master, motor, motorF, motorG, waterF, waterG }
         return audio
+    }
+    // short sounds for the game: the countdown, a gate, a penalty, a medal, a new place, a horn
+    function sfx(name) {
+        if (!soundOn || !state.active) return
+        const a = makeAudio()
+        if (!a) return
+        const ctx = a.ctx
+        if (ctx.state === "suspended") ctx.resume()
+        if (!a.sfx) {
+            a.sfx = ctx.createGain()
+            a.sfx.gain.value = 0.2
+            a.sfxF = ctx.createBiquadFilter()
+            a.sfxF.type = "lowpass"
+            a.sfxF.frequency.value = 5200
+            a.sfx.connect(a.sfxF).connect(ctx.destination)
+        }
+        const now = ctx.currentTime
+        const tone = (f, t0, dur, { type = "sine", vol = 0.6, slide = 0 } = {}) => {
+            const o = ctx.createOscillator()
+            const g = ctx.createGain()
+            o.type = type
+            o.frequency.setValueAtTime(f, now + t0)
+            if (slide) o.frequency.exponentialRampToValueAtTime(f * slide, now + t0 + dur)
+            g.gain.setValueAtTime(0.0001, now + t0)
+            g.gain.exponentialRampToValueAtTime(vol, now + t0 + 0.012)
+            g.gain.exponentialRampToValueAtTime(0.0001, now + t0 + dur)
+            o.connect(g).connect(a.sfx)
+            o.start(now + t0)
+            o.stop(now + t0 + dur + 0.05)
+        }
+        if (name === "count") tone(660, 0, 0.16, { type: "triangle", vol: 0.7 })
+        else if (name === "go") {
+            tone(990, 0, 0.55, { type: "triangle", vol: 0.8 })
+            tone(1485, 0, 0.45, { vol: 0.25 })
+        } else if (name === "gate") {
+            tone(880, 0, 0.16, { vol: 0.55 })
+            tone(1320, 0.07, 0.3, { vol: 0.45 })
+        } else if (name === "bad") tone(170, 0, 0.38, { type: "sawtooth", vol: 0.32, slide: 0.65 })
+        else if (name === "medal") [523, 659, 784, 1047].forEach((f, i) => tone(f, i * 0.11, i === 3 ? 0.9 : 0.4, { type: "triangle", vol: 0.5 }))
+        else if (name === "discover") {
+            tone(1175, 0, 0.55, { vol: 0.35 })
+            tone(1568, 0.1, 0.7, { vol: 0.3 })
+        } else if (name === "horn") {
+            tone(98, 0, 1.2, { type: "sawtooth", vol: 0.22 })
+            tone(123.5, 0, 1.2, { type: "sawtooth", vol: 0.18 })
+        } else if (name === "click") tone(1500, 0, 0.04, { type: "square", vol: 0.08 })
     }
     function setSound(on) {
         soundOn = on
@@ -458,6 +586,7 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
         const into = state.vel.dot(n)
         if (into < 0) {
             state.vel.addScaledVector(n, -into * 1.15)
+            if (-into > 2.5) state.shake = Math.min(1, state.shake + -into / 14)
             if (-into > 3 && spray && t - lastHit > 0.25) {
                 lastHit = t
                 spray.splash(state.pos.x - n.x * HALF_L, state.pos.z - n.z * HALF_L, Math.min(1.2, -into / 10))
@@ -522,10 +651,11 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
         let th = 0
         let st = 0
         let spin = 0
-        if (keys.has("w") || keys.has("arrowup")) th += 1
-        if (keys.has("s") || keys.has("arrowdown")) th -= 1
-        if (keys.has("a") || keys.has("arrowleft")) st += 1
-        if (keys.has("d") || keys.has("arrowright")) st -= 1
+        const arrows = !activeMenu()
+        if (keys.has("w") || (arrows && keys.has("arrowup"))) th += 1
+        if (keys.has("s") || (arrows && keys.has("arrowdown"))) th -= 1
+        if (keys.has("a") || (arrows && keys.has("arrowleft"))) st += 1
+        if (keys.has("d") || (arrows && keys.has("arrowright"))) st -= 1
         if (keys.has("q")) spin += 1
         if (keys.has("e")) spin -= 1
         th += -stick.y
@@ -617,6 +747,14 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
             state.camPos.lerp(want, 1 - Math.exp(-dt * 6))
             state.camLook.lerp(wantLook, 1 - Math.exp(-dt * 8))
         }
+        // a hard bump shakes the camera for a moment
+        if (state.shake > 0.002) {
+            const sh = reduced ? 0 : state.shake * 0.5
+            state.camPos.x += (Math.random() - 0.5) * sh
+            state.camPos.y += (Math.random() - 0.5) * sh * 0.6
+            state.camPos.z += (Math.random() - 0.5) * sh
+            state.shake *= Math.exp(-dt * 6)
+        }
 
         // sound
         if (audio && soundOn) {
@@ -634,8 +772,8 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
     function drawHud(t) {
         thrEl.style.transform = `scaleX(${Math.abs(thr).toFixed(3)})`
         thrEl.classList.toggle("is-back", thr < 0)
-        // compass tape: bearing from north (+z), clockwise
-        const bearing = ((Math.atan2(Math.cos(state.heading), -Math.sin(state.heading)) * 180) / Math.PI + 360) % 360
+        // compass tape: bearing from north (+z), clockwise, so a turn to starboard turns it up (east is -x)
+        const bearing = ((Math.atan2(-Math.cos(state.heading), -Math.sin(state.heading)) * 180) / Math.PI + 360) % 360
         const c = compass
         const W = c.canvas.width
         const H = c.canvas.height
@@ -662,7 +800,7 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
             c.fillStyle = "#c39cf0"
             for (const p of state.pois) {
                 if (p.done || !p.item) continue
-                const pb = ((Math.atan2(p.item.x - state.pos.x, p.item.z - state.pos.z) * 180) / Math.PI + 360) % 360
+                const pb = ((Math.atan2(state.pos.x - p.item.x, p.item.z - state.pos.z) * 180) / Math.PI + 360) % 360
                 const d = ((pb - bearing + 540) % 360) - 180
                 if (Math.abs(d) > (W / 2 - 8) / 3.4) continue
                 c.beginPath()
@@ -672,7 +810,7 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
         }
         // the way to the next mission target: a blue mark, or an arrow at the edge
         if (state.target) {
-            const tb = ((Math.atan2(state.target.x - state.pos.x, state.target.z - state.pos.z) * 180) / Math.PI + 360) % 360
+            const tb = ((Math.atan2(state.pos.x - state.target.x, state.target.z - state.pos.z) * 180) / Math.PI + 360) % 360
             let d = ((tb - bearing + 540) % 360) - 180
             const lim = (W / 2 - 14) / 3.4
             const x = W / 2 + clamp(d, -lim, lim) * 3.4
@@ -859,6 +997,17 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
         actions: hud.querySelector(".hud-actions"),
         onEscape(fn) {
             escapers.push(fn)
+        },
+        // a panel whose buttons the arrow keys move between (modal: it takes them as soon as it is open)
+        addMenu(el, { modal = true } = {}) {
+            menus.push({ el, modal })
+        },
+        get menuOpen() {
+            return !!activeMenu()
+        },
+        sfx,
+        shake(k) {
+            state.shake = Math.min(1, state.shake + k)
         },
         // put the boat somewhere at once, standing still (the start of a mission)
         place(x, z, heading) {

@@ -136,6 +136,7 @@ export async function startScene({ reduced = false } = {}) {
     let props = null
     let missions = null
     let places = null
+    let boats = null
     let birds = null
     let shoreLights = null
     const buildWorld = async () => {
@@ -153,6 +154,9 @@ export async function startScene({ reduced = false } = {}) {
             missions = createMissions({ scene, props, drive, isGame: document.body.hasAttribute("data-game") })
             const { createPlaces } = await import("./places.js")
             places = createPlaces({ scene, props, drive, missions })
+            const { createBoats } = await import("./world/boats.js")
+            boats = createBoats({ props, lowPower })
+            scene.add(boats.group)
         }
         if (!reduced) {
             const { createBirds } = await import("./world/birds.js")
@@ -1000,6 +1004,7 @@ export async function startScene({ reduced = false } = {}) {
             coast.routeMat.uniforms.uTime.value = t
             if (cs && cs.cities) placeCities(cs)
         }
+        if (boats) boats.update(t, dt, night, !!(drive && drive.active))
         if (props) props.update(t, dt, night)
         if (missions) missions.update(t, dt, exposure)
         if (places) places.update(t, dt, exposure)
@@ -1207,6 +1212,9 @@ export async function startScene({ reduced = false } = {}) {
             },
             get places() {
                 return places
+            },
+            get boats() {
+                return boats
             },
             get birds() {
                 return birds

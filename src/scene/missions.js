@@ -1,6 +1,8 @@
 import * as THREE from "three"
 import { waveHeight } from "./world/waves.js"
 import { withAir } from "./world/air.js"
+import { CARDINALS, YELLOW, BLACK, markSvg, taskIcon, taskDiagram } from "./taskart.js"
+import { confetti } from "./hudfx.js"
 
 /* ================================================================
    The four Njord tasks at the helm, as on the Njord page: manoeuvring,
@@ -80,6 +82,9 @@ const medalOf = (pts, max = 100) => (pts == null ? null : MEDALS.find((m) => pts
 const medalHtml = (m, big = false) =>
     m ? `<i class="medal is-${m.id}${big ? " is-big" : ""}" role="img" aria-label="${m.name}" title="${m.name}"></i>` : `<i class="medal${big ? " is-big" : ""}" aria-hidden="true"></i>`
 
+// the keys for the menus, at their foot (hidden on touch screens)
+const KEYS_HINT = `<span class="hud-keyhint" aria-hidden="true"><kbd>↑</kbd><kbd>↓</kbd> choose <kbd>Enter</kbd> open <kbd>Esc</kbd> close</span>`
+
 const fmt = (s) => {
     const tenths = Math.round(s * 10)
     const m = Math.floor(tenths / 600)
@@ -114,26 +119,6 @@ function segCross(ax, az, bx, bz, cx, cz, dx, dz) {
     const d3 = (dx - cx) * (az - cz) - (dz - cz) * (ax - cx)
     const d4 = (dx - cx) * (bz - cz) - (dz - cz) * (bx - cx)
     return d1 * d2 < 0 && d3 * d4 < 0
-}
-
-// ---- cardinal marks: the colours and the two cones on top tell where the safe water is ----
-const YELLOW = "#f2c230"
-const BLACK = "#16171a"
-const CARDINALS = {
-    // bands from the top; cones [upper, lower], 1 = point up; dir = the safe side
-    N: { name: "North", bands: [BLACK, YELLOW], cones: [1, 1], dir: [0, 1] },
-    S: { name: "South", bands: [YELLOW, BLACK], cones: [-1, -1], dir: [0, -1] },
-    E: { name: "East", bands: [BLACK, YELLOW, BLACK], cones: [1, -1], dir: [1, 0] },
-    W: { name: "West", bands: [YELLOW, BLACK, YELLOW], cones: [-1, 1], dir: [-1, 0] },
-}
-function markSvg(kind) {
-    const c = CARDINALS[kind]
-    const tri = (cy, up) => (up > 0 ? `18,${cy + 4} 32,${cy + 4} 25,${cy - 4}` : `18,${cy - 4} 32,${cy - 4} 25,${cy + 4}`)
-    const n = c.bands.length
-    const h = 30 / n
-    const bands = c.bands.map((col, i) => `<rect x="19" y="${(24 + i * h).toFixed(2)}" width="12" height="${(h + 0.3).toFixed(2)}" fill="${col}"/>`).join("")
-    const edge = `stroke="rgba(232,238,248,.55)" stroke-width="1"`
-    return `<svg class="cm-svg" viewBox="0 0 50 64" aria-hidden="true"><path d="M25 3V24" stroke="#c9d1db" stroke-width="1.5"/><polygon points="${tri(8, c.cones[0])}" fill="${BLACK}" ${edge}/><polygon points="${tri(18, c.cones[1])}" fill="${BLACK}" ${edge}/>${bands}<rect x="19" y="24" width="12" height="30" fill="none" ${edge}/><path d="M13 54h24l-3 6H16z" fill="${c.bands[n - 1]}" ${edge}/><path d="M3 60q5.5-3 11 0t11 0 11 0 11 0" stroke="#7cc4ff" fill="none" stroke-width="1.5"/></svg>`
 }
 
 // ---- AR tags: four different codes, one for each berth ----
@@ -360,25 +345,28 @@ export function createMissions({ scene, props, drive, isGame = false }) {
         const medals = TASKS.map((t) => medalOf(best[t.id]))
         const won = medals.filter(Boolean).length + (medalOf(best.full, 400) ? 1 : 0)
         panel.innerHTML = `
-            <div class="hm-head"><h2>Njord tasks</h2><span>4 tasks on the water</span></div>
+            <div class="hm-head">
+                <div><span class="hm-kicker">Njord: The Autonomous Ship Challenge</span><h2>Njord tasks</h2></div>
+                <span class="hm-score" title="Medals won">${medalHtml(MEDALS[0])}<b>${won}</b>/5 medals</span>
+            </div>
             <p class="hm-intro">The boats sail a course in the harbour and get one task at a time. Here you are at the helm.</p>
             <ol class="hm-list">
                 ${TASKS.map(
                     (t, i) => `<li>
                         <button type="button" class="hm-item" data-mission="${t.id}">
-                            <span class="hm-n">0${i + 1}</span>
+                            <span class="hm-icon">${taskIcon(t.id)}<span class="hm-n">0${i + 1}</span></span>
                             <span class="hm-body"><b>${t.name}</b><span>${t.site}</span></span>
-                            <span class="hm-best">${best[t.id] != null ? `${medalHtml(medals[i])}<span><b>${best[t.id]}</b>points</span>` : "Not done yet"}</span>
+                            <span class="hm-best">${best[t.id] != null ? `${medalHtml(medals[i])}<span><b>${best[t.id]}</b>points</span>` : `<span class="hm-new">Not done yet</span>`}</span>
                         </button>
                     </li>`
                 ).join("")}
             </ol>
             <button type="button" class="hm-item hm-full" data-mission="full">
-                <span class="hm-n">★</span>
+                <span class="hm-icon">${taskIcon("full")}</span>
                 <span class="hm-body"><b>Full Njord run</b><span>All four tasks in a row, out of 400.</span></span>
-                <span class="hm-best">${best.full != null ? `${medalHtml(medalOf(best.full, 400))}<span><b>${best.full}</b>of 400</span>` : "Not done yet"}</span>
+                <span class="hm-best">${best.full != null ? `${medalHtml(medalOf(best.full, 400))}<span><b>${best.full}</b>of 400</span>` : `<span class="hm-new">Not done yet</span>`}</span>
             </button>
-            <div class="hm-foot"><span class="hm-medals">${MEDALS.map((m) => medalHtml(m)).join("")} ${won} of 5 medals won</span><button type="button" class="hud-btn" data-close>Free drive</button></div>`
+            <div class="hm-foot">${KEYS_HINT}<button type="button" class="hud-btn" data-close>Free drive</button></div>`
     }
     renderPanel()
 
@@ -410,6 +398,9 @@ export function createMissions({ scene, props, drive, isGame = false }) {
     result.className = "hud-result"
     result.setAttribute("role", "dialog")
     hud.appendChild(result)
+
+    drive.addMenu(panel)
+    drive.addMenu(result)
 
     function openPanel(on, focus = true) {
         if (on && run && run.phase !== "go" && run.phase !== "count") clear()
@@ -490,6 +481,8 @@ export function createMissions({ scene, props, drive, isGame = false }) {
         l.n++
         r.log.set(key, l)
         say(`−${pts} · ${msg}`, "bad", 1.8)
+        drive.sfx("bad")
+        if (key === "hit") drive.shake(0.8)
     }
 
     async function begin(id, { full = null } = {}) {
@@ -521,32 +514,39 @@ export function createMissions({ scene, props, drive, isGame = false }) {
         brief(r)
     }
 
-    // the briefing: what the Njord page says, and how to do it here
+    // the briefing: what the Njord page says, a sketch of the course, and how to do it here
     function brief(r) {
         const t = r.task
         const n = TASKS.indexOf(t) + 1
         let extra = ""
         if (t.id === "pathfinding")
             extra = `<div class="hr-marks">${["N", "E", "S", "W"].map((k) => `<span>${markSvg(k)}<b>${CARDINALS[k].name} mark</b><small>pass ${CARDINALS[k].name.toLowerCase()} of it</small></span>`).join("")}</div>`
-        if (t.id === "docking") extra = `<div class="hr-tagwant"><img src="${r.tagUrl}" alt="The AR tag to find" width="88" height="88"><span>Find this tag</span></div>`
+        if (t.id === "docking") extra = `<div class="hr-tagwant"><img src="${r.tagUrl}" alt="The AR tag to find" width="72" height="72"><span>Find this tag</span></div>`
         if (t.about) extra = `<p class="hr-note">${t.about}</p>`
         if (t.quote) extra = `<p class="hr-note">${t.quote}</p>`
-        const rules = [`Par ${t.par} s`, "−1 point a second over par", `buoy touched −${DED.buoy}`]
+        const rules = [`Par ${t.par} s`, "−1 a second over par", `buoy −${DED.buoy}`]
         if (t.id === "pathfinding") rules.push(`wrong side of a mark −${DED.side}`)
         if (t.id === "collision") rules.push(`too close −${DED.close}`, `wrong side −${DED.side}`, `collision −${DED.hit}`)
         if (t.id === "docking") rules.push(`wrong berth −${DED.berth}`)
         result.innerHTML = `
-            <span class="hr-tag">${r.full ? `Full Njord run · ` : ""}Task 0${n}</span>
-            <h2>${t.name}</h2>
-            <p class="hr-quote">${t.site}</p>
+            <div class="hr-brief">
+                <div class="hr-text">
+                    <span class="hr-tag">${r.full ? `Full Njord run · ` : ""}Task 0${n}</span>
+                    <h2>${t.name}</h2>
+                    <p class="hr-quote">${t.site}</p>
+                    <ol class="hr-how">${t.how.map((h) => `<li>${h}</li>`).join("")}</ol>
+                </div>
+                <figure class="hr-map">${taskDiagram(t.id, { want: r.want })}<figcaption>The course</figcaption></figure>
+            </div>
             ${extra}
-            <ul class="hr-how">${t.how.map((h) => `<li>${h}</li>`).join("")}</ul>
-            <p class="hr-rules">${rules.join(" · ")}</p>
+            <ul class="hr-rules">${rules.map((x) => `<li>${x}</li>`).join("")}</ul>
             <div class="hr-btns">
                 <button type="button" class="hud-btn hr-main" data-act="go">Start <kbd>Enter</kbd></button>
                 <button type="button" class="hud-btn" data-act="list">Tasks</button>
+                ${KEYS_HINT}
             </div>`
         result.classList.add("is-on", "is-brief")
+        result.scrollTop = 0
         r.phase = "brief"
         const goBtn = result.querySelector("[data-act=go]")
         if (goBtn) goBtn.focus({ preventScroll: true })
@@ -606,7 +606,8 @@ export function createMissions({ scene, props, drive, isGame = false }) {
                 ${nextTask ? `<button type="button" class="hud-btn hr-main" data-act="next">Next: ${nextTask.name}</button>` : `<button type="button" class="hud-btn hr-main" data-act="again">${endFull ? "New run" : "Again"}</button>`}
                 <button type="button" class="hud-btn" data-act="list">Tasks</button>
                 <button type="button" class="hud-btn" data-act="close">Free drive</button>
-            </div>`
+            </div>
+            ${KEYS_HINT}`
         result.classList.add("is-on")
         // the number counts up to the score
         const num = result.querySelector("[data-count]")
@@ -626,6 +627,11 @@ export function createMissions({ scene, props, drive, isGame = false }) {
         drive.state.target = null
         bar.classList.remove("is-on")
         burst(drive.pos.x, drive.pos.z, m ? GREEN : BLUE, 14)
+        // a medal: a fanfare and confetti (more for gold, and for a whole Njord run)
+        if (m) {
+            drive.sfx("medal")
+            confetti(hud, { count: endFull ? 260 : m.id === "gold" ? 170 : 80 })
+        } else drive.sfx("gate")
     }
 
     async function buoy(r, kind, x, z, size = 6.5) {
@@ -671,8 +677,8 @@ export function createMissions({ scene, props, drive, isGame = false }) {
             ["N", 350, 200],
             ["S", 405, 200],
             ["N", 460, 200],
-            ["E", 500, 165],
-            ["W", 480, 105],
+            ["W", 500, 165],
+            ["E", 480, 105],
         ]
         marks.forEach(([kind, x, z], i) => {
             const it = props.adopt(cardinalMesh(kind), { x, z, yaw: Math.random() * 6.28, k: 1.1, buoy: "cardinal", r: 1.9, lift: -0.15 })
@@ -716,9 +722,11 @@ export function createMissions({ scene, props, drive, isGame = false }) {
             const T = Math.max(1, 20 - drive.pos.x) / Math.max(7, Math.abs(drive.speed))
             o.v = THREE.MathUtils.clamp((o.z + 300) / T, 5, 10)
             say("Vessel crossing from starboard", "", 2.4)
+            drive.sfx("horn")
         } else {
             o.v = 7
             say("Vessel ahead, head on", "", 2.4)
+            drive.sfx("horn")
         }
     }
 
@@ -810,6 +818,7 @@ export function createMissions({ scene, props, drive, isGame = false }) {
         burst(x, z, color)
         if (r.i >= r.steps.length) return finish()
         say(msg, "good", 0.8)
+        drive.sfx("gate")
         aim()
     }
 
@@ -870,7 +879,7 @@ export function createMissions({ scene, props, drive, isGame = false }) {
             if (o.on && !o.gone) {
                 o.x += Math.cos(o.h) * o.v * dt
                 o.z -= Math.sin(o.h) * o.v * dt
-                if (o.z < -520 || o.x < -220) o.gone = true
+                if (o.z < -400 || o.x < -220) o.gone = true
             }
             o.it.x = o.box.x = o.x
             o.it.z = o.box.z = o.z
@@ -888,12 +897,16 @@ export function createMissions({ scene, props, drive, isGame = false }) {
             r.count -= dt
             const now = Math.ceil(r.count)
             if (now !== before || !flash.classList.contains("is-on")) {
-                if (r.count > 0 && now <= 3) say(String(now), "count", 0.9)
+                if (r.count > 0 && now <= 3 && now !== before) {
+                    say(String(now), "count", 0.9)
+                    drive.sfx("count")
+                }
             }
             if (r.count <= 0) {
                 r.phase = "go"
                 drive.state.locked = false
                 say("Go!", "good", 0.9)
+                drive.sfx("go")
             }
             prev.set(p.x, p.z)
             lastHeading = drive.heading
