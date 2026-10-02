@@ -14,7 +14,7 @@ const POSTER = BASE + "framer/game-poster.jpg"
 const GAME = "https://afno0810-cloud.github.io/cc/"
 const FONT = '"Inter Display", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif'
 const MONO = 'ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace'
-const GOLD = "#f2c230"
+const ACCENT = "rgb(124, 70, 156)"
 const LAVENDER = "#d6baec"
 
 /* Every page on the Framer site – these must match the page paths in Framer */
@@ -36,32 +36,42 @@ export const SITE_PAGES: Record<string, string> = {
     game: "/spill",
 }
 
-const FEATURES = ["4 Njord tasks", "Autonomous mode", "24 places to visit", "Weather & night"]
+const FACTS = [
+    { n: "4", t: "Njord tasks" },
+    { n: "24", t: "Places to visit" },
+    { n: "Auto", t: "Autonomous mode" },
+]
 
+/* The title card: sized by both the width and the height of the component, so it
+ always fits; the same type, colours and buttons as the rest of the site */
 const CSS = `
-.mg-card{position:absolute;inset:0;display:flex;align-items:center;padding:0 clamp(22px,6cqi,80px);color:#fff;text-align:left;container-type:inline-size}
-.mg-shade{position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,rgba(7,6,13,.9) 0%,rgba(7,6,13,.66) 34%,rgba(7,6,13,.1) 68%,rgba(7,6,13,0) 100%),linear-gradient(0deg,rgba(7,6,13,.55) 0%,rgba(7,6,13,0) 35%)}
-.mg-in{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:clamp(14px,2.4cqi,24px);max-width:520px}
-.mg-kick{display:inline-flex;align-items:center;gap:10px;font:500 12px/1 ${MONO};letter-spacing:.18em;text-transform:uppercase;color:${LAVENDER}}
-.mg-kick i{width:8px;height:8px;border-radius:50%;background:${GOLD};box-shadow:0 0 12px ${GOLD};animation:mg-blink 1.6s ease-in-out infinite}
-@keyframes mg-blink{50%{opacity:.3}}
-.mg-title{margin:0;font:800 clamp(48px,10cqi,112px)/.86 ${FONT};letter-spacing:-.045em;text-transform:uppercase}
-.mg-title b{display:block;font-weight:800;color:${GOLD};background:linear-gradient(100deg,${GOLD} 0%,#f7dc86 45%,${LAVENDER} 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
-.mg-sub{margin:0;max-width:420px;font:500 clamp(14px,1.6cqi,17px)/1.5 ${FONT};color:rgba(255,255,255,.78)}
-.mg-chips{display:flex;flex-wrap:wrap;gap:6px}
-.mg-chip{padding:6px 11px;border-radius:999px;border:1px solid rgba(214,186,236,.28);background:rgba(255,255,255,.06);font:500 12px/1 ${FONT};color:rgba(255,255,255,.85);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
-.mg-play{display:inline-flex;align-items:center;gap:14px;padding:10px 26px 10px 10px;border-radius:999px;background:${GOLD};color:#15120a;font:700 19px/1 ${FONT};letter-spacing:-.01em;box-shadow:0 14px 40px -12px rgba(242,194,48,.6);transition:transform .3s cubic-bezier(.2,.7,.2,1),box-shadow .3s ease}
-.mg-play span{display:grid;place-items:center;width:42px;height:42px;border-radius:50%;background:#15120a;color:${GOLD}}
-.mg-card:hover .mg-play,.mg-card:focus-visible .mg-play{transform:translateY(-2px) scale(1.03);box-shadow:0 18px 48px -12px rgba(242,194,48,.75)}
+.mg-card{position:absolute;inset:0;display:flex;align-items:center;padding:0 clamp(24px,7cqi,96px);color:#fff;text-align:left;container-type:size}
+.mg-shade{position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,rgba(9,7,16,.92) 0%,rgba(9,7,16,.74) 32%,rgba(9,7,16,.18) 62%,rgba(9,7,16,0) 80%),linear-gradient(0deg,rgba(9,7,16,.6) 0%,rgba(9,7,16,0) 30%),radial-gradient(60% 80% at 10% 50%,rgba(124,70,156,.35) 0%,rgba(124,70,156,0) 70%)}
+.mg-in{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:clamp(14px,3.2cqh,28px);max-width:min(540px,92cqi)}
+.mg-title{margin:0;font:700 clamp(44px,min(9cqi,15cqh),108px)/.92 ${FONT};letter-spacing:-.05em}
+.mg-title b{font-weight:700;color:${LAVENDER};background:linear-gradient(100deg,#fff 0%,${LAVENDER} 60%,#c6a2e8 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.mg-sub{margin:0;max-width:440px;font:500 clamp(14.5px,min(1.5cqi,2.4cqh),18px)/1.55 ${FONT};color:rgba(255,255,255,.76)}
+.mg-facts{display:flex;align-items:stretch}
+.mg-fact{display:flex;flex-direction:column;gap:4px;padding:0 22px;border-left:1px solid rgba(255,255,255,.16)}
+.mg-fact:first-child{padding-left:0;border-left:0}
+.mg-fact b{font:700 clamp(20px,min(2.2cqi,3.6cqh),28px)/1 ${FONT};letter-spacing:-.03em;color:#fff}
+.mg-fact span{font:500 12.5px/1.3 ${FONT};color:rgba(255,255,255,.6)}
+.mg-btns{display:flex;flex-wrap:wrap;gap:10px;margin-top:4px}
+.mg-play{display:inline-flex;align-items:center;gap:10px;height:52px;padding:0 22px;border-radius:14px;font:600 16px/1 ${FONT};letter-spacing:-.01em;transition:transform .3s cubic-bezier(.2,.7,.2,1),box-shadow .3s ease,background-color .25s ease,border-color .25s ease}
+.mg-play{background:#fff;color:#141018;box-shadow:0 16px 36px -16px rgba(0,0,0,.7)}
+.mg-play svg{color:${ACCENT}}
+.mg-card:hover .mg-play,.mg-card:focus-visible .mg-play{transform:translateY(-2px);box-shadow:0 20px 44px -16px rgba(124,70,156,.75)}
 .mg-card:focus-visible{outline:none}
 .mg-card:focus-visible .mg-play{outline:2px solid #fff;outline-offset:4px}
-.mg-hint{font:500 12.5px/1.4 ${FONT};color:rgba(255,255,255,.6)}
-.mg-hint kbd{display:inline-block;min-width:20px;padding:2px 5px;margin:0 1px;border-radius:5px;border:1px solid rgba(255,255,255,.3);font:500 11px/1.2 ${MONO};text-align:center;color:#fff}
-.mg-load{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:#07060d;color:rgba(255,255,255,.7);font:500 12px/1 ${MONO};letter-spacing:.16em;text-transform:uppercase;transition:opacity .6s ease;pointer-events:none}
-.mg-load i{width:38px;height:38px;border-radius:50%;border:2px solid rgba(214,186,236,.2);border-top-color:${GOLD};animation:mg-spin .9s linear infinite}
+.mg-keys{position:absolute;left:clamp(24px,7cqi,96px);bottom:clamp(16px,4cqh,32px);display:flex;align-items:center;gap:14px;padding:9px 14px;border-radius:12px;background:rgba(9,7,16,.5);border:1px solid rgba(255,255,255,.12);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);font:500 12.5px/1 ${FONT};color:rgba(255,255,255,.66)}
+.mg-keys span{display:inline-flex;align-items:center;gap:6px}
+.mg-keys kbd{display:inline-block;min-width:20px;padding:3px 5px;border-radius:5px;border:1px solid rgba(255,255,255,.3);font:500 11px/1.1 ${MONO};text-align:center;color:#fff}
+.mg-load{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:#09070f;color:rgba(255,255,255,.7);font:500 13px/1 ${FONT};letter-spacing:.02em;transition:opacity .6s ease;pointer-events:none}
+.mg-load i{width:38px;height:38px;border-radius:50%;border:2px solid rgba(214,186,236,.2);border-top-color:${LAVENDER};animation:mg-spin .9s linear infinite}
 @keyframes mg-spin{to{transform:rotate(360deg)}}
-@container (max-width:560px){.mg-card{align-items:flex-end;padding-bottom:28px}.mg-shade{background:linear-gradient(0deg,rgba(7,6,13,.94) 0%,rgba(7,6,13,.7) 50%,rgba(7,6,13,.15) 100%)}.mg-hint{display:none}.mg-play{font-size:17px}}
-@media (prefers-reduced-motion:reduce){.mg-kick i,.mg-load i{animation:none}}
+@container (max-width:620px){.mg-card{align-items:flex-end;padding-bottom:28px}.mg-shade{background:linear-gradient(0deg,rgba(9,7,16,.95) 0%,rgba(9,7,16,.72) 50%,rgba(9,7,16,.15) 100%)}.mg-keys{display:none}.mg-fact{padding:0 14px}}
+@container (max-height:520px){.mg-sub{display:none}.mg-keys{display:none}}
+@media (prefers-reduced-motion:reduce){.mg-load i{animation:none}}
 `
 
 type MarinorGameProps = {
@@ -139,7 +149,7 @@ export default function MarinorGame(props: MarinorGameProps) {
                 height: "100%",
                 overflow: "hidden",
                 borderRadius: full ? 0 : radius,
-                background: "#07060d",
+                background: "#09070f",
                 fontFamily: FONT,
                 containerType: "inline-size",
             }}
@@ -161,7 +171,7 @@ export default function MarinorGame(props: MarinorGameProps) {
                     />
                     <div className="mg-load" style={{ opacity: loaded ? 0 : 1 }} aria-hidden={loaded}>
                         <i />
-                        Loading the harbour
+                        Loading the harbour …
                     </div>
                 </>
             ) : (
@@ -170,45 +180,50 @@ export default function MarinorGame(props: MarinorGameProps) {
                     onClick={play}
                     aria-label={`${label}: Drive Argus, the Marinor NTNU harbour game`}
                     className="mg-card"
-                    style={{ border: 0, cursor: "pointer", background: `#07060d url(${POSTER}) center / cover no-repeat`, font: "inherit" }}
+                    style={{ border: 0, cursor: "pointer", background: `#09070f url(${POSTER}) center / cover no-repeat`, font: "inherit" }}
                 >
                     <span className="mg-shade" aria-hidden="true" />
                     <span className="mg-in">
-                        <span className="mg-kick">
-                            <i />
-                            Marinor NTNU · The harbour game
-                        </span>
                         <span className="mg-title">
                             Drive <b>Argus</b>
                         </span>
                         <span className="mg-sub">Take the helm of Argus, our autonomous boat, in the harbour in Trondheim. Sail the Njord tasks, or let it find its own way.</span>
-                        <span className="mg-chips">
-                            {FEATURES.map((f) => (
-                                <span key={f} className="mg-chip">
-                                    {f}
+                        <span className="mg-facts">
+                            {FACTS.map((f) => (
+                                <span key={f.t} className="mg-fact">
+                                    <b>{f.n}</b>
+                                    <span>{f.t}</span>
                                 </span>
                             ))}
                         </span>
-                        <span className="mg-play">
-                            <span>
-                                <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
+                        <span className="mg-btns">
+                            <span className="mg-play">
+                                <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true">
                                     <path d="M7 4.5v15l12.5-7.5z" fill="currentColor" />
                                 </svg>
+                                {label}
                             </span>
-                            {label}
                         </span>
-                        {hint ? (
-                            <span className="mg-hint">
-                                {hint.split(" ").map((w, i) =>
-                                    w.length === 1 ? (
-                                        <kbd key={i}>{w}</kbd>
-                                    ) : (
-                                        <React.Fragment key={i}> {w} </React.Fragment>
-                                    )
-                                )}
-                            </span>
-                        ) : null}
                     </span>
+                    {hint ? (
+                        <span className="mg-keys">
+                            <span>
+                                <kbd>W</kbd>
+                                <kbd>A</kbd>
+                                <kbd>S</kbd>
+                                <kbd>D</kbd>
+                                drive
+                            </span>
+                            <span>
+                                <kbd>Space</kbd>
+                                LiDAR
+                            </span>
+                            <span>
+                                <kbd>Esc</kbd>
+                                menu
+                            </span>
+                        </span>
+                    ) : null}
                 </button>
             )}
             {on && loaded && fullscreen && canFull && wide ? (
