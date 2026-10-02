@@ -15,6 +15,10 @@ import { landHeight, shoreAt } from "./terrain.js"
 
 const polar = (deg, r) => [Math.cos((deg * Math.PI) / 180) * r, Math.sin((deg * Math.PI) / 180) * r]
 
+// how deep each buoy sits: the green one has its float low on the model,
+// so it goes in less to float as high as the red one
+const BUOY_SINK = { "buoy-red": 0.3, "buoy-green": 0.1, "buoy-cardinal": 0.3 }
+
 // size = the model's longest side in scene units (1 unit = 0.3 m)
 const LAYOUT = [
     { file: "munkholmen", at: polar(147, 4600), size: 780, sink: 0.12, face: 0.9 },
@@ -139,7 +143,8 @@ export function createProps({ lowPower = false, base = "/media/models/world/" } 
             const inner = new THREE.Group()
             inner.add(obj)
             inner.scale.setScalar(k)
-            inner.position.y = -size.y * k * (l.sink || 0)
+            const sink = l.buoy ? BUOY_SINK[l.file] ?? l.sink : l.sink || 0
+            inner.position.y = -size.y * k * sink
             holder.add(inner)
 
             let x = 0
@@ -174,7 +179,7 @@ export function createProps({ lowPower = false, base = "/media/models/world/" } 
             if (l.buoy) {
                 buoys.push({ obj: holder, x, z, r: 2.4, kind: l.buoy, vx: 0, vz: 0, ox: x, oz: z })
                 const light = glowSprite(l.buoy === "port" ? 0xff4030 : l.buoy === "stbd" ? 0x40ff70 : 0xffffff, 5)
-                light.position.set(0, l.size * 0.93, 0)
+                light.position.set(0, size.y * k * (1 - sink) + 0.4, 0)
                 holder.add(light)
                 lamps.push({ sprite: light, blink: l.buoy === "cardinal" ? 1.0 : 3.0, phase: Math.random() * 3 })
             }
@@ -252,6 +257,7 @@ export function createProps({ lowPower = false, base = "/media/models/world/" } 
         const inner = new THREE.Group()
         inner.add(obj)
         inner.scale.setScalar(k)
+        if (buoy) sink = BUOY_SINK[file] ?? sink
         inner.position.y = -sz.y * k * sink
         holder.add(inner)
         holder.position.set(x, 0, z)
@@ -263,7 +269,7 @@ export function createProps({ lowPower = false, base = "/media/models/world/" } 
             item.buoy = { obj: holder, x, z, r: size * 0.24, kind: buoy, vx: 0, vz: 0, ox: x, oz: z }
             buoys.push(item.buoy)
             const light = glowSprite(buoy === "port" ? 0xff4030 : buoy === "stbd" ? 0x40ff70 : 0xffffff, size * 0.5)
-            light.position.set(0, size * 0.93, 0)
+            light.position.set(0, sz.y * k * (1 - sink) + size * 0.04, 0)
             holder.add(light)
             item.lamp = { sprite: light, blink: buoy === "cardinal" ? 1.0 : 3.0, phase: Math.random() * 3 }
             lamps.push(item.lamp)

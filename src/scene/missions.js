@@ -1,4 +1,5 @@
 import * as THREE from "three"
+import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js"
 import { waveHeight } from "./world/waves.js"
 import { withAir } from "./world/air.js"
 import { CARDINALS, YELLOW, BLACK, markSvg, taskIcon, taskDiagram } from "./taskart.js"
@@ -181,6 +182,7 @@ function materials() {
         white: std(0xe4e6e8, 0.45),
         dark: std(0x24272b, 0.6),
         orange: std(0xe8742a, 0.5),
+        lens: std(0x0c141c, 0.05, 0.9),
         lamp: new THREE.MeshBasicMaterial({ color: 0xfff1c8 }),
     }
     return mats
@@ -215,7 +217,7 @@ export function otterMesh() {
     const M = materials()
     const g = new THREE.Group()
     for (const s of [-1, 1]) {
-        const hull = new THREE.Mesh(new THREE.CapsuleGeometry(0.55, 5.0, 6, 16), M.white)
+        const hull = new THREE.Mesh(new THREE.CapsuleGeometry(0.55, 5.0, 8, 20), M.white)
         hull.rotation.z = Math.PI / 2
         hull.scale.set(0.8, 1, 1)
         hull.position.set(0, 0.12, s * 1.55)
@@ -223,17 +225,41 @@ export function otterMesh() {
         nose.position.set(2.85, 0.2, s * 1.55)
         g.add(hull, nose)
     }
-    const deck = new THREE.Mesh(new THREE.BoxGeometry(4.4, 0.22, 3.5), M.dark)
+    const deck = new THREE.Mesh(new RoundedBoxGeometry(4.4, 0.24, 3.5, 2, 0.1), M.dark)
     deck.position.y = 0.72
-    const house = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.75, 1.7), M.white)
+    // the house with its lid line, a camera looking ahead, handles on the deck
+    const house = new THREE.Mesh(new RoundedBoxGeometry(2.2, 0.75, 1.7, 3, 0.18), M.white)
     house.position.set(-0.3, 1.2, 0)
-    const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 2.0, 8), M.dark)
+    const lid = new THREE.Mesh(new RoundedBoxGeometry(2.24, 0.06, 1.74, 1, 0.03), M.dark)
+    lid.position.set(-0.3, 1.38, 0)
+    const cam = new THREE.Mesh(new RoundedBoxGeometry(0.34, 0.3, 0.5, 2, 0.08), M.dark)
+    cam.position.set(0.95, 1.28, 0)
+    const lens = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.06, 12), M.lens)
+    lens.rotation.z = Math.PI / 2
+    lens.position.set(1.13, 1.28, 0)
+    g.add(deck, house, lid, cam, lens)
+    for (const s of [-1, 1]) {
+        const h = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.04, 6, 12, Math.PI), M.steel)
+        h.position.set(1.6, 0.84, s * 1.2)
+        g.add(h)
+    }
+    // the mast with a cross bar and the two GNSS domes, the light on top
+    const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.07, 2.0, 8), M.dark)
     mast.position.set(-1.0, 2.3, 0)
+    const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.6, 6), M.dark)
+    bar.rotation.x = Math.PI / 2
+    bar.position.set(-1.0, 2.9, 0)
+    g.add(mast, bar)
+    for (const s of [-1, 1]) {
+        const d = new THREE.Mesh(new THREE.SphereGeometry(0.2, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), M.white)
+        d.position.set(-1.0, 2.94, s * 0.75)
+        g.add(d)
+    }
     const dome = new THREE.Mesh(new THREE.SphereGeometry(0.24, 14, 10), M.white)
     dome.position.set(-1.0, 3.35, 0)
     const light = new THREE.Mesh(new THREE.SphereGeometry(0.13, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffb030 }))
     light.position.set(-1.0, 3.7, 0)
-    g.add(deck, house, mast, dome, light)
+    g.add(dome, light)
     return { group: g, light }
 }
 
