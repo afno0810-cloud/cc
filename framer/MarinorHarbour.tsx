@@ -5,7 +5,7 @@ import { addPropertyControls, ControlType, useIsStaticRenderer } from "framer"
 // Request: "har du muligheten til og legge noen av 3d animasjonenen fra denne siden til framer nettsiden"
 // The 3D harbour with Argus from the new Marinor site, as a Framer code component.
 // The 3D code and the models are served from the repo by jsDelivr, pinned to one commit.
-const BASE = "https://cdn.jsdelivr.net/gh/afno0810-cloud/cc@59ae91f7845e038f50580d905446492cbe8f1dc1/"
+const BASE = "https://cdn.jsdelivr.net/gh/afno0810-cloud/cc@7a84f8ca9ae3fc84d171a16f7bbea0a20cbab69a/"
 const LIB = BASE + "framer/marinor-3d.js"
 const MODELS = BASE + "public/media/models/"
 const POSTER = BASE + "framer/harbour-poster.jpg"
