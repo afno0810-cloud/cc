@@ -49,6 +49,8 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
         shake: 0, // camera shake after a hard bump, 0..1
         auto: null, // the autopilot's inputs { th, st, spin, boost } while it has the helm
         orbit: false, // the camera swings round slowly (autopilot)
+        menu: false, // the game menu is open: the camera stands back and keeps the boat to the right
+        menuK: 0, // 0 … 1, eased
         outBlend: 0, // 1 → 0 after leaving, so the page camera takes over smoothly
     }
     const keys = new Set()
@@ -199,7 +201,10 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
         if (what === "sound") setSound(!soundOn)
     })
     function cycleTime() {
-        timeI = (timeI + 1) % TIMES.length
+        setTime(timeI + 1)
+    }
+    function setTime(i) {
+        timeI = (i + TIMES.length) % TIMES.length
         state.sunElev = TIMES[timeI]
     }
     function setLid(on) {
@@ -213,7 +218,10 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
         keysBtn.setAttribute("aria-expanded", on ? "true" : "false")
     }
     function cycleWeather() {
-        weatherI = (weatherI + 1) % WEATHERS.length
+        setWeather(weatherI + 1)
+    }
+    function setWeather(i) {
+        weatherI = (i + WEATHERS.length) % WEATHERS.length
         weatherEl.textContent = WEATHERS[weatherI].name
     }
 
@@ -278,6 +286,7 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
     }
 
     const escapers = []
+    const pausers = [] // the game page: Esc with nothing else open opens the game menu
     const manual = [] // called when someone takes the helm from the autopilot
     // ---- menus: the arrow keys move between the choices (and scroll the long ones), Enter picks ----
     const menus = [{ el: keysEl, modal: true }]
@@ -334,7 +343,11 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
                 // open panels (the tasks, the places) close first
                 for (const f of escapers) if (f()) return
                 if (state.lidOpen) return setLid(false)
-                return document.body.hasAttribute("data-game") ? undefined : stop()
+                if (document.body.hasAttribute("data-game")) {
+                    for (const f of pausers) f()
+                    return
+                }
+                return stop()
             }
             if (k.startsWith("arrow")) {
                 const m = activeMenu()
@@ -755,11 +768,16 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
         const ki = state.inspect * state.inspect * (3 - 2 * state.inspect)
         const a = state.course + Math.PI + camYaw - state.yawRate * 0.25 + ki * (-Math.PI / 2 - 0.45 + Math.PI)
         const pitch = camPitch + (0.72 - camPitch) * ki
-        const dist = camDist + (6.4 - camDist) * ki
-        const flat = Math.cos(pitch) * dist
+        state.menuK += ((state.menu ? 1 : 0) - state.menuK) * (1 - Math.exp(-dt * 1.6))
+        const km = state.menuK * state.menuK * (3 - 2 * state.menuK)
+        const dist = camDist + (6.4 - camDist) * ki + 15 * km
+        const flat = Math.cos(pitch + 0.06 * km) * dist
         const lookY = 1.6 + (2.05 - 1.6) * ki
-        want.set(state.pos.x + Math.cos(a) * flat, 1.2 + (lookY - 1.6) + Math.sin(pitch) * dist, state.pos.z - Math.sin(a) * flat)
-        wantLook.copy(state.pos).addScaledVector(fwd, 5 * (1 - ki)).setY(lookY)
+        want.set(state.pos.x + Math.cos(a) * flat, 1.2 + (lookY - 1.6) + Math.sin(pitch + 0.06 * km) * dist, state.pos.z - Math.sin(a) * flat)
+        wantLook.copy(state.pos).addScaledVector(fwd, 5 * (1 - ki) * (1 - km)).setY(lookY)
+        // with the menu open, look a little to the left of the boat, so it stands right of the menu
+        wantLook.x += Math.sin(a) * dist * 0.24 * km
+        wantLook.z += Math.cos(a) * dist * 0.24 * km
         inBlend = Math.min(1, inBlend + dt * 0.8)
         const k = inBlend * inBlend * (3 - 2 * inBlend)
         if (inBlend < 1) {
@@ -1020,6 +1038,25 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
         onEscape(fn) {
             escapers.push(fn)
         },
+        onPause(fn) {
+            pausers.push(fn)
+        },
+        // the settings, for the game menu
+        TIME_NAMES: ["Day", "Low sun", "Sunset", "Dusk", "Night"],
+        WEATHERS,
+        get timeIndex() {
+            return timeI
+        },
+        get weatherIndex() {
+            return weatherI
+        },
+        setTime,
+        setWeather,
+        get soundOn() {
+            return soundOn
+        },
+        setSound,
+        showKeys,
         onManual(fn) {
             manual.push(fn)
         },

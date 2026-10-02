@@ -139,6 +139,7 @@ export async function startScene({ reduced = false } = {}) {
     let boats = null
     let score = null
     let autopilot = null
+    let gameMenu = null // the game page's title screen and pause menu
     let postfx = null
     let birds = null
     let shoreLights = null
@@ -154,7 +155,7 @@ export async function startScene({ reduced = false } = {}) {
         scene.add(props.group)
         if (drive) {
             const { createMissions } = await import("./missions.js")
-            missions = createMissions({ scene, props, drive, isGame: document.body.hasAttribute("data-game") })
+            missions = createMissions({ scene, props, drive, isGame: document.body.hasAttribute("data-game") && !gameMenu })
             const { createPlaces } = await import("./places.js")
             places = createPlaces({ scene, props, drive, missions })
             const { createBoats } = await import("./world/boats.js")
@@ -208,6 +209,7 @@ export async function startScene({ reduced = false } = {}) {
                     return out
                 },
             })
+            if (gameMenu) gameMenu.refresh()
         }
         if (!reduced) {
             const { createBirds } = await import("./world/birds.js")
@@ -593,6 +595,10 @@ export async function startScene({ reduced = false } = {}) {
             rippleI = (rippleI + 1) % RIPPLE_N
         },
     })
+    if (document.body.hasAttribute("data-game")) {
+        const { createGameMenu } = await import("./gamemenu.js")
+        gameMenu = createGameMenu({ drive, get: () => ({ missions, places, autopilot, score }) })
+    }
     for (const [mark, text, side] of LID_LABELS) {
         const el = document.createElement("span")
         el.className = "lid-label" + (side ? " " + side : "")
