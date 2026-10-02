@@ -269,15 +269,19 @@ export function createWater({ lowPower = false } = {}) {
                 if (uReflectOn > 0.0) {
                     vec4 rc = uReflectMatrix * vec4(vPos.x, 0.0, vPos.z, 1.0);
                     vec2 ruv = rc.xy / rc.w + slope * vec2(0.035, 0.05) / (1.0 + dist * 0.012);
+                    // far off the waves blur the mirror sideways more than up, and never up past the shore
+                    ruv.y = min(ruv.y, rc.y / rc.w + 0.5 / float(textureSize(uReflect, 0).y));
                     ruv = clamp(ruv, 0.001, 0.999);
                     // a few taps: the mirror is never perfectly sharp, and its edges don't show the pixels
                     // (weighted by coverage: where nothing was drawn the colour means nothing)
+                    // (only sideways and downwards: just above the mirrored shoreline the mirror holds
+                    // nothing but sky, and taps reaching up there drew a bright line where land meets water)
                     vec2 px = 1.3 / vec2(textureSize(uReflect, 0));
                     vec4 m0 = texture2D(uReflect, ruv);
-                    vec4 m1 = texture2D(uReflect, ruv + vec2(px.x, px.y));
-                    vec4 m2 = texture2D(uReflect, ruv + vec2(-px.x, px.y));
-                    vec4 m3 = texture2D(uReflect, ruv + vec2(px.x, -px.y));
-                    vec4 m4 = texture2D(uReflect, ruv + vec2(-px.x, -px.y));
+                    vec4 m1 = texture2D(uReflect, ruv + vec2(px.x, 0.0));
+                    vec4 m2 = texture2D(uReflect, ruv + vec2(-px.x, 0.0));
+                    vec4 m3 = texture2D(uReflect, ruv + vec2(px.x * 0.5, -px.y));
+                    vec4 m4 = texture2D(uReflect, ruv + vec2(-px.x * 0.5, -px.y * 1.6));
                     float a0 = clamp(m0.a, 0.0, 1.0), a1 = clamp(m1.a, 0.0, 1.0), a2 = clamp(m2.a, 0.0, 1.0), a3 = clamp(m3.a, 0.0, 1.0), a4 = clamp(m4.a, 0.0, 1.0);
                     vec3 rgb = m0.rgb * a0 * 0.4 + (m1.rgb * a1 + m2.rgb * a2 + m3.rgb * a3 + m4.rgb * a4) * 0.15;
                     float cov = a0 * 0.4 + (a1 + a2 + a3 + a4) * 0.15;

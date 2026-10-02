@@ -108,7 +108,7 @@ export function mountHarbour(el, options = {}) {
         props = createProps({ lowPower, base: o.models + "world/" })
         scene.add(props.group)
         if (!reduced) {
-            birds = createBirds(lowPower ? 8 : 16)
+            birds = createBirds(lowPower ? 8 : 16, { base: o.models + "world/" })
             scene.add(birds.mesh)
         }
     }, 60)
@@ -149,7 +149,8 @@ export function mountHarbour(el, options = {}) {
         const tm = wu.uReflectMatrix.value
         tm.set(0.5, 0, 0, 0.5, 0, 0.5, 0, 0.5, 0, 0, 0.5, 0.5, 0, 0, 0, 1)
         tm.multiply(reflCam.projectionMatrix).multiply(reflCam.matrixWorldInverse)
-        reflPlane.set(new THREE.Vector3(0, 1, 0), 0.05).applyMatrix4(reflCam.matrixWorldInverse)
+        // (a little below the surface: the shore just under the water fills the seam where land meets water)
+        reflPlane.set(new THREE.Vector3(0, 1, 0), 0.6).applyMatrix4(reflCam.matrixWorldInverse)
         clipPlane.set(reflPlane.normal.x, reflPlane.normal.y, reflPlane.normal.z, reflPlane.constant)
         const pm = reflCam.projectionMatrix
         qv.x = (Math.sign(clipPlane.x) + pm.elements[8]) / pm.elements[0]

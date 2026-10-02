@@ -221,6 +221,8 @@ export async function createTerrain({ lowPower = false } = {}) {
     group.add(createTown({ lowPower }))
     await breathe()
     group.add(createCoastHouses({ lowPower }))
+    await breathe()
+    group.add(createForest({ lowPower }))
     group.add(createQuay())
     group.add(createWharfRow({ lowPower }))
     return group
@@ -313,9 +315,100 @@ function createTown({ lowPower }) {
     return mesh
 }
 
+/* ---- trees along the shores: stands of spruce (dark, pointed) and birch (lighter, round) ----
+   Far off a tree is a few pixels, but the stands give the hillsides and the ridges a ragged,
+   wooded edge instead of a smooth one. */
+function createForest({ lowPower }) {
+    const count = lowPower ? 2500 : 7000
+    const spruceGeo = (() => {
+        const a = new THREE.ConeGeometry(0.42, 0.62, 7).translate(0, 0.62, 0)
+        const b = new THREE.ConeGeometry(0.3, 0.5, 7).translate(0, 0.92, 0)
+        const t = new THREE.CylinderGeometry(0.06, 0.08, 0.32, 5).translate(0, 0.16, 0)
+        return mergeSimple([a, b, t])
+    })()
+    const birchGeo = (() => {
+        const c = new THREE.IcosahedronGeometry(0.32, 1).scale(1, 1.75, 1).translate(0, 0.72, 0)
+        const t = new THREE.CylinderGeometry(0.05, 0.07, 0.4, 5).translate(0, 0.2, 0)
+        return mergeSimple([c, t])
+    })()
+    const mat = withAir(new THREE.MeshStandardMaterial({ roughness: 0.95, metalness: 0 }))
+    const spruce = new THREE.InstancedMesh(spruceGeo, mat, count)
+    const birch = new THREE.InstancedMesh(birchGeo, mat, Math.round(count * 0.45))
+    const m = new THREE.Matrix4()
+    const q = new THREE.Quaternion()
+    const sc = new THREE.Vector3()
+    const p = new THREE.Vector3()
+    const col = new THREE.Color()
+    let seed = 23
+    const rnd = () => {
+        seed = (seed * 16807) % 2147483647
+        return seed / 2147483647
+    }
+    let ns = 0
+    let nb = 0
+    let tries = 0
+    while ((ns < spruce.count || nb < birch.count) && tries < count * 12) {
+        tries++
+        const deg = rnd() * 360
+        const S = shoreAt(deg)[0]
+        // within reach of the eye: the nearer shores get most of them
+        if (S > 9000 && rnd() < 0.7) continue
+        const a = (deg * Math.PI) / 180
+        const over = 10 + Math.pow(rnd(), 1.5) * 2200
+        const x = Math.cos(a) * (S + over)
+        const z = Math.sin(a) * (S + over)
+        // stands, not an even spread
+        if (fbm(x / 300, z / 300, 3) < 0.48) continue
+        const h = landHeight(x, z)
+        if (h < 7 || h > 900) continue
+        if (inCity(deg) > 0.2 && over < 1600) continue
+        const isBirch = h < 250 && rnd() < 0.3
+        if (isBirch ? nb >= birch.count : ns >= spruce.count) continue
+        const ht = isBirch ? 40 + rnd() * 25 : 55 + rnd() * 35 // 12 to 27 m
+        q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), rnd() * 6.28)
+        sc.set(ht * (0.85 + rnd() * 0.3), ht, ht * (0.85 + rnd() * 0.3))
+        p.set(x, h - 2, z)
+        m.compose(p, q, sc)
+        if (isBirch) {
+            birch.setMatrixAt(nb, m)
+            // October: some birches have turned yellow, the rest are a dull green
+            const turned = rnd()
+            if (turned < 0.4) birch.setColorAt(nb, col.setRGB(0.12 + rnd() * 0.05, 0.09 + rnd() * 0.03, 0.02))
+            else birch.setColorAt(nb, col.setRGB(0.045 + rnd() * 0.02, 0.07 + rnd() * 0.02, 0.028))
+            nb++
+        } else {
+            spruce.setMatrixAt(ns, m)
+            spruce.setColorAt(ns, col.setRGB(0.025 + rnd() * 0.012, 0.05 + rnd() * 0.02, 0.03))
+            ns++
+        }
+    }
+    spruce.count = ns
+    birch.count = nb
+    spruce.frustumCulled = birch.frustumCulled = false
+    const g = new THREE.Group()
+    g.add(spruce, birch)
+    return g
+}
+function mergeSimple(geos) {
+    const parts = geos.map((g) => (g.index ? g.toNonIndexed() : g))
+    const n = parts.reduce((k, g) => k + g.attributes.position.count, 0)
+    const pos = new Float32Array(n * 3)
+    const nor = new Float32Array(n * 3)
+    let o = 0
+    for (const g of parts) {
+        pos.set(g.attributes.position.array, o)
+        nor.set(g.attributes.normal.array, o)
+        o += g.attributes.position.array.length
+    }
+    const out = new THREE.BufferGeometry()
+    out.setAttribute("position", new THREE.BufferAttribute(pos, 3))
+    out.setAttribute("normal", new THREE.BufferAttribute(nor, 3))
+    return out
+}
+
 /* ---- houses dotted along the shores round the fjord, in little groups: white, red, yellow ---- */
 function createCoastHouses({ lowPower }) {
-    const count = lowPower ? 220 : 560
+    const count = lowPower ? 160 : 420
     const geo = houseGeometry()
     const mat = withAir(new THREE.MeshStandardMaterial({ roughness: 0.85, metalness: 0 }), { windows: true })
     const mesh = new THREE.InstancedMesh(geo, mat, count)

@@ -372,7 +372,7 @@ export function createMissions({ scene, props, drive, isGame = false }) {
         r.start = { x: -100, z: -300, h: 0 }
         for (const x of [-60, 60, 120]) r.gates.push(gate(x, -300, 0, 8))
         await Promise.all(r.gates.map((g) => gateBuoys(r, g)))
-        const boat = await props.spawn("snekke", { x: 20, z: -230, size: 17, sink: 0.3 })
+        const boat = await props.spawn("snekke", { x: 20, z: -230, size: 17, sink: 0.22 })
         if (!boat) return
         r.items.push(boat)
         if (run !== r) return

@@ -121,8 +121,8 @@ export function withAir(material, { windows = false, terrain = false } = {}) {
                         diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.78, 0.78, 0.75), frame * wall * 0.6 * winNear);
                         diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.035, 0.045, 0.055), win * wall * 0.85 * winNear);
                         diffuseColor.rgb *= 1.0 - wall * 0.12 * (1.0 - winNear);
-                        // facades a touch darker under the roofs
-                        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.045, 0.045, 0.05), vRoof);
+                        // dark roofs close by; far off they fade towards the wall colour (no black outline on every house)
+                        diffuseColor.rgb = mix(diffuseColor.rgb, mix(diffuseColor.rgb * 0.55, vec3(0.045, 0.045, 0.05), winNear), vRoof);
                     }`
                     : "#include <emissivemap_fragment>"
             )

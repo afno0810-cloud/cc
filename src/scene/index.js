@@ -153,7 +153,7 @@ export async function startScene({ reduced = false } = {}) {
         }
         if (!reduced) {
             const { createBirds } = await import("./world/birds.js")
-            birds = createBirds(lowPower ? 10 : 22)
+            birds = createBirds(lowPower ? 12 : 26)
             scene.add(birds.mesh)
         }
     }
@@ -227,7 +227,8 @@ export async function startScene({ reduced = false } = {}) {
         tm.set(0.5, 0, 0, 0.5, 0, 0.5, 0, 0.5, 0, 0, 0.5, 0.5, 0, 0, 0, 1)
         tm.multiply(reflCam.projectionMatrix).multiply(reflCam.matrixWorldInverse)
         // clip away what is under the water (oblique near plane, Lengyel)
-        reflPlane.set(new THREE.Vector3(0, 1, 0), 0.05).applyMatrix4(reflCam.matrixWorldInverse)
+        // (a little below the surface: the shore just under the water fills the seam where land meets water)
+        reflPlane.set(new THREE.Vector3(0, 1, 0), 0.6).applyMatrix4(reflCam.matrixWorldInverse)
         clipPlane.set(reflPlane.normal.x, reflPlane.normal.y, reflPlane.normal.z, reflPlane.constant)
         const pm = reflCam.projectionMatrix
         qv.x = (Math.sign(clipPlane.x) + pm.elements[8]) / pm.elements[0]
@@ -1199,6 +1200,9 @@ export async function startScene({ reduced = false } = {}) {
             },
             get missions() {
                 return missions
+            },
+            get birds() {
+                return birds
             },
             landHeight: (x, z) => (terrainMod ? terrainMod.landHeight(x, z) : null),
             get colliders() {

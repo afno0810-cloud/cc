@@ -20,14 +20,14 @@ const LAYOUT = [
     { file: "munkholmen", at: polar(147, 4600), size: 780, sink: 0.12, face: 0.9 },
     { file: "lighthouse", at: polar(109, 980), size: 44, sink: 0.02, rock: 26 },
     { file: "pontoon", at: [-96, 46], size: 44, float: true, sink: 0.35, yaw: 0.35, lift: -0.2 },
-    { file: "snekke", at: [-104, 62], size: 19, float: true, sink: 0.3, yaw: 2.0 },
-    { file: "yacht", at: [-150, 118], size: 40, float: true, sink: 0.2, yaw: 0.9, tall: true },
-    { file: "yacht", at: [-205, 64], size: 36, float: true, sink: 0.2, yaw: 2.4, tall: true },
-    { file: "snekke", at: [-120, -44], size: 18, float: true, sink: 0.3, yaw: -0.6 },
+    { file: "snekke", at: [-104, 62], size: 19, float: true, sink: 0.22, yaw: 2.0 },
+    { file: "yacht", at: [-150, 118], size: 40, float: true, sink: 0.075, yaw: 0.9, tall: true },
+    { file: "yacht", at: [-205, 64], size: 36, float: true, sink: 0.075, yaw: 2.4, tall: true },
+    { file: "snekke", at: [-120, -44], size: 18, float: true, sink: 0.22, yaw: -0.6 },
     // more boats lying in the harbour
-    { file: "snekke", at: [-62, -18], size: 17, float: true, sink: 0.3, yaw: 0.4 },
-    { file: "snekke", at: [-140, 20], size: 16, float: true, sink: 0.3, yaw: 2.6 },
-    { file: "yacht", at: [-175, 165], size: 34, float: true, sink: 0.2, yaw: 1.6, tall: true },
+    { file: "snekke", at: [-62, -18], size: 17, float: true, sink: 0.22, yaw: 0.4 },
+    { file: "snekke", at: [-140, 20], size: 16, float: true, sink: 0.22, yaw: 2.6 },
+    { file: "yacht", at: [-175, 165], size: 34, float: true, sink: 0.075, yaw: 1.6, tall: true },
     { file: "buoy-red", at: [-70, 52], size: 10, float: true, sink: 0.3, buoy: "port" },
     { file: "buoy-green", at: [-58, 88], size: 10, float: true, sink: 0.3, buoy: "stbd" },
     { file: "buoy-red", at: [-128, 84], size: 10, float: true, sink: 0.3, buoy: "port" },
@@ -289,7 +289,7 @@ export function createProps({ lowPower = false, base = "/media/models/world/" } 
         { file: "snekke", size: 15, cx: 200, cz: -60, rx: 110, rz: 60, w: -0.04, u: 2.0 },
     ]
     for (const r of ROUTES) {
-        spawn(r.file, { size: r.size, sink: 0.3 }).then((it) => {
+        spawn(r.file, { size: r.size, sink: 0.22 }).then((it) => {
             if (!it) return
             const box = { x: 0, z: 0, hx: it.hx, hz: it.hz, rot: 0 }
             colliders.push(box)
