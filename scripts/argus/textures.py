@@ -5,7 +5,8 @@ hull_*:  white gelcoat, hand-laid: soft unevenness, faint fibre streaks
 case_*:  black hard-case plastic with a fine pebble grain.
 alu_*:   aluminium profile, brushed along its length.
 orm:     glTF metallic-roughness packing: G = roughness, B = metalness.
-Writes JPEG files next to this file.  Usage: python3 scripts/argus/textures.py [size]
+Writes JPEG files next to this file, and a half-size copy of each (name-lite.jpg) for
+the light model.  Usage: python3 scripts/argus/textures.py [size]
 """
 import os
 import sys
@@ -14,7 +15,7 @@ import numpy as np
 from PIL import Image
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-N = int(sys.argv[1]) if len(sys.argv) > 1 else 1024
+N = int(sys.argv[1]) if len(sys.argv) > 1 else 2048
 rng = np.random.default_rng(7)
 
 
@@ -67,7 +68,9 @@ def height_to_normal(h, strength):
 
 
 def save(name, arr):
-    Image.fromarray(arr).save(os.path.join(HERE, name), quality=88, optimize=True)
+    im = Image.fromarray(arr)
+    im.save(os.path.join(HERE, name), quality=88, optimize=True)
+    im.resize((im.width // 2, im.height // 2), Image.LANCZOS).save(os.path.join(HERE, name.replace(".jpg", "-lite.jpg")), quality=86, optimize=True)
 
 
 def blur(a, r):

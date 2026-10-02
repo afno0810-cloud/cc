@@ -151,3 +151,9 @@ After changing the site, run `npm run build:pages`, then commit and push `docs/`
 - **The sponsor stickers** on the starboard hull are made from the logo files the site already uses, laid out as on the boat: DNV, the Kongsberg crest beside the name, telenor (`scripts/argus/decals.py`). The Kongsberg logo was upscaled with Higgsfield (`scripts/argus/kongsberg-2k.png`) so it stays sharp up close.
 - The latches and handle of the case face starboard and the hinges port, as on the boat.
 - **Picture**: the glow (bloom) no longer takes in the full brightness of the sun and its glitter, so looking towards the sun stays clear; the sun rays only gather from what is on screen; the chase camera sits lower so the shore and the town show over the water; more boats lie in the harbour.
+
+## Sharper, and the land the right way up (round 9)
+
+- **Resolution**: up to 2× pixel density on sharp screens (the scene still lowers it on the fly if a machine can't keep up), 4096 shadow map, a finer and multisampled mirror image in the water, a 512 × 256 sky panorama, finer small waves, and Argus' textures at 2048 px (the light model for phones takes half-size copies, `*-lite.jpg`).
+- **The land was upside down**: its triangles faced downwards, so only the backs of the far ridges were drawn, lit from below, and the sky showed through between the water and the hills (the pale band along every shore). It now faces up (`terrain.js`), so the hills are green and lit by the sun.
+- **Background**: twice as fine a mesh with crags on the ridges, forest that catches the light (bumps at several sizes, out to the far hills), grey rock on steep slopes, darker and lighter patches of forest far off, houses in small groups along the shores round the fjord (`createCoastHouses`), clear air (about 35 km) over land and water, no shine on the land at grazing angles, and less colour fringing at the frame edges. The land is built a few rings at a time so the page doesn't freeze.

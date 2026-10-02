@@ -6,7 +6,7 @@ import { PANO_GLSL } from "./sky.js"
    sky panorama). This is what makes far hills blue and hazy. */
 export const AIR = {
     uPano: { value: null },
-    uFog: { value: 36000 },
+    uFog: { value: 120000 }, // clear Nordic air (about 35 km): the far hills keep their colour
     uNight: { value: 0 },
 }
 
@@ -67,6 +67,13 @@ export function withAir(material, { windows = false, terrain = false } = {}) {
                         float n = airNoise(q / 14.0) * 0.45 + airNoise(q / 55.0) * 0.35 + airNoise(q / 260.0) * 0.2;
                         float k = smoothstep(9000.0, 1500.0, camD) * smoothstep(2.0, 12.0, vAirPos.y);
                         diffuseColor.rgb *= mix(1.0, 0.55 + n * 0.95, k);
+                        // and far off, darker stands of spruce and lighter birch and bog in big patches
+                        float kf = smoothstep(30000.0, 4000.0, camD) * (1.0 - k) * smoothstep(2.0, 12.0, vAirPos.y);
+                        diffuseColor.rgb *= mix(1.0, 0.6 + 0.8 * (airNoise(q / 700.0) * 0.6 + airNoise(q / 2300.0) * 0.4), kf);
+                        // grey rock where it is steep: cliffs and screes break through the forest
+                        float steep = smoothstep(0.86, 0.62, vAirN.y) * smoothstep(4.0, 20.0, vAirPos.y);
+                        float rocky = steep * smoothstep(0.38, 0.62, airNoise(q / 46.0) * 0.6 + airNoise(q / 12.0) * 0.4);
+                        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.13, 0.125, 0.115) * (0.75 + 0.5 * airNoise(q / 6.0)), rocky * 0.85);
                     }`
                     : "#include <color_fragment>"
             )
@@ -108,13 +115,51 @@ export function withAir(material, { windows = false, terrain = false } = {}) {
                         float on = step(0.76, airHash(cell + floor(vAirPos.xz / 40.0)));
                         totalEmissiveRadiance += vec3(1.0, 0.72, 0.42) * win * on * wall * uNight * 0.7;
                         // by day: dark glass in light frames, so the walls read as houses, not boxes
+                        // (far off a window is under a pixel: then it only darkens the wall a little, no speckle)
+                        float winNear = smoothstep(6000.0, 2400.0, length(vAirPos - cameraPosition));
                         float frame = step(0.24, f.x) * step(f.x, 0.78) * step(0.29, f.y) * step(f.y, 0.84) * (1.0 - win);
-                        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.78, 0.78, 0.75), frame * wall * 0.6);
-                        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.035, 0.045, 0.055), win * wall * 0.85);
+                        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.78, 0.78, 0.75), frame * wall * 0.6 * winNear);
+                        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.035, 0.045, 0.055), win * wall * 0.85 * winNear);
+                        diffuseColor.rgb *= 1.0 - wall * 0.12 * (1.0 - winNear);
                         // facades a touch darker under the roofs
                         diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.045, 0.045, 0.05), vRoof);
                     }`
                     : "#include <emissivemap_fragment>"
+            )
+            .replace(
+                "#include <lights_fragment_end>",
+                terrain
+                    ? `#include <lights_fragment_end>
+                    // a forest is no mirror: seen almost edge-on (far lowland) it must not shine with the bright horizon
+                    reflectedLight.indirectSpecular *= 0.08;
+                    reflectedLight.directSpecular *= 0.3;`
+                    : "#include <lights_fragment_end>"
+            )
+            .replace(
+                "#include <normal_fragment_maps>",
+                terrain
+                    ? `#include <normal_fragment_maps>
+                    {
+                        // the forest is bumpy: crowns and clumps catch the low sun, so the hills read as wooded, not smooth
+                        vec2 q = vAirPos.xz;
+                        float camD = length(vAirPos - cameraPosition);
+                        float near = smoothstep(2600.0, 500.0, camD);
+                        float mid = smoothstep(9000.0, 1200.0, camD);
+                        // far away only the big shapes: gullies, spurs and knolls on the hillsides
+                        float far = smoothstep(28000.0, 3000.0, camD);
+                        float fade = smoothstep(3.0, 14.0, vAirPos.y);
+                        if ((mid + far) * fade > 0.0) {
+                            float e = 4.0;
+                            // each size of bump about as steep as the others (weight grows with size)
+                            #define AIR_CANOPY(p) (airNoise((p) / 9.0) * near + airNoise((p) / 34.0) * 3.4 * mid + airNoise((p) / 130.0) * 9.0 * mid + airNoise((p) / 480.0) * 30.0 * far + airNoise((p) / 1500.0) * 85.0 * far)
+                            float h0 = AIR_CANOPY(q);
+                            float hx = AIR_CANOPY(q + vec2(e, 0.0));
+                            float hz = AIR_CANOPY(q + vec2(0.0, e));
+                            vec3 g = vec3(h0 - hx, 0.0, h0 - hz) * (1.5 / e) * fade;
+                            normal = normalize(normal + (viewMatrix * vec4(g, 0.0)).xyz);
+                        }
+                    }`
+                    : "#include <normal_fragment_maps>"
             )
             .replace(
                 "#include <fog_fragment>",

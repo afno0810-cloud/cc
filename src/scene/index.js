@@ -73,7 +73,7 @@ export async function startScene({ reduced = false } = {}) {
         emit("scene:failed")
         return null
     }
-    const dpr = Math.min(devicePixelRatio || 1, lowPower ? 1.25 : 1.5)
+    const dpr = Math.min(devicePixelRatio || 1, lowPower ? 1.5 : 2) // sharp on high-density screens (lowered on the fly if too slow)
     let dprNow = dpr // lowered on the fly if the machine can't keep up
     renderer.setPixelRatio(dpr)
     renderer.setSize(innerWidth, innerHeight, false)
@@ -105,7 +105,7 @@ export async function startScene({ reduced = false } = {}) {
     scene.add(sunLight, sunLight.target, moonLight)
     // a small, sharp shadow map that follows the boat
     sunLight.castShadow = true
-    sunLight.shadow.mapSize.set(lowPower ? 1024 : 2048, lowPower ? 1024 : 2048)
+    sunLight.shadow.mapSize.set(lowPower ? 2048 : 4096, lowPower ? 2048 : 4096)
     Object.assign(sunLight.shadow.camera, { left: -5.5, right: 5.5, top: 5.5, bottom: -5.5, near: 1, far: 120 })
     sunLight.shadow.camera.updateProjectionMatrix()
     sunLight.shadow.bias = -0.0004
@@ -140,7 +140,7 @@ export async function startScene({ reduced = false } = {}) {
     const buildWorld = async () => {
         terrainMod = await import("./world/terrain.js")
         const { createTerrain, createShoreLights } = terrainMod
-        scene.add(createTerrain({ lowPower }))
+        scene.add(await createTerrain({ lowPower }))
         shoreLights = createShoreLights({ lowPower })
         shoreLights.material.uniforms.uPx.value = dpr
         scene.add(shoreLights)
@@ -203,7 +203,7 @@ export async function startScene({ reduced = false } = {}) {
     })
 
     // ---- reflection: the scene seen from below the water, for the mirror image ----
-    const reflectRT = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType, samples: lowPower ? 0 : 2 })
+    const reflectRT = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType, samples: lowPower ? 0 : 4 })
     wu.uReflect.value = reflectRT.texture
     const reflCam = new THREE.PerspectiveCamera()
     const reflPlane = new THREE.Plane()
@@ -478,7 +478,7 @@ export async function startScene({ reduced = false } = {}) {
         camera.aspect = W / H
         camera.updateProjectionMatrix()
         post.setSize(W, H, dprNow)
-        const rk = lowPower ? 0.35 : 0.5
+        const rk = lowPower ? 0.5 : 0.75
         reflectRT.setSize(Math.round(W * dprNow * rk), Math.round(H * dprNow * rk))
         argus.points.uProj.value = (H * dprNow) / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)))
         if (globe) globe.setPx(1, argus.points.uProj.value)
@@ -764,7 +764,8 @@ export async function startScene({ reduced = false } = {}) {
         sky.setOvercast(over) // the sky is only baked again when this has changed by a step
         sky.uniforms.uCloud.value = lerp(0.56, 1.1, over)
         // how far you see: 36 km on a clear day, about a kilometre in thick fog
-        AIR.uFog.value = 36000 * Math.pow(420 / 36000, weather.fog)
+        // clear air: about 35 km before things fade into the sky (fog brings it down to a few hundred metres)
+        AIR.uFog.value = 120000 * Math.pow(420 / 120000, weather.fog)
 
         // ---- the time of day: afternoon at the top of the page, night at the bottom ----
         const elevWant = drive && drive.active ? drive.sunElev : lerp(sunTop, -5, smooth(clamp((scrollP - 0.04) / 0.92)))
@@ -947,7 +948,8 @@ export async function startScene({ reduced = false } = {}) {
         // the sun glitter: full on the first screen, a little less at the helm where you often face the sun
         wu.uGlit.value = (0.3 + 0.7 * freeLookNow) * (drive && drive.active ? 0.6 : 1) * (1 - over)
         // fog over the water; rain rings and a choppier sea in bad weather
-        wu.uFog.value = 5200 * Math.pow(340 / 5200, weather.fog)
+        // the same clear air over the water as over the land (no bright band where the shore meets it)
+        wu.uFog.value = 120000 * Math.pow(340 / 120000, weather.fog)
         wu.uRain.value = weather.rain
         wu.uChop.value = 1 + 0.35 * over + 0.5 * weather.rain
         argus.uniforms.uWetAll.value = weather.rain
@@ -1014,7 +1016,7 @@ export async function startScene({ reduced = false } = {}) {
         g.uExposure.value = exposure
         g.uDim.value = contentDim > 0.99 ? 1 : lerp(0.6, 1, contentDim)
         post.bloom.threshold = 2.4 / exposure
-        post.bloom.strength = (0.45 + night * 0.25) * lerp(0.5, 1, contentDim) * (window.__noBloom ? 0 : 1)
+        post.bloom.strength = (0.45 + night * 0.25) * lerp(0.5, 1, contentDim)
         tmp.copy(S.dir).multiplyScalar(1000).add(camera.position).project(camera)
         g.uSunPos.value.set(tmp.x * 0.5 + 0.5, tmp.y * 0.5 + 0.5)
         g.uSunOn.value = S.elev > -1.5 && tmp.z < 1 ? 1 : 0

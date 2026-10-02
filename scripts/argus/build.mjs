@@ -958,8 +958,10 @@ async function write(lite, file) {
     scene.addChild(root)
     const textures = new Map()
     const tex = (name) => {
-        if (!textures.has(name)) textures.set(name, doc.createTexture(name).setImage(fs.readFileSync(path.join(here, name))).setMimeType(name.endsWith(".png") ? "image/png" : "image/jpeg"))
-        return textures.get(name)
+        // the light model takes the half-size copies of the surface textures
+        const lit = lite && name.endsWith(".jpg") && fs.existsSync(path.join(here, name.replace(".jpg", "-lite.jpg"))) ? name.replace(".jpg", "-lite.jpg") : name
+        if (!textures.has(lit)) textures.set(lit, doc.createTexture(lit).setImage(fs.readFileSync(path.join(here, lit))).setMimeType(lit.endsWith(".png") ? "image/png" : "image/jpeg"))
+        return textures.get(lit)
     }
     // the lid: its own node on the hinge line, its geometry relative to it
     const lid = doc.createNode("lid").setTranslation([0, HINGE.y, HINGE.z])

@@ -54,7 +54,7 @@ export function mountHarbour(el, options = {}) {
         canvas.remove()
         return { set() {}, destroy() {} }
     }
-    const dpr = Math.min(devicePixelRatio || 1, lowPower ? 1.25 : 1.5)
+    const dpr = Math.min(devicePixelRatio || 1, lowPower ? 1.5 : 2) // sharp on high-density screens (lowered on the fly if too slow)
     renderer.setPixelRatio(dpr)
     renderer.outputColorSpace = THREE.SRGBColorSpace
     renderer.shadowMap.enabled = true
@@ -78,7 +78,7 @@ export function mountHarbour(el, options = {}) {
     scene.add(sunLight, sunLight.target, moonLight)
     // the sun casts shadows on the boat (the case and frame on the hulls)
     sunLight.castShadow = true
-    sunLight.shadow.mapSize.set(lowPower ? 1024 : 2048, lowPower ? 1024 : 2048)
+    sunLight.shadow.mapSize.set(lowPower ? 2048 : 4096, lowPower ? 2048 : 4096)
     Object.assign(sunLight.shadow.camera, { left: -5.5, right: 5.5, top: 5.5, bottom: -5.5, near: 1, far: 120 })
     sunLight.shadow.camera.updateProjectionMatrix()
     sunLight.shadow.bias = -0.0004
@@ -97,9 +97,11 @@ export function mountHarbour(el, options = {}) {
     let props = null
     let birds = null
     let lights = null
-    setTimeout(() => {
+    setTimeout(async () => {
         if (dead) return
-        scene.add(createTerrain({ lowPower }))
+        const land = await createTerrain({ lowPower })
+        if (dead) return
+        scene.add(land)
         lights = createShoreLights({ lowPower })
         lights.material.uniforms.uPx.value = dpr
         scene.add(lights)
@@ -124,7 +126,7 @@ export function mountHarbour(el, options = {}) {
     let introStart = -1
 
     // reflection camera (the scene seen from under the water)
-    const reflectRT = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType, samples: lowPower ? 0 : 2 })
+    const reflectRT = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType, samples: lowPower ? 0 : 4 })
     wu.uReflect.value = reflectRT.texture
     const reflCam = new THREE.PerspectiveCamera()
     const reflPlane = new THREE.Plane()
@@ -180,7 +182,7 @@ export function mountHarbour(el, options = {}) {
         camera.aspect = W / H
         camera.updateProjectionMatrix()
         post.setSize(W, H, dpr)
-        const rk = lowPower ? 0.35 : 0.5
+        const rk = lowPower ? 0.5 : 0.75
         reflectRT.setSize(Math.round(W * dpr * rk), Math.round(H * dpr * rk))
         argus.points.uProj.value = (H * dpr) / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)))
     }

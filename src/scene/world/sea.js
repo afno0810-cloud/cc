@@ -142,7 +142,7 @@ export function createWater({ lowPower = false } = {}) {
         uAmp: { value: 1 },
         uCenter: { value: new THREE.Vector2() },
         uCam: { value: new THREE.Vector3() },
-        uWaves: { value: makeWaveTexture(lowPower ? 128 : 256) },
+        uWaves: { value: makeWaveTexture(lowPower ? 256 : 512) },
         uPano: { value: null },
         uReflect: { value: null },
         uReflectMatrix: { value: new THREE.Matrix4() },
@@ -152,7 +152,7 @@ export function createWater({ lowPower = false } = {}) {
         uSunPower: { value: 22 },
         uBody: { value: new THREE.Color(0.004, 0.018, 0.026) },
         uNight: { value: 0 },
-        uFog: { value: 5200 },
+        uFog: { value: 120000 },
         uDim: { value: 1 },
         uBoat: { value: new THREE.Vector2() },
         uBoatDir: { value: new THREE.Vector2(1, 0) },
@@ -361,7 +361,7 @@ export function createWater({ lowPower = false } = {}) {
                 // the air between you and the water
                 vec3 air = sky(vec3(-V.x, 0.0, -V.z));
                 float fog = 1.0 - exp(-dist / uFog);
-                col = mix(col, air, fog * mix(1.0, 0.92, clamp(uFog / 5200.0, 0.0, 1.0)));
+                col = mix(col, air, fog * mix(1.0, 0.92, clamp(uFog / 120000.0, 0.0, 1.0)));
 
                 gl_FragColor = vec4(col * uDim, 1.0);
             }

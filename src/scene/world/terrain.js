@@ -103,7 +103,7 @@ export function landHeight(x, z) {
     if (over < 0) return Math.max(-60, over * 0.08) - 2
     const city = inCity(deg)
     const rise = smooth(0, S * 0.28 + 700, over)
-    const hills = Hm * rise * (0.35 + 0.95 * ridged(x / 5200, z / 5200, 6)) * (0.7 + 0.5 * fbm(x / 9000, z / 9000, 3))
+    const hills = Hm * rise * (0.35 + 0.95 * ridged(x / 5200, z / 5200, 6) + 0.14 * ridged(x / 1100, z / 1100, 4)) * (0.7 + 0.5 * fbm(x / 9000, z / 9000, 3))
     const lip = (6 + fbm(x / 90, z / 90, 3) * 10) * (1 - city * 0.6)
     if (city > 0) {
         // the city: a low terrace by the water (quays are a few metres high), then the hills behind it
@@ -118,9 +118,13 @@ function inCity(deg) {
     return smooth(CITY.from, CITY.from + 10, deg) * (1 - smooth(CITY.to - 10, CITY.to, deg))
 }
 
-export function createTerrain({ lowPower = false } = {}) {
-    const sectors = lowPower ? 360 : 720
-    const rings = lowPower ? 90 : 150
+export async function createTerrain({ lowPower = false } = {}) {
+    // built a few rings at a time, letting the page breathe in between (it is a lot of land)
+    const breathe = () => new Promise((r) => setTimeout(r, 0))
+    let last = performance.now()
+    // dense enough that ridges and crags stay sharp against the sky
+    const sectors = lowPower ? 720 : 1440
+    const rings = lowPower ? 130 : 240
     const r0 = 700
     const r1 = 44000
     const growth = Math.pow(r1 / r0, 1 / (rings - 1))
@@ -128,6 +132,10 @@ export function createTerrain({ lowPower = false } = {}) {
     const col = new Float32Array(sectors * rings * 3)
     const hs = new Float32Array(sectors * rings)
     for (let i = 0; i < rings; i++) {
+        if (performance.now() - last > 30) {
+            await breathe()
+            last = performance.now()
+        }
         const r = r0 * Math.pow(growth, i)
         for (let j = 0; j < sectors; j++) {
             const a = (j / sectors) * Math.PI * 2
@@ -151,7 +159,9 @@ export function createTerrain({ lowPower = false } = {}) {
             const d = (i + 1) * sectors + j1
             // skip quads that are all deep under water
             if (hs[a] < -1.5 && hs[b] < -1.5 && hs[c] < -1.5 && hs[d] < -1.5) continue
-            idx.push(a, c, b, b, c, d)
+            // counter-clockwise seen from above, so the land faces up (it was the other way round,
+            // which hid the near slopes and left a gap where the sky showed through)
+            idx.push(a, b, c, b, d, c)
         }
     }
     const geo = new THREE.BufferGeometry()
@@ -165,15 +175,19 @@ export function createTerrain({ lowPower = false } = {}) {
         rock: new THREE.Color(0.12, 0.115, 0.105),
         wetRock: new THREE.Color(0.05, 0.048, 0.045),
         weed: new THREE.Color(0.06, 0.05, 0.025),
-        spruce: new THREE.Color(0.022, 0.046, 0.022),
-        birch: new THREE.Color(0.07, 0.105, 0.034),
-        field: new THREE.Color(0.13, 0.15, 0.05),
+        spruce: new THREE.Color(0.034, 0.066, 0.034),
+        birch: new THREE.Color(0.085, 0.125, 0.04),
+        field: new THREE.Color(0.14, 0.16, 0.06),
         bare: new THREE.Color(0.1, 0.095, 0.085),
         snow: new THREE.Color(0.62, 0.65, 0.7),
         town: new THREE.Color(0.11, 0.1, 0.095),
     }
     const c = new THREE.Color()
     for (let k = 0; k < hs.length; k++) {
+        if ((k & 4095) === 0 && performance.now() - last > 30) {
+            await breathe()
+            last = performance.now()
+        }
         const x = pos[k * 3]
         const z = pos[k * 3 + 2]
         const h = hs[k]
@@ -205,6 +219,8 @@ export function createTerrain({ lowPower = false } = {}) {
     const group = new THREE.Group()
     group.add(land)
     group.add(createTown({ lowPower }))
+    await breathe()
+    group.add(createCoastHouses({ lowPower }))
     group.add(createQuay())
     group.add(createWharfRow({ lowPower }))
     return group
@@ -291,6 +307,62 @@ function createTown({ lowPower }) {
         mesh.setMatrixAt(placed, m)
         mesh.setColorAt(placed, facades[Math.floor(rnd() * facades.length)])
         placed++
+    }
+    mesh.count = placed
+    mesh.frustumCulled = false
+    return mesh
+}
+
+/* ---- houses dotted along the shores round the fjord, in little groups: white, red, yellow ---- */
+function createCoastHouses({ lowPower }) {
+    const count = lowPower ? 220 : 560
+    const geo = houseGeometry()
+    const mat = withAir(new THREE.MeshStandardMaterial({ roughness: 0.85, metalness: 0 }), { windows: true })
+    const mesh = new THREE.InstancedMesh(geo, mat, count)
+    // mostly white, some barn red, a few ochre and grey, a little weathered
+    const paint = ["#dcd9d0", "#d6d2c6", "#cfcabd", "#dedbd2", "#7a3027", "#6e2c24", "#b89a52", "#7f8a8e", "#d8d4ca", "#c9c4b6"].map((h) => new THREE.Color(h))
+    const m = new THREE.Matrix4()
+    const q = new THREE.Quaternion()
+    const sc = new THREE.Vector3()
+    const p = new THREE.Vector3()
+    let seed = 11
+    const rnd = () => {
+        seed = (seed * 16807) % 2147483647
+        return seed / 2147483647
+    }
+    let placed = 0
+    let tries = 0
+    while (placed < count && tries < count * 30) {
+        // a group of houses round a point near the water
+        tries++
+        const deg = rnd() * 360
+        if (inCity(deg) > 0.1) continue
+        const S = shoreAt(deg)[0]
+        const a0 = (deg * Math.PI) / 180
+        const over0 = 60 + Math.pow(rnd(), 1.8) * 1400
+        const cx = Math.cos(a0) * (S + over0)
+        const cz = Math.sin(a0) * (S + over0)
+        const n = 2 + Math.floor(rnd() * 7)
+        for (let i = 0; i < n && placed < count; i++) {
+            tries++
+            const x = cx + (rnd() - 0.5) * 700
+            const z = cz + (rnd() - 0.5) * 700
+            const h = landHeight(x, z)
+            if (h < 5 || h > 260) continue
+            // only on gentle ground
+            const sl = Math.hypot(landHeight(x + 20, z) - h, landHeight(x, z + 20) - h) / 20
+            if (sl > 0.35) continue
+            const w = 18 + rnd() * 12
+            const d = 13 + rnd() * 8
+            const ht = 12 + rnd() * 8
+            q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), rnd() * Math.PI)
+            sc.set(w, ht, d)
+            p.set(x, h - 2, z)
+            m.compose(p, q, sc)
+            mesh.setMatrixAt(placed, m)
+            mesh.setColorAt(placed, paint[Math.floor(rnd() * paint.length)])
+            placed++
+        }
     }
     mesh.count = placed
     mesh.frustumCulled = false

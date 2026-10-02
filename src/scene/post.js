@@ -19,7 +19,7 @@ const GradeShader = {
         uTime: { value: 0 },
         uExposure: { value: 1.0 },
         uRes: { value: new THREE.Vector2(1, 1) },
-        uCA: { value: 0.00025 },
+        uCA: { value: 0.00008 }, // a hint of colour fringing at the edges, not a red rim on every ridge
         uGrain: { value: 0.03 },
         uVig: { value: 0.4 },
         uFlash: { value: 0 },

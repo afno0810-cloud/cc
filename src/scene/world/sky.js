@@ -13,8 +13,8 @@ import * as THREE from "three"
    So the colours come from the sun's height, not from a palette.
    ================================================================ */
 
-export const PANO_W = 256
-export const PANO_H = 128
+export const PANO_W = 512
+export const PANO_H = 256
 
 /* Rayleigh / Mie numbers for the Earth's atmosphere (metres) */
 const R_PLANET = 6371e3
@@ -292,7 +292,7 @@ export function createSky(renderer, { lowPower = false } = {}) {
     // 2) image-based lighting from the panorama (re-laid out as a standard equirect first)
     const pmrem = new THREE.PMREMGenerator(renderer)
     let env = null
-    const envSrc = new THREE.WebGLRenderTarget(256, 128, {
+    const envSrc = new THREE.WebGLRenderTarget(512, 256, {
         type: THREE.HalfFloatType,
         depthBuffer: false,
         generateMipmaps: false,
