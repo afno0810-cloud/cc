@@ -45,6 +45,7 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
         lidOpen: false, // the case lid is open: the camera comes close and the boat waits
         inspect: 0, // 0 … 1, eased: how far the camera has gone to the open case
         target: null, // { x, z }: where the mission wants you next (compass and radar)
+        pois: null, // places to visit: [{ item: { x, z }, done }]
         outBlend: 0, // 1 → 0 after leaving, so the page camera takes over smoothly
     }
     const keys = new Set()
@@ -115,7 +116,8 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
                     <div><dt><kbd>Shift</kbd></dt><dd>More power</dd></div>
                     <div><dt><kbd>Space</kbd></dt><dd>LiDAR ping</dd></div>
                     <div><dt><kbd>L</kbd></dt><dd>Open the lid and look inside</dd></div>
-                    <div><dt><kbd>M</kbd></dt><dd>Missions</dd></div>
+                    <div><dt><kbd>M</kbd></dt><dd>Njord tasks</dd></div>
+                    <div><dt><kbd>P</kbd></dt><dd>Places to visit</dd></div>
                     <div><dt><kbd>T</kbd></dt><dd>Time of day</dd></div>
                     <div><dt><kbd>V</kbd></dt><dd>Weather</dd></div>
                     <div><dt><kbd>H</kbd></dt><dd>This list</dd></div>
@@ -239,12 +241,15 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
         stick.divideScalar(R)
     }
 
+    const escapers = []
     function onKey(e) {
         if (!state.active) return
         const k = e.key.toLowerCase()
         if (e.type === "keydown") {
             if (k === "escape") {
                 if (keysEl.classList.contains("is-on")) return showKeys(false)
+                // open panels (the tasks, the places) close first
+                for (const f of escapers) if (f()) return
                 if (state.lidOpen) return setLid(false)
                 return document.body.hasAttribute("data-game") ? undefined : stop()
             }
@@ -652,6 +657,19 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
         }
         c.fillStyle = "#f2c230"
         c.fillRect(W / 2 - 1.5, 0, 3, 24)
+        // places not yet visited: small violet marks on the tape
+        if (state.pois && !state.target) {
+            c.fillStyle = "#c39cf0"
+            for (const p of state.pois) {
+                if (p.done || !p.item) continue
+                const pb = ((Math.atan2(p.item.x - state.pos.x, p.item.z - state.pos.z) * 180) / Math.PI + 360) % 360
+                const d = ((pb - bearing + 540) % 360) - 180
+                if (Math.abs(d) > (W / 2 - 8) / 3.4) continue
+                c.beginPath()
+                c.arc(W / 2 + d * 3.4, 12, 4, 0, Math.PI * 2)
+                c.fill()
+            }
+        }
         // the way to the next mission target: a blue mark, or an arrow at the edge
         if (state.target) {
             const tb = ((Math.atan2(state.target.x - state.pos.x, state.target.z - state.pos.z) * 180) / Math.PI + 360) % 360
@@ -750,7 +768,7 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
                 g.restore()
             }
         }
-        for (const b of buoys()) dot(b.x, b.z, b.kind === "port" ? "#ff5a4a" : b.kind === "stbd" ? "#45d07f" : "#f2c230", 5)
+        for (const b of buoys()) dot(b.x, b.z, b.kind === "port" ? "#ff5a4a" : b.kind === "stbd" ? "#45d07f" : b.kind === "info" ? "#c39cf0" : "#f2c230", b.kind === "info" ? 6 : 5)
         if (state.target) {
             const [px, py] = toRadar(state.target.x, state.target.z)
             const l = Math.hypot(px, py)
@@ -839,6 +857,9 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
         },
         hud,
         actions: hud.querySelector(".hud-actions"),
+        onEscape(fn) {
+            escapers.push(fn)
+        },
         // put the boat somewhere at once, standing still (the start of a mission)
         place(x, z, heading) {
             state.pos.set(x, 0, z)

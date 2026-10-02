@@ -18,7 +18,10 @@ import { NodeIO } from "@gltf-transform/core"
 import { ALL_EXTENSIONS } from "@gltf-transform/extensions"
 import { MeshoptDecoder } from "meshoptimizer"
 
-const out = path.resolve(process.argv[2] || "preview")
+const args = process.argv.slice(2)
+const out = path.resolve(args.find((a) => !a.startsWith("--")) || "preview")
+// --standalone: a whole document (GitHub Pages serves the file as it is; an artifact host adds its own)
+const standalone = args.includes("--standalone")
 const tmp = out + "-build"
 
 execSync(`npx vite build --base ./ --outDir "${tmp}" --emptyOutDir`, { stdio: "inherit" })
@@ -122,17 +125,35 @@ window.__modelSource = function (lite) {
 })()
 </script>`
 
-const page = `<title>Marinor NTNU</title>
+let page = `<title>Marinor NTNU</title>
 ${links}
 ${templates.join("\n")}
 <div id="app"></div>
 ${boot}
 ${modules}
 `
+if (standalone) {
+    // without these, phones lay the page out 980 px wide and browsers use quirks mode
+    const i = page.indexOf("<template")
+    page = `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#07060d">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png">
+${page.slice(0, i)}</head>
+<body>
+${page.slice(i)}</body>
+</html>
+`
+}
 
 fs.rmSync(out, { recursive: true, force: true })
 fs.mkdirSync(out, { recursive: true })
 fs.writeFileSync(path.join(out, "index.html"), page)
+if (standalone) for (const f of ["favicon.svg", "favicon-32.png"]) fs.copyFileSync(path.join(tmp, f), path.join(out, f))
 
 // assets: scripts, styles, fonts, the world map chunk
 fs.cpSync(path.join(tmp, "assets"), path.join(out, "assets"), { recursive: true })

@@ -301,6 +301,17 @@
 .collage.is-left .collage-tag {
     left: 16px;
 }
+/* on a phone the tag would run past the edge of the screen: let it wrap inside the photo */
+@media (max-width: 520px) {
+    .collage-tag {
+        max-width: calc(82% - 32px);
+        height: auto;
+        min-height: 30px;
+        padding-block: 6px;
+        line-height: 1.4;
+        white-space: normal;
+    }
+}
 .collage-chip {
     position: absolute;
     right: 16px;

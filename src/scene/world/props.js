@@ -270,6 +270,19 @@ export function createProps({ lowPower = false, base = "/media/models/world/" } 
         }
         return item
     }
+    // let something made elsewhere float with the rest (and, as a buoy, be pushed about and seen by the LiDAR)
+    function adopt(holder, { x = 0, z = 0, yaw = 0, lift = 0, k = 1.2, buoy = null, r = 2 } = {}) {
+        holder.position.set(x, 0, z)
+        holder.rotation.y = yaw
+        group.add(holder)
+        const item = { obj: holder, x, z, lift, yaw, k }
+        floaters.push(item)
+        if (buoy) {
+            item.buoy = { obj: holder, x, z, r, kind: buoy, vx: 0, vz: 0, ox: x, oz: z }
+            buoys.push(item.buoy)
+        }
+        return item
+    }
     function despawn(item) {
         if (!item) return
         group.remove(item.obj)
@@ -306,6 +319,7 @@ export function createProps({ lowPower = false, base = "/media/models/world/" } 
         obstacles,
         colliders,
         spawn,
+        adopt,
         despawn,
         update(t, dt, night) {
             for (const b of traffic) {

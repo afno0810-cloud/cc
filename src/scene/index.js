@@ -135,6 +135,7 @@ export async function startScene({ reduced = false } = {}) {
     let terrainMod = null
     let props = null
     let missions = null
+    let places = null
     let birds = null
     let shoreLights = null
     const buildWorld = async () => {
@@ -150,6 +151,8 @@ export async function startScene({ reduced = false } = {}) {
         if (drive) {
             const { createMissions } = await import("./missions.js")
             missions = createMissions({ scene, props, drive, isGame: document.body.hasAttribute("data-game") })
+            const { createPlaces } = await import("./places.js")
+            places = createPlaces({ scene, props, drive, missions })
         }
         if (!reduced) {
             const { createBirds } = await import("./world/birds.js")
@@ -999,6 +1002,7 @@ export async function startScene({ reduced = false } = {}) {
         }
         if (props) props.update(t, dt, night)
         if (missions) missions.update(t, dt, exposure)
+        if (places) places.update(t, dt, exposure)
         spray.update(dt)
         spray.uniforms.uCol.value.copy(S.sunColor).multiplyScalar(Math.max(S.dir.y, 0) * 2.2).add(zenC).multiplyScalar(1.4)
         spray.uniforms.uProj.value = argus.points.uProj.value
@@ -1200,6 +1204,9 @@ export async function startScene({ reduced = false } = {}) {
             },
             get missions() {
                 return missions
+            },
+            get places() {
+                return places
             },
             get birds() {
                 return birds
