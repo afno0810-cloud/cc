@@ -32,7 +32,8 @@ import type { Img } from "./SiteKit.tsx"
 /* ================================================================
  Site navigation – Marinor NTNU
  · A rounded bar that floats at the top of every page and stays there all the
-   way down (a little more solid once you have scrolled).
+   way down (a little more solid once you have scrolled). It is lilac at the top and
+   fades downwards, as the old bar did; the box with the links stays plain.
  · The links sit together in a box of their own; the page you are on is a white chip.
  · Projects / Team / Competitions open a small menu with their sub-pages.
  · Below 1080 px: a menu button with a full-screen menu.
@@ -89,13 +90,13 @@ const CSS =
 .nv-bar{position:fixed;top:0;left:0;right:0;z-index:1000;padding:14px 24px 0;pointer-events:none;transition:padding .35s ${EASE_CSS}}
 .nv.is-canvas .nv-bar{position:absolute}
 .nv-bar.is-solid{padding-top:10px}
-.nv-in{pointer-events:auto;height:76px;max-width:1320px;margin:0 auto;padding:0 12px 0 22px;display:flex;align-items:center;justify-content:space-between;gap:20px;border-radius:22px;background:rgba(255,255,255,.72);border:1px solid rgba(124,70,156,.14);box-shadow:0 10px 30px -20px rgba(60,30,100,.4),inset 0 1px 0 rgba(255,255,255,.8);-webkit-backdrop-filter:blur(16px) saturate(1.4);backdrop-filter:blur(16px) saturate(1.4);transition:height .35s ${EASE_CSS},background-color .35s ease,box-shadow .35s ease,border-color .35s ease}
-.nv-bar.is-solid .nv-in{height:66px;background:rgba(255,255,255,.94);border-color:rgba(124,70,156,.16);box-shadow:0 18px 40px -22px rgba(60,30,100,.5),inset 0 1px 0 #fff}
+.nv-in{pointer-events:auto;height:76px;max-width:1320px;margin:0 auto;padding:0 12px 0 22px;display:flex;align-items:center;justify-content:space-between;gap:20px;border-radius:22px;background:linear-gradient(180deg,rgba(124,70,156,.22) 0%,rgba(124,70,156,.09) 55%,rgba(124,70,156,.02) 100%),rgba(255,255,255,.82);border:1px solid rgba(124,70,156,.16);box-shadow:0 10px 30px -20px rgba(60,30,100,.4),inset 0 1px 0 rgba(255,255,255,.8);-webkit-backdrop-filter:blur(16px) saturate(1.4);backdrop-filter:blur(16px) saturate(1.4);transition:height .35s ${EASE_CSS},background-color .35s ease,box-shadow .35s ease,border-color .35s ease}
+.nv-bar.is-solid .nv-in{height:66px;background:linear-gradient(180deg,rgba(124,70,156,.22) 0%,rgba(124,70,156,.09) 55%,rgba(124,70,156,.02) 100%),rgba(255,255,255,.96);border-color:rgba(124,70,156,.16);box-shadow:0 18px 40px -22px rgba(60,30,100,.5),inset 0 1px 0 #fff}
 .nv .mr-logo{--logo-icon:48px;--logo-word:138px}
 .nv-bar.is-solid .mr-logo{--logo-icon:40px;--logo-word:124px}
 .nv-right{display:flex;align-items:center;gap:10px}
 
-.nv-links{display:flex;align-items:center;gap:2px;list-style:none;margin:0;padding:4px;border-radius:15px;background:rgba(124,70,156,.06);border:1px solid rgba(124,70,156,.1)}
+.nv-links{display:flex;align-items:center;gap:2px;list-style:none;margin:0;padding:4px;border-radius:15px;background:rgb(247,243,251);border:1px solid rgba(124,70,156,.12)}
 .nv-item{position:relative}
 .nv-link{position:relative;display:inline-flex;align-items:center;gap:6px;height:38px;padding:0 13px;border-radius:11px;font-weight:500;font-size:14.5px;letter-spacing:-.01em;color:rgba(16,16,17,.72);text-decoration:none;white-space:nowrap;transition:color .2s ease,background-color .2s ease,box-shadow .2s ease}
 .nv-link:hover,.nv-item.is-open>.nv-link,.nv-link:focus-visible{color:var(--nv-accent);background:rgba(255,255,255,.75);outline:none}
