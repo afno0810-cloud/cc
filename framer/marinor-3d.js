@@ -19702,11 +19702,12 @@ function R0({ lowPower: r = !1, base: e = "/media/models/world/" } = {}) {
     spawn: M,
     adopt: v,
     despawn: y,
+    traffic: R,
     update(T, L, g) {
       for (const x of R) {
         x.u += x.w * L;
         const C = x.cx + x.rx * Math.cos(x.u), P = x.cz + x.rz * Math.sin(x.u), F = -x.rx * Math.sin(x.u) * Math.sign(x.w), U = x.rz * Math.cos(x.u) * Math.sign(x.w), N = x.alongX ? Math.atan2(-U, F) : Math.atan2(F, U);
-        x.it.x = x.box.x = C, x.it.z = x.box.z = P, x.it.yaw = x.box.rot = N;
+        x.it.x = x.box.x = C, x.it.z = x.box.z = P, x.it.yaw = x.box.rot = N, x.vx = -x.rx * Math.sin(x.u) * x.w, x.vz = x.rz * Math.cos(x.u) * x.w;
       }
       for (const x of n) {
         const C = is(x.x, x.z, T, 1), [P, F] = Vc(x.x, x.z, T, 1);

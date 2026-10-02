@@ -187,7 +187,7 @@ function materials() {
 }
 
 // a cardinal pillar buoy, about 3 m tall: a float, the banded pillar, a mast with the two cones
-function cardinalMesh(kind) {
+export function cardinalMesh(kind) {
     const M = materials()
     const c = CARDINALS[kind]
     const g = new THREE.Group()
@@ -211,7 +211,7 @@ function cardinalMesh(kind) {
 }
 
 // the Otter: a small catamaran drone, about 2 m long; the bow along +x
-function otterMesh() {
+export function otterMesh() {
     const M = materials()
     const g = new THREE.Group()
     for (const s of [-1, 1]) {
@@ -356,7 +356,7 @@ export function createMissions({ scene, props, drive, isGame = false }) {
                         <button type="button" class="hm-item" data-mission="${t.id}">
                             <span class="hm-icon">${taskIcon(t.id)}<span class="hm-n">0${i + 1}</span></span>
                             <span class="hm-body"><b>${t.name}</b><span>${t.site}</span></span>
-                            <span class="hm-best">${best[t.id] != null ? `${medalHtml(medals[i])}<span><b>${best[t.id]}</b>points</span>` : `<span class="hm-new">Not done yet</span>`}</span>
+                            <span class="hm-best">${best[t.id] != null ? `${medalHtml(medals[i])}<span><b>${best[t.id]}</b>points</span>` : `<span class="hm-new">Not done yet</span>`}${best.argus && best.argus[t.id] != null ? `<small class="hm-argus">Argus ${best.argus[t.id]}</small>` : ""}</span>
                         </button>
                     </li>`
                 ).join("")}
@@ -424,10 +424,10 @@ export function createMissions({ scene, props, drive, isGame = false }) {
         if (!b) return
         const act = b.dataset.act
         if (act === "go") return go()
-        if (act === "again" && last) return begin(last.id, last.full ? { full: { scores: [] } } : {})
+        if (act === "again" && last) return begin(last.id, { full: last.full ? { scores: [] } : null, auto: last.auto })
         if (act === "next" && run && run.full) {
             const i = TASKS.indexOf(run.task)
-            return begin(TASKS[i + 1].id, { full: run.full })
+            return begin(TASKS[i + 1].id, { full: run.full, auto: run.auto })
         }
         clear()
         if (act === "list") openPanel(true)
@@ -453,6 +453,8 @@ export function createMissions({ scene, props, drive, isGame = false }) {
         }
         return false
     })
+
+    const hooks = { onFinish: null }
 
     // ---- running a task ----
     let run = null
@@ -485,14 +487,14 @@ export function createMissions({ scene, props, drive, isGame = false }) {
         if (key === "hit") drive.shake(0.8)
     }
 
-    async function begin(id, { full = null } = {}) {
+    async function begin(id, { full = null, auto = false } = {}) {
         clear()
         drive.setLid(false)
         panel.classList.remove("is-on")
         result.classList.remove("is-on")
         const task = taskOf(id)
-        last = { id: full ? TASKS[0].id : id, full: !!full }
-        const r = { id, task, full, items: [], objs: [], steps: [], i: 0, time: 0, ded: 0, log: new Map(), phase: "build", count: 3.2, buoys: [], otters: [] }
+        last = { id: full ? TASKS[0].id : id, full: !!full, auto }
+        const r = { id, task, full, auto, items: [], objs: [], steps: [], i: 0, time: 0, ded: 0, log: new Map(), phase: "build", count: 3.2, buoys: [], otters: [] }
         run = r
         await { manoeuvring: buildManoeuvring, pathfinding: buildPathfinding, collision: buildCollision, docking: buildDocking }[id](r)
         if (run !== r) {
@@ -531,7 +533,7 @@ export function createMissions({ scene, props, drive, isGame = false }) {
         result.innerHTML = `
             <div class="hr-brief">
                 <div class="hr-text">
-                    <span class="hr-tag">${r.full ? `Full Njord run · ` : ""}Task 0${n}</span>
+                    <span class="hr-tag">${r.auto ? "Argus on its own · " : ""}${r.full ? `Full Njord run · ` : ""}Task 0${n}</span>
                     <h2>${t.name}</h2>
                     <p class="hr-quote">${t.site}</p>
                     <ol class="hr-how">${t.how.map((h) => `<li>${h}</li>`).join("")}</ol>
@@ -541,7 +543,7 @@ export function createMissions({ scene, props, drive, isGame = false }) {
             ${extra}
             <ul class="hr-rules">${rules.map((x) => `<li>${x}</li>`).join("")}</ul>
             <div class="hr-btns">
-                <button type="button" class="hud-btn hr-main" data-act="go">Start <kbd>Enter</kbd></button>
+                <button type="button" class="hud-btn hr-main" data-act="go">${r.auto ? "Start: Argus sails" : "Start"} <kbd>Enter</kbd></button>
                 <button type="button" class="hud-btn" data-act="list">Tasks</button>
                 ${KEYS_HINT}
             </div>`
@@ -562,9 +564,11 @@ export function createMissions({ scene, props, drive, isGame = false }) {
     function finish() {
         const r = run
         const pts = points(r)
-        const was = best[r.id]
+        // Argus' own runs are kept apart from yours
+        const book = r.auto ? (best.argus = best.argus || {}) : best
+        const was = book[r.id]
         const isBest = was == null || pts > was
-        if (isBest) best[r.id] = pts
+        if (isBest) book[r.id] = pts
         const m = medalOf(pts)
         let total = null
         let fullBest = false
@@ -575,8 +579,8 @@ export function createMissions({ scene, props, drive, isGame = false }) {
             if (i < TASKS.length - 1) nextTask = TASKS[i + 1]
             else {
                 total = r.full.scores.reduce((s, q) => s + q.pts, 0)
-                fullBest = best.full == null || total > best.full
-                if (fullBest) best.full = total
+                fullBest = book.full == null || total > book.full
+                if (fullBest) book.full = total
             }
         }
         saveBest()
@@ -595,13 +599,14 @@ export function createMissions({ scene, props, drive, isGame = false }) {
         }
         const endFull = total != null
         result.innerHTML = `
-            <span class="hr-tag">${r.full ? "Full Njord run · " : ""}Task 0${n} done</span>
+            <span class="hr-tag">${r.auto ? "Argus on its own · " : ""}${r.full ? "Full Njord run · " : ""}Task 0${n} done</span>
             <h2>${r.task.name}</h2>
             <div class="hr-score">${medalHtml(m, true)}<p class="hr-time"><span data-count="${pts}">0</span><small>/ 100</small></p></div>
             <p class="hr-sub">${m ? `<b>${m.name}</b>` : "No medal this time"}${isBest ? ` · ${was == null ? "First score" : "New best"}` : ` · Best ${was}`}</p>
             <ul class="hr-lines">${lines.join("")}</ul>
             ${fullHtml}
-            ${endFull ? `<p class="hr-total">${medalHtml(medalOf(total, 400))}Njord total <b>${total}</b> / 400${fullBest ? " · new best" : ` · best ${best.full}`}</p>` : ""}
+            ${endFull ? `<p class="hr-total">${medalHtml(medalOf(total, 400))}Njord total <b>${total}</b> / 400${fullBest ? " · new best" : ` · best ${book.full}`}</p>` : ""}
+            ${r.auto ? `<p class="hr-note hr-auto">No one at the wheel: Argus sailed this one on its own.${best[r.id] != null ? ` Your best: ${best[r.id]}.` : ""}</p>` : ""}
             <div class="hr-btns">
                 ${nextTask ? `<button type="button" class="hud-btn hr-main" data-act="next">Next: ${nextTask.name}</button>` : `<button type="button" class="hud-btn hr-main" data-act="again">${endFull ? "New run" : "Again"}</button>`}
                 <button type="button" class="hud-btn" data-act="list">Tasks</button>
@@ -620,6 +625,7 @@ export function createMissions({ scene, props, drive, isGame = false }) {
         requestAnimationFrame(tick)
         const main = result.querySelector(".hr-main")
         if (main) main.focus({ preventScroll: true })
+        if (hooks.onFinish) hooks.onFinish({ id: r.id, name: r.task.name, pts, medal: m, total, auto: !!r.auto })
         // the course stays where it is (you may still be in the berth) until you go on
         r.phase = "done"
         marker.visible = false
@@ -1034,6 +1040,13 @@ export function createMissions({ scene, props, drive, isGame = false }) {
         go,
         openPanel,
         tasks: TASKS,
+        set onFinish(fn) {
+            hooks.onFinish = fn
+        },
+        // medals you have won (the four tasks and the full run)
+        get medals() {
+            return TASKS.filter((t) => medalOf(best[t.id])).length + (medalOf(best.full, 400) ? 1 : 0)
+        },
         get busy() {
             return !!run && run.phase !== "done"
         },

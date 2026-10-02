@@ -719,6 +719,7 @@ export function createPlaces({ scene, props, drive, missions }) {
         drive.sfx("discover")
         const mine = items.filter((q) => q.group === p.group)
         const all = items.every((q) => visited.has(q.id))
+        if (hooks.onVisit) hooks.onVisit({ place: p, row: mine.every((q) => visited.has(q.id)) && p.gr.kind !== "info" ? p.gr.name : mine.every((q) => visited.has(q.id)) ? "Info buoys" : null, all })
         if (all) {
             confetti(hud, { count: 260 })
             drive.sfx("medal")
@@ -730,6 +731,7 @@ export function createPlaces({ scene, props, drive, missions }) {
         }
     }
 
+    const hooks = { onVisit: null }
     let course = null
     const look = new THREE.Vector3()
     function update(t, dt, exposure = 1) {
@@ -822,8 +824,13 @@ export function createPlaces({ scene, props, drive, missions }) {
     return {
         group,
         list: items,
+        groups: GROUPS,
         update,
         openPanel,
+        set onVisit(fn) {
+            hooks.onVisit = fn
+        },
+        isVisited: (id) => visited.has(id),
         get visited() {
             return [...visited]
         },

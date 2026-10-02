@@ -137,6 +137,9 @@ export async function startScene({ reduced = false } = {}) {
     let missions = null
     let places = null
     let boats = null
+    let score = null
+    let autopilot = null
+    let postfx = null
     let birds = null
     let shoreLights = null
     const buildWorld = async () => {
@@ -157,6 +160,54 @@ export async function startScene({ reduced = false } = {}) {
             const { createBoats } = await import("./world/boats.js")
             boats = createBoats({ props, lowPower })
             scene.add(boats.group)
+            // the harbour score: points for places, tasks, sailing on its own, things found out
+            const { createScore } = await import("./score.js")
+            const la = (109 * Math.PI) / 180 // the lighthouse (props.js)
+            score = createScore({ drive, island: { x: Math.cos(la) * 980, z: Math.sin(la) * 980, r: 80 } })
+            const MEDAL_PTS = { gold: 50, silver: 30, bronze: 15 }
+            missions.onFinish = ({ name, pts, medal, total, auto }) => {
+                if (auto) {
+                    score.achieve("autotask")
+                    score.add(25, `Argus sailed ${name} on its own`)
+                    return
+                }
+                score.count("tasks")
+                score.add(pts, `${name}: ${pts} points`)
+                if (medal) score.add(MEDAL_PTS[medal.id], `${medal.name} medal`, { big: true })
+                if (total != null) score.add(100, "Full Njord run", { big: true })
+            }
+            places.onVisit = ({ place, row, all }) => {
+                score.add(100, `New place: ${place.title}`)
+                if (row) score.add(250, `${row}: all seen`, { big: true })
+                if (all) score.add(1000, "Every place visited", { big: true })
+            }
+            score.setStats(() => ({ places: [places.visited.length, places.list.length], medals: missions.medals }))
+            // something happening at every post
+            const { createPostFx } = await import("./postfx.js")
+            postfx = createPostFx({ places, lowPower, getArgusModel: () => (model.children.length ? model : null) })
+            scene.add(postfx.group)
+            // autonomous mode
+            const { createAutopilot } = await import("./autopilot.js")
+            autopilot = createAutopilot({
+                scene,
+                drive,
+                missions,
+                places,
+                score,
+                lowPower,
+                getColliders: () => [terrainMod ? terrainMod.COLLIDERS : [], props.colliders, missions.colliders],
+                getObstacles: () => props.obstacles,
+                getBuoys: () => props.buoys,
+                landHeight: (x, z) => terrainMod.landHeight(x, z),
+                getMovers: () => {
+                    const out = []
+                    for (const b of boats.list) if (!(b.wait > 0) && b.item.obj.visible) out.push({ x: b.item.x, z: b.item.z, vx: Math.cos(b.yaw) * b.speed, vz: -Math.sin(b.yaw) * b.speed, r: Math.max(b.L, b.B) / 2 })
+                    for (const tr of props.traffic) if (tr.vx != null) out.push({ x: tr.it.x, z: tr.it.z, vx: tr.vx, vz: tr.vz, r: Math.max(tr.it.hx, tr.it.hz) })
+                    const r = missions.run
+                    if (r && r.otters) for (const o of r.otters) if (o.on && !o.gone) out.push({ x: o.x, z: o.z, vx: Math.cos(o.h) * o.v, vz: -Math.sin(o.h) * o.v, r: 3.6 })
+                    return out
+                },
+            })
         }
         if (!reduced) {
             const { createBirds } = await import("./world/birds.js")
@@ -537,6 +588,7 @@ export async function startScene({ reduced = false } = {}) {
         },
         buoys: () => (props ? props.buoys : []),
         onPing: (p) => {
+            if (score) score.achieve("ping")
             wu.uRipple.value[rippleI].set(p.x, p.z, t, 2.4)
             rippleI = (rippleI + 1) % RIPPLE_N
         },
@@ -1005,9 +1057,25 @@ export async function startScene({ reduced = false } = {}) {
             if (cs && cs.cities) placeCities(cs)
         }
         if (boats) boats.update(t, dt, night, !!(drive && drive.active))
+        // a few gulls follow the fishing boat at the helm
+        if (boats && birds && drive && drive.active) {
+            const fish = boats.list.find((q) => q.L === 34)
+            if (fish)
+                for (let i = 0; i < 5 && i < birds.list.length; i++) {
+                    const g = birds.list[i]
+                    if (!g.home) g.home = { cx: g.cx, cz: g.cz, r: g.r, h: g.h }
+                    g.cx = fish.item.x - Math.cos(fish.yaw) * 14
+                    g.cz = fish.item.z + Math.sin(fish.yaw) * 14
+                    g.r = 10 + i * 4
+                    g.h = 9 + i * 2
+                }
+        } else if (birds) for (const g of birds.list) if (g.home) Object.assign(g, g.home, { home: null })
         if (props) props.update(t, dt, night)
         if (missions) missions.update(t, dt, exposure)
         if (places) places.update(t, dt, exposure)
+        if (autopilot) autopilot.update(t, dt)
+        if (postfx) postfx.update(t, dt, { gain: 1 / Math.max(exposure, 0.5), show: !!(drive && drive.active), from: drive ? drive.pos : boat.position })
+        if (score) score.update(t, dt, { inTask: !!(missions && missions.busy) })
         spray.update(dt)
         spray.uniforms.uCol.value.copy(S.sunColor).multiplyScalar(Math.max(S.dir.y, 0) * 2.2).add(zenC).multiplyScalar(1.4)
         spray.uniforms.uProj.value = argus.points.uProj.value
@@ -1215,6 +1283,12 @@ export async function startScene({ reduced = false } = {}) {
             },
             get boats() {
                 return boats
+            },
+            get score() {
+                return score
+            },
+            get autopilot() {
+                return autopilot
             },
             get birds() {
                 return birds

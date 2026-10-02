@@ -1,6 +1,7 @@
 import * as THREE from "three"
 import { withAir } from "./air.js"
 import { waveHeight } from "./waves.js"
+import { shoreAt } from "./terrain.js"
 
 /* ================================================================
    More boats about the harbour, built here from simple parts (a hull
@@ -8,10 +9,16 @@ import { waveHeight } from "./waves.js"
    rails and people): a RIB that goes fast round the east harbour, three
    sailing dinghies on a triangle in the north, kayaks paddling along
    the west side, a tug on a slow round in the south, a fishing boat in
-   the north and a small ferry going back and forth in the east. They
-   float with the other boats (props.adopt), are solid (boxes in
+   the north, a small ferry going back and forth in the east, a
+   speedboat, a rowing boat, a sailing yacht, a jet ski, boats on their
+   moorings in the west and a fish farm out in the fjord. They float
+   with the other boats (props.adopt), are solid (boxes in
    props.colliders, so they show on the LiDAR too), and leave a wake of
    foam behind them. Their routes keep clear of the Njord courses.
+   The small things: navigation lights at dusk (red to port, green to
+   starboard, white on top), smoke from the funnels, flags on the
+   sterns, a collar of foam round every buoy and post, and sails far
+   out in the fjord.
 
    Axes of a boat: bow along +x, starboard +z, up +y (1 unit = 0.3 m).
    ================================================================ */
@@ -19,7 +26,7 @@ import { waveHeight } from "./waves.js"
 const C = (hex) => new THREE.Color(hex)
 
 // a hull from cross sections; L long, B wide, D deep below the water, F high above it
-function hullParts({ L, B, D, F, sheer = 0.25, sternW = 0.82, pointed = false, flare = 0.05, bands }) {
+export function hullParts({ L, B, D, F, sheer = 0.25, sternW = 0.82, pointed = false, flare = 0.05, bands }) {
     const S = 30
     const pos = []
     const idx = []
@@ -101,6 +108,105 @@ function hullParts({ L, B, D, F, sheer = 0.25, sternW = 0.82, pointed = false, f
     return { hull: g, deck, sec: (u) => sec(u) }
 }
 
+// a soft round light (navigation lights)
+let glowTex = null
+function glow(color, size) {
+    if (!glowTex) {
+        const c = document.createElement("canvas")
+        c.width = c.height = 64
+        const g = c.getContext("2d")
+        const grd = g.createRadialGradient(32, 32, 0, 32, 32, 32)
+        grd.addColorStop(0, "rgba(255,255,255,1)")
+        grd.addColorStop(0.25, "rgba(255,255,255,0.45)")
+        grd.addColorStop(1, "rgba(255,255,255,0)")
+        g.fillStyle = grd
+        g.fillRect(0, 0, 64, 64)
+        glowTex = new THREE.CanvasTexture(c)
+    }
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }))
+    s.scale.setScalar(size)
+    return s
+}
+// a flag at the stern (it flutters in the update)
+let flagTex = null
+function flag(parent, x, y, z, size = 1) {
+    if (!flagTex) {
+        const c = document.createElement("canvas")
+        c.width = 88
+        c.height = 64
+        const g = c.getContext("2d")
+        g.fillStyle = "#ba0c2f"
+        g.fillRect(0, 0, 88, 64)
+        g.fillStyle = "#ffffff"
+        g.fillRect(24, 0, 16, 64)
+        g.fillRect(0, 24, 88, 16)
+        g.fillStyle = "#00205b"
+        g.fillRect(28, 0, 8, 64)
+        g.fillRect(0, 28, 88, 8)
+        flagTex = new THREE.CanvasTexture(c)
+        flagTex.colorSpace = THREE.SRGBColorSpace
+    }
+    const pole = new THREE.Group()
+    pole.position.set(x, y, z)
+    parent.add(pole)
+    cyl(pole, 0.05, 0.05, 2.6 * size, 0xd8d8d8, 0, 1.3 * size, 0, 6)
+    const geo = new THREE.PlaneGeometry(1.8 * size, 1.3 * size, 6, 1)
+    geo.translate(-0.9 * size, 0, 0)
+    const f = new THREE.Mesh(geo, withAir(new THREE.MeshStandardMaterial({ map: flagTex, roughness: 0.8, side: THREE.DoubleSide })))
+    f.position.y = 2.0 * size
+    pole.add(f)
+    return { mesh: f, base: geo.attributes.position.array.slice(), size }
+}
+// smoke from a funnel, drifting off with the wind (moved in the shader)
+function smoke(parent, x, y, z, n = 26) {
+    const pos = new Float32Array(n * 3)
+    const seed = new Float32Array(n)
+    for (let i = 0; i < n; i++) seed[i] = i / n + Math.random() * 0.02
+    const g = new THREE.BufferGeometry()
+    g.setAttribute("position", new THREE.BufferAttribute(pos, 3))
+    g.setAttribute("aSeed", new THREE.BufferAttribute(seed, 1))
+    const m = new THREE.ShaderMaterial({
+        transparent: true,
+        depthWrite: false,
+        uniforms: smokeU,
+        vertexShader: /* glsl */ `attribute float aSeed; uniform float uTime; varying float vA;
+            void main(){
+                float k = fract(aSeed + uTime * 0.12);
+                vec3 p = vec3(-k * 9.0 + sin(aSeed * 40.0 + uTime) * 0.6, k * 10.0, sin(aSeed * 17.0) * k * 2.0);
+                vA = (1.0 - k) * smoothstep(0.0, 0.08, k);
+                vec4 mv = modelViewMatrix * vec4(p, 1.0);
+                gl_PointSize = (3.0 + k * 14.0) * 90.0 / -mv.z;
+                gl_Position = projectionMatrix * mv;
+            }`,
+        fragmentShader: /* glsl */ `uniform vec3 uCol; varying float vA;
+            void main(){ vec2 d = gl_PointCoord - 0.5; float a = smoothstep(0.5, 0.1, length(d)); gl_FragColor = vec4(uCol, a * vA * 0.35); }`,
+    })
+    const pts = new THREE.Points(g, m)
+    pts.position.set(x, y, z)
+    pts.frustumCulled = false
+    parent.add(pts)
+    return pts
+}
+const smokeU = { uTime: { value: 0 }, uCol: { value: new THREE.Color(0.55, 0.56, 0.58) } }
+// red to port, green to starboard, white on the mast
+function navLights(parent, L, B, h, top) {
+    const out = []
+    for (const [col, z] of [
+        [0xff3a2a, -B / 2],
+        [0x3aff6a, B / 2],
+    ]) {
+        const s = glow(col, 2.2)
+        s.position.set(L * 0.2, h, z)
+        parent.add(s)
+        out.push(s)
+    }
+    const w = glow(0xfff4dd, 2.6)
+    w.position.set(L * 0.1, top, 0)
+    parent.add(w)
+    out.push(w)
+    return out
+}
+
 const mats = new Map()
 function mat(hex, roughness = 0.6, metalness = 0, extra = {}) {
     const key = hex + "|" + roughness + "|" + metalness + "|" + JSON.stringify(extra)
@@ -168,7 +274,8 @@ function rib() {
     box(g, 0.5, 2.4, 0.4, 0x1d1f23, -L / 2 - 0.5, 0.1, 0)
     person(g, 0xe8742a, -0.9, 1.3, 0.6)
     person(g, 0xf2c230, -2.6, 1.6, -0.9)
-    return { group: g, L, B: B + 2.2 }
+    const lights = navLights(g, L, B + 2, 2.6, 5.2)
+    return { group: g, L, B: B + 2.2, lights }
 }
 
 function dinghy(sail) {
@@ -251,7 +358,10 @@ function tug() {
     cyl(g, 1.12, 1.12, 1.2, 0xb9271b, -4.5, 12.2, 0, 14)
     cyl(g, 0.12, 0.12, 7, 0xd8d8d8, 3.8, 15.6, 0, 6)
     box(g, 0.2, 0.2, 3.4, 0xd8d8d8, 3.8, 17.4, 0)
-    return { group: g, L, B }
+    const lights = navLights(g, L, B, 7.6, 17.8)
+    const flags = [flag(g, -L / 2 + 1.2, 4.4, 0, 1.6)]
+    smoke(g, -4.5, 13.3, 0)
+    return { group: g, L, B, lights, flags }
 }
 
 function fishing() {
@@ -270,7 +380,10 @@ function fishing() {
     cyl(g, 1.0, 1.0, 3.2, 0x2f5f3a, -2.5, 4.4, 0, 14).rotation.x = Math.PI / 2
     box(g, 2.4, 1.2, 2.4, 0xf2c230, 8, 4.1, 2.2)
     person(g, 0xf2c230, 0.5, 3.4, -2.2)
-    return { group: g, L, B }
+    const lights = navLights(g, L, B, 6.2, 16.4)
+    const flags = [flag(g, -L / 2 + 1, 3.6, 0, 1.4)]
+    smoke(g, -11, 9.6, 2.4, 16)
+    return { group: g, L, B, lights, flags }
 }
 
 function ferry() {
@@ -288,7 +401,169 @@ function ferry() {
     windows(g, 9, 1.3, 10, 9, 11.1, 0)
     box(g, 9.6, 0.3, 10.6, 0x1b2433, 9, 12.35, 0)
     cyl(g, 0.12, 0.12, 6, 0xd8d8d8, 6, 15, 0, 6)
+    const lights = navLights(g, L, B, 9.2, 18.2)
+    const flags = [flag(g, -L / 2 + 1, 4.2, 0, 1.6)]
+    return { group: g, L, B, lights, flags }
+}
+
+function speedboat() {
+    const L = 24
+    const B = 8.4
+    const g = new THREE.Group()
+    const { hull, deck } = hullParts({ L, B, D: 1.4, F: 2.0, sheer: 0.3, sternW: 0.9, bands: [[0.0, "#1b2433"], [0.5, "#f4f4f2"], [0.95, "#1d4f8f"], [99, "#f4f4f2"]] })
+    mesh(hull, paint(), 0, 0, 0, g)
+    mesh(deck, mat(0x9a7650, 0.8), 0, 0, 0, g)
+    // a low cabin forward with its screen, seats aft, a bathing platform
+    box(g, 8, 1.5, 6, 0xf4f4f2, 3.5, 2.6, 0)
+    windows(g, 6, 0.6, 6, 3.5, 2.9, 0)
+    box(g, 0.12, 1.4, 6.2, 0x8fb4c8, -0.7, 3.4, 0, 0.1).rotation.z = 0.6
+    box(g, 4.2, 0.9, 6.4, 0xe8e4dc, -5, 2.2, 0)
+    box(g, 1.6, 0.25, 7, 0x9a7650, -L / 2 - 0.6, 0.7, 0)
+    for (const sd of [-1, 1]) cyl(g, 0.05, 0.05, 8, 0xd8d8d8, 6.5, 2.9, sd * 2.6, 6, 0.3).rotation.z = Math.PI / 2
+    person(g, 0x2f6fb0, -1.8, 2.0, 1.4)
+    person(g, 0xe8742a, -4.6, 2.2, -1.6)
+    const lights = navLights(g, L, B, 2.7, 4.8)
+    const flags = [flag(g, -L / 2 - 0.3, 2.0, 0, 1)]
+    return { group: g, L, B, lights, flags }
+}
+
+function rowboat() {
+    const L = 15
+    const B = 4.4
+    const g = new THREE.Group()
+    const { hull, deck } = hullParts({ L, B, D: 0.6, F: 1.3, sheer: 0.6, pointed: true, flare: 0.12, bands: [[0.02, "#3d2a1a"], [1.05, "#8a5a34"], [99, "#a3312a"]] })
+    mesh(hull, paint(), 0, 0, 0, g)
+    mesh(deck, mat(0x6b4a2c, 0.9), 0, -0.6, 0, g)
+    box(g, 0.9, 0.18, B * 0.9, 0x7a5432, 0, 0.9, 0)
+    // the rower faces aft
+    const rower = person(g, 0x9fb7cf, 0, 0.9, 0)
+    rower.rotation.y = Math.PI
+    const oars = []
+    for (const sd of [-1, 1]) {
+        const pivot = new THREE.Group()
+        pivot.position.set(0.6, 1.4, sd * (B / 2))
+        g.add(pivot)
+        const shaft = cyl(pivot, 0.07, 0.07, 9, 0xc8a878, 0, 0, sd * 2.8, 6, 0.7)
+        shaft.rotation.x = Math.PI / 2
+        box(pivot, 0.12, 0.7, 1.6, 0xc8a878, 0, 0, sd * 7.1, 0.7)
+        oars.push({ pivot, sd })
+    }
+    return { group: g, L, B, oars }
+}
+
+function cruiser(withSails = true) {
+    const L = 34
+    const B = 11
+    const g = new THREE.Group()
+    const { hull, deck } = hullParts({ L, B, D: 1.8, F: 2.4, sheer: 0.25, sternW: 0.8, bands: [[0.0, "#1b2433"], [0.3, "#f4f4f2"], [0.6, "#7c469c"], [99, "#f4f4f2"]] })
+    mesh(hull, paint(), 0, 0, 0, g)
+    mesh(deck, mat(0x9a7650, 0.8), 0, 0, 0, g)
+    box(g, 12, 1.5, 6.6, 0xf4f4f2, 1, 3.0, 0)
+    windows(g, 10, 0.5, 6.6, 1, 3.1, 0)
+    box(g, 0.5, 4, 0.5, 0x1d1f23, 1.6, -1.6, 0) // the keel under it
+    const rig = new THREE.Group()
+    rig.position.set(4, 2.3, 0)
+    g.add(rig)
+    cyl(rig, 0.18, 0.24, 40, 0xc8ccd2, 0, 20, 0, 8, 0.35)
+    const boom = new THREE.Group()
+    boom.position.y = 3.2
+    rig.add(boom)
+    cyl(boom, 0.14, 0.14, 14, 0xc8ccd2, -7, 0, 0, 8, 0.35).rotation.z = Math.PI / 2
+    let jg = null
+    if (withSails) {
+        const sailMat = mat("#f4f1e8", 0.85, 0, { side: THREE.DoubleSide })
+        const main = new THREE.Shape()
+        main.moveTo(0, 0)
+        main.lineTo(-13.6, 0)
+        main.quadraticCurveTo(-6.5, 18, 0, 34)
+        main.lineTo(0, 0)
+        mesh(new THREE.ShapeGeometry(main, 14), sailMat, 0, 0.1, 0, boom)
+        const jib = new THREE.Shape()
+        jib.moveTo(0, 0)
+        jib.lineTo(10.5, 0)
+        jib.lineTo(0, 31)
+        jib.lineTo(0, 0)
+        jg = new THREE.Group()
+        jg.position.set(0, 2.2, 0)
+        rig.add(jg)
+        mesh(new THREE.ShapeGeometry(jib, 4), sailMat, 0, 0, 0, jg)
+    } else {
+        // the sail furled on the boom, under its cover
+        cyl(boom, 0.5, 0.5, 12, 0x1d4f8f, -7, 0.5, 0, 10, 0.8).rotation.z = Math.PI / 2
+    }
+    const sailor = person(g, 0xe8742a, -10, 1.8, 2.4, { lean: -0.2 })
+    if (withSails) person(g, 0x2f6fb0, -12.5, 1.8, -1.6)
+    const lights = navLights(g, L, B, 2.9, 42.6)
+    const flags = [flag(g, -L / 2 + 0.6, 2.4, 0, 1.2)]
+    return { group: g, L, B, boom: withSails ? boom : null, jib: jg, sailor, lights, flags }
+}
+
+function jetski() {
+    const L = 9
+    const B = 3.6
+    const g = new THREE.Group()
+    const { hull, deck } = hullParts({ L, B, D: 0.5, F: 1.0, sheer: 0.45, sternW: 0.85, bands: [[0.02, "#1d1f23"], [0.55, "#f2c230"], [99, "#1d1f23"]] })
+    mesh(hull, paint(), 0, 0, 0, g)
+    mesh(deck, mat(0xf2c230, 0.45), 0, 0, 0, g)
+    box(g, 3.6, 0.6, 1.3, 0x1d1f23, -0.8, 1.2, 0, 0.8)
+    cyl(g, 0.06, 0.06, 2.0, 0x2a2d33, 1.4, 1.9, 0, 6).rotation.x = Math.PI / 2
+    person(g, 0xe8742a, -0.6, 1.2, 0, { lean: 0.25 })
     return { group: g, L, B }
+}
+
+// a fish farm out in the fjord: rings with their rails, and the feed barge
+function fishFarm() {
+    const g = new THREE.Group()
+    const black = mat(0x16171a, 0.6)
+    for (const [x, z] of [
+        [0, 0],
+        [56, 8],
+        [112, 0],
+        [28, 54],
+        [84, 58],
+    ]) {
+        const r = new THREE.Group()
+        r.position.set(x, 0, z)
+        g.add(r)
+        for (const [rad, y] of [
+            [22, 0.3],
+            [23.6, 0.3],
+            [22.8, 1.6],
+        ]) {
+            const t = mesh(new THREE.TorusGeometry(rad, y > 1 ? 0.12 : 0.55, 8, 72), black, 0, y, 0, r)
+            t.rotation.x = Math.PI / 2
+        }
+        for (let i = 0; i < 24; i++) {
+            const a = (i / 24) * Math.PI * 2
+            cyl(r, 0.08, 0.08, 1.4, 0x16171a, Math.cos(a) * 22.8, 0.95, Math.sin(a) * 22.8, 5)
+        }
+        // the net hanging under the rings (seen through the water close by)
+        mesh(new THREE.CylinderGeometry(22, 20, 10, 32, 1, true), mat(0x22302a, 0.9, 0, { transparent: true, opacity: 0.35, side: THREE.DoubleSide }), 0, -5, 0, r)
+    }
+    // the feed barge
+    const barge = new THREE.Group()
+    barge.position.set(56, 0, 120)
+    g.add(barge)
+    box(barge, 40, 5, 16, 0x2b3a4a, 0, 0.5, 0, 0.7)
+    box(barge, 14, 7, 12, 0xf1efe8, -8, 6.5, 0)
+    windows(barge, 14, 1.4, 12, -8, 8, 0)
+    box(barge, 15, 0.4, 13, 0x1d4f8f, -8, 10.2, 0)
+    for (let i = 0; i < 3; i++) cyl(barge, 2.6, 2.6, 9, 0xd9dde2, 6 + i * 6, 7.5, 0, 16, 0.5)
+    cyl(barge, 0.1, 0.1, 8, 0xd8d8d8, -12, 14, 0, 6)
+    // the feeding pipes to the rings
+    for (const [x, z] of [
+        [0, 0],
+        [56, 8],
+        [112, 0],
+    ]) {
+        const from = new THREE.Vector3(56, 0.4, 112)
+        const to = new THREE.Vector3(x, 0.4, z + 22)
+        const len = from.distanceTo(to)
+        const pipe = cyl(g, 0.3, 0.3, len, 0x16171a, (from.x + to.x) / 2, 0.4, (from.z + to.z) / 2, 6)
+        pipe.rotation.z = Math.PI / 2
+        pipe.rotation.y = Math.atan2(-(to.z - from.z), to.x - from.x)
+    }
+    return g
 }
 
 // ---- the wake: a ribbon of foam laid down where the boat has been ----
@@ -429,6 +704,108 @@ export function createBoats({ props, lowPower = false }) {
         })
     }
 
+    // a speedboat round the south-west, a rowing boat among the moored boats, a sailing yacht in the north-east, a jet ski in the south-east
+    const sw = []
+    for (let i = 0; i < 10; i++) {
+        const a = (i / 10) * Math.PI * 2
+        sw.push([-430 + Math.cos(a) * 95, -330 + Math.sin(a * 2) * 55])
+    }
+    addBoat(speedboat(), { path: sw, speed: 14, k: 0.7, wake: [2.6, 1.1] })
+    addBoat(rowboat(), {
+        path: [
+            [-115, -95],
+            [-92, -74],
+            [-66, -92],
+            [-88, -118],
+        ],
+        speed: 1.8,
+        k: 1.2,
+        wake: [0.7, 0.2],
+    })
+    if (!lowPower) {
+        addBoat(cruiser(true), {
+            path: [
+                [575, 165],
+                [700, 175],
+                [725, 300],
+                [600, 340],
+            ],
+            speed: 5,
+            k: 0.6,
+            wake: [2.4, 0.5],
+        })
+        const js = []
+        for (let i = 0; i < 14; i++) {
+            const a = (i / 14) * Math.PI * 2
+            js.push([590 + Math.cos(a) * 110, -300 + Math.sin(a) * 38 + Math.sin(a * 5) * 12])
+        }
+        addBoat(jetski(), { path: js, speed: 17, k: 1.2, wake: [1.0, 0.9] })
+    }
+
+    // boats on their moorings in the west, swinging slowly round them
+    const moored = []
+    const mooringBuoy = new THREE.SphereGeometry(0.8, 12, 8)
+    const MOOR = [
+        [-400, 70, 0.2, () => cruiser(false)],
+        [-372, 108, 0.4, () => speedboat()],
+        [-410, 140, 0.1, () => cruiser(false)],
+        [-440, 96, 0.3, () => rowboat()],
+        [-382, 170, 0.5, () => speedboat()],
+    ]
+    for (const [x, z, ph, make] of lowPower ? MOOR.slice(0, 3) : MOOR) {
+        const built = make()
+        const holder = new THREE.Group()
+        holder.add(built.group)
+        const item = props.adopt(holder, { x, z, k: 0.6 })
+        const box = { x, z, hx: built.L / 2, hz: built.B / 2, rot: 0 }
+        props.colliders.push(box)
+        const ball = new THREE.Mesh(mooringBuoy, mat(0xe8742a, 0.5))
+        group.add(ball)
+        moored.push({ item, box, L: built.L, x, z, ph, ball, yaw0: 1.2 + ph, lights: built.lights, flags: built.flags })
+    }
+    const farm = fishFarm()
+    farm.position.set(-760, 0, 560)
+    group.add(farm)
+
+    // a collar of foam where each buoy and post meets the water
+    const COLLARS = 180
+    const collarMat = new THREE.ShaderMaterial({
+        transparent: true,
+        depthWrite: false,
+        uniforms: { uLight: wakeMat.uniforms.uLight, uTime: wakeMat.uniforms.uTime },
+        vertexShader: /* glsl */ `varying vec2 vP; void main(){ vP = position.xy; gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(position, 1.0); }`,
+        fragmentShader: /* glsl */ `uniform float uLight; uniform float uTime; varying vec2 vP;
+            void main(){
+                float r = length(vP);
+                float ring = smoothstep(0.55, 0.8, r) * (1.0 - smoothstep(0.8, 1.0, r));
+                float n = 0.6 + 0.4 * sin(atan(vP.y, vP.x) * 9.0 + uTime * 1.7) * sin(r * 20.0 - uTime * 2.0);
+                gl_FragColor = vec4(vec3(0.93, 0.96, 0.98) * uLight, ring * n * 0.55);
+            }`,
+    })
+    const collars = new THREE.InstancedMesh(new THREE.CircleGeometry(1, 40), collarMat, COLLARS)
+    collars.frustumCulled = false
+    collars.renderOrder = 1
+    group.add(collars)
+    const cM = new THREE.Matrix4()
+    const cQ = new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0))
+    const cS = new THREE.Vector3()
+    const cP = new THREE.Vector3()
+
+    // white sails far out in the fjord, going slowly along it
+    const far = []
+    const sailGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(-6, 0, 0), new THREE.Vector3(0, 14, 0)])
+    sailGeo.computeVertexNormals()
+    for (let i = 0; i < (lowPower ? 5 : 11); i++) {
+        const deg = 20 + i * 31 + Math.random() * 12
+        const shore = shoreAt(deg)[0]
+        if (shore < 900) continue
+        const g = new THREE.Group()
+        mesh(new THREE.BoxGeometry(9, 1.6, 3), mat(0xf1efe8, 0.6), 0, 0.4, 0, g)
+        mesh(sailGeo, mat(0xf6f3ea, 0.8, 0, { side: THREE.DoubleSide }), 2, 1.2, 0, g)
+        group.add(g)
+        far.push({ g, deg, r: shore * (0.72 + Math.random() * 0.1), w: (Math.random() < 0.5 ? -1 : 1) * (0.004 + Math.random() * 0.004) })
+    }
+
     const tan = new THREE.Vector3()
     const pt = new THREE.Vector3()
     // the wind comes from the north (+z), for the sails
@@ -443,13 +820,64 @@ export function createBoats({ props, lowPower = false }) {
             // they are for the helm: the pages behind keep their harbour as it was
             if (group.visible !== show) {
                 group.visible = show
-                for (const b of boats) {
+                for (const b of [...boats, ...moored]) {
                     b.item.obj.visible = show
                     // out of the way of the drive mode's collisions while hidden
                     if (!show) b.box.x = b.box.z = 1e6
                 }
             }
             if (!show) return
+            smokeU.uTime.value = t
+            const lit = THREE.MathUtils.smoothstep(night, 0.15, 0.6)
+            for (const b of [...boats, ...moored]) {
+                if (b.lights) for (const l of b.lights) {
+                    l.visible = lit > 0.01
+                    l.material.opacity = lit * (0.85 + 0.15 * Math.sin(t * 3 + (b.x || 0)))
+                }
+                if (b.flags)
+                    for (const f of b.flags) {
+                        const P = f.mesh.geometry.attributes.position
+                        for (let k = 0; k < P.count; k++) {
+                            const x = f.base[k * 3]
+                            P.setZ(k, Math.sin(x * 2.6 / f.size + t * 7 + (b.x || 0)) * 0.12 * x)
+                        }
+                        P.needsUpdate = true
+                    }
+            }
+            // the foam collars
+            const bl = props.buoys
+            let nc = 0
+            for (let i = 0; i < bl.length && nc < COLLARS; i++) {
+                const q = bl[i]
+                if (q.obj && q.obj.visible === false) continue
+                const r = (q.r || 1.5) * 1.55 + 0.6
+                cP.set(q.x, waveHeight(q.x, q.z, t, 1) * 0.85 + 0.05, q.z)
+                cS.setScalar(r * (1 + 0.06 * Math.sin(t * 2 + i)))
+                cM.compose(cP, cQ, cS)
+                collars.setMatrixAt(nc++, cM)
+            }
+            collars.count = nc
+            collars.instanceMatrix.needsUpdate = true
+            // the far sails
+            for (const f of far) {
+                f.deg += f.w * dt * 6
+                const a = (f.deg * Math.PI) / 180
+                const x = Math.cos(a) * f.r
+                const z = Math.sin(a) * f.r
+                f.g.position.set(x, waveHeight(x, z, t, 0.4) * 0.5, z)
+                f.g.rotation.set(0, -a + (f.w > 0 ? -Math.PI / 2 : Math.PI / 2), 0.1 * Math.sign(f.w))
+            }
+            for (const m of moored) {
+                // the bow to the buoy, the stern swinging with the wind
+                const yaw = m.yaw0 + Math.sin(t * 0.05 + m.ph * 9) * 0.4
+                const off = m.L / 2 + 3
+                const cx = m.x - Math.cos(yaw) * off
+                const cz = m.z + Math.sin(yaw) * off
+                m.item.x = m.box.x = cx
+                m.item.z = m.box.z = cz
+                m.item.yaw = m.box.rot = yaw
+                m.ball.position.set(m.x, waveHeight(m.x, m.z, t, 1) * 0.85 + 0.2, m.z)
+            }
             for (const b of boats) {
                 // along the route
                 if (b.wait > 0) b.wait -= dt
@@ -488,6 +916,12 @@ export function createBoats({ props, lowPower = false }) {
                     b.sailor.rotation.x = -0.5 * lee
                 }
                 if (b.paddle) b.paddle.rotation.x = Math.sin(t * 2.4 + b.u * 50) * 0.6
+                if (b.oars)
+                    for (const o of b.oars) {
+                        const ph = t * 1.9
+                        o.pivot.rotation.y = Math.sin(ph) * 0.5 * o.sd
+                        o.pivot.rotation.x = (Math.cos(ph) > 0 ? -0.18 : 0.12) * o.sd
+                    }
                 b.roll += (roll - b.roll) * (1 - Math.exp(-dt * 2))
                 b.inner.rotation.set(b.roll, 0, pitch)
                 // the wake: a new point every so often, the old ones spread and fade

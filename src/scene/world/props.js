@@ -321,6 +321,7 @@ export function createProps({ lowPower = false, base = "/media/models/world/" } 
         spawn,
         adopt,
         despawn,
+        traffic,
         update(t, dt, night) {
             for (const b of traffic) {
                 b.u += b.w * dt
@@ -332,6 +333,8 @@ export function createProps({ lowPower = false, base = "/media/models/world/" } 
                 b.it.x = b.box.x = x
                 b.it.z = b.box.z = z
                 b.it.yaw = b.box.rot = yaw
+                b.vx = -b.rx * Math.sin(b.u) * b.w
+                b.vz = b.rz * Math.cos(b.u) * b.w
             }
             for (const f of floaters) {
                 const h = waveHeight(f.x, f.z, t, 1)

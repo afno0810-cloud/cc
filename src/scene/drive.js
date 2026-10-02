@@ -47,6 +47,8 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
         target: null, // { x, z }: where the mission wants you next (compass and radar)
         pois: null, // places to visit: [{ item: { x, z }, done }]
         shake: 0, // camera shake after a hard bump, 0..1
+        auto: null, // the autopilot's inputs { th, st, spin, boost } while it has the helm
+        orbit: false, // the camera swings round slowly (autopilot)
         outBlend: 0, // 1 → 0 after leaving, so the page camera takes over smoothly
     }
     const keys = new Set()
@@ -82,10 +84,10 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
         <div class="hud-top">
             <span class="hud-tag"><i></i>Drive Argus</span>
             <div class="hud-actions">
-                <button type="button" class="hud-btn" data-hud="time">Time of day</button>
-                <button type="button" class="hud-btn" data-hud="weather">Weather: <span class="hud-weather">Clear</span></button>
+                <button type="button" class="hud-btn" data-hud="time"><span class="hb-long">Time of day</span><span class="hb-short">Time</span></button>
+                <button type="button" class="hud-btn" data-hud="weather"><span class="hb-long">Weather: </span><span class="hud-weather">Clear</span></button>
                 <button type="button" class="hud-btn" data-hud="sound" aria-pressed="false">Sound</button>
-                <button type="button" class="hud-btn hud-q" data-hud="keys" aria-label="Controls" aria-expanded="false">?</button>
+                <button type="button" class="hud-btn" data-hud="keys" aria-expanded="false">Controls <kbd>H</kbd></button>
                 <button type="button" class="hud-btn hud-exit" data-hud="exit">Exit <kbd>Esc</kbd></button>
             </div>
         </div>
@@ -177,6 +179,11 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
     const lidBtn = hud.querySelector(".hud-lid")
     const keysEl = hud.querySelector(".hud-keys")
     const keysBtn = hud.querySelector('[data-hud="keys"]')
+    // the panels sit under the buttons, however many rows they take
+    const topEl = hud.querySelector(".hud-top")
+    const measureTop = () => hud.style.setProperty("--hud-top", Math.round(topEl.getBoundingClientRect().bottom - hud.getBoundingClientRect().top) + "px")
+    if (window.ResizeObserver) new ResizeObserver(measureTop).observe(topEl)
+    addEventListener("resize", measureTop)
     const stickEl = hud.querySelector(".hud-stick")
     const stickKnob = stickEl.querySelector("i")
 
@@ -262,6 +269,7 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
     stickEl.addEventListener("pointerup", endStick)
     stickEl.addEventListener("pointercancel", endStick)
     function moveStick(e) {
+        if (state.auto) for (const f of manual) f()
         const R = 46
         stick.set(e.clientX - stickCenter.x, e.clientY - stickCenter.y)
         if (stick.length() > R) stick.setLength(R)
@@ -270,6 +278,7 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
     }
 
     const escapers = []
+    const manual = [] // called when someone takes the helm from the autopilot
     // ---- menus: the arrow keys move between the choices (and scroll the long ones), Enter picks ----
     const menus = [{ el: keysEl, modal: true }]
     function activeMenu() {
@@ -335,6 +344,7 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
                     return
                 }
             }
+            if (state.auto && ["w", "a", "s", "d", "q", "e", "arrowup", "arrowdown", "arrowleft", "arrowright"].includes(k)) for (const f of manual) f()
             if (k === "t") cycleTime()
             if (k === "v") cycleWeather()
             if (k === "l") setLid(!state.lidOpen)
@@ -480,6 +490,8 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
         savedScroll = scrollY
         state.active = true
         state.outBlend = 0
+        requestAnimationFrame(measureTop)
+        setTimeout(measureTop, 900) // after the HUD has slid in
         document.documentElement.classList.add("is-driving")
         hud.classList.add("is-on")
         hud.querySelector(".hud-exit").focus({ preventScroll: true })
@@ -660,6 +672,12 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
         if (keys.has("e")) spin -= 1
         th += -stick.y
         st += -stick.x
+        // the autopilot steers when no one else does
+        if (state.auto) {
+            th = state.auto.th
+            st = state.auto.st
+            spin = state.auto.spin || 0
+        }
         th = clamp(th, -1, 1)
         st = clamp(st, -1, 1)
         if (state.locked || state.lidOpen) {
@@ -667,7 +685,7 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
             st = 0
             spin = 0
         }
-        const boost = keys.has("shift")
+        const boost = keys.has("shift") || !!(state.auto && state.auto.boost)
         thr += (th - thr) * (1 - Math.exp(-dt * 4))
 
         // along the course and across it
@@ -726,7 +744,11 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
         }
 
         // chase camera, a little behind the turn, and you can look around
-        if (!dragging && performance.now() - lastDrag > 2200) camYaw *= Math.exp(-dt * 1.2)
+        if (!dragging && performance.now() - lastDrag > 2200) {
+            // with the autopilot on, the camera swings slowly round to show the boat from the sides
+            if (state.orbit) camYaw += (Math.sin(t * 0.13) * 0.95 - camYaw) * (1 - Math.exp(-dt * 0.6))
+            else camYaw *= Math.exp(-dt * 1.2)
+        }
         // the camera follows the course, so it stays steady while the hull turns
         // with the lid open the camera comes close, from starboard (the lid opens away from you), above the case
         state.inspect += ((state.lidOpen ? 1 : 0) - state.inspect) * (1 - Math.exp(-dt * 2.2))
@@ -997,6 +1019,9 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
         actions: hud.querySelector(".hud-actions"),
         onEscape(fn) {
             escapers.push(fn)
+        },
+        onManual(fn) {
+            manual.push(fn)
         },
         // a panel whose buttons the arrow keys move between (modal: it takes them as soon as it is open)
         addMenu(el, { modal = true } = {}) {
