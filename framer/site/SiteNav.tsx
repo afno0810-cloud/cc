@@ -28,6 +28,7 @@ import {
     MailIcon,
 } from "./SiteKit.tsx"
 import type { Img } from "./SiteKit.tsx"
+import { useGameLinks } from "./MarinorGame.tsx"
 
 /* ================================================================
  Site navigation – Marinor NTNU
@@ -40,10 +41,13 @@ import type { Img } from "./SiteKit.tsx"
  · Desktop links and the menu button are both in the HTML and CSS picks one,
    so a phone gets the phone layout from the very first paint.
  · Clicks on our own pages go through Framer's router (works in Preview too).
- · Request: "bare legg til en drive argus knapp ikke noe mere" – a button to the
+ · Request: "bare legg til en drive argus knapp ikke noe mere" – a link to the
    game page (/spill) on every page. Request: "play ikonet kan fjernes … drive argus og join
    marinor kan puttes inn med de andre så alt ser likt ut" – Drive Argus and Join Marinor are
    links in the same box as the others, with no icon.
+ · Request: "når man trykker på drive argus så kommer man rett inn i stor skjerm modus" –
+   Drive Argus (and every other link to /spill on the page) opens the game over the page in
+   full screen (useGameLinks in MarinorGame.tsx); the phone menu closes behind it.
  ================================================================ */
 
 type Thumb = { img?: string; fit?: "cover" | "contain"; text?: string; tone?: "dark" | "soft"; boat?: boolean }
@@ -251,6 +255,8 @@ export default function SiteNav(props: Props) {
     const router = useSiteRouter()
     const locPath = usePath()
     const path = router.currentPath || locPath
+    // Drive Argus, and every other link to the game page, opens the game in full screen
+    useGameLinks(!isCanvas)
 
     const L = (v: string | undefined, d: string) => (v && v.length ? v : d)
     const links = {
@@ -379,8 +385,17 @@ export default function SiteNav(props: Props) {
                 setOpenKey(null)
             }
         }
+        // the game opens over the page: the menus close behind it
+        const onGame = () => {
+            setMenuOpen(false)
+            setOpenKey(null)
+        }
         window.addEventListener("keydown", onKey)
-        return () => window.removeEventListener("keydown", onKey)
+        window.addEventListener("marinor:game", onGame)
+        return () => {
+            window.removeEventListener("keydown", onKey)
+            window.removeEventListener("marinor:game", onGame)
+        }
     }, [])
 
     const solid = !atTop && !menuOpen

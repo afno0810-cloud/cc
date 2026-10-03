@@ -4,9 +4,11 @@ import type { Img } from "./SiteKit.tsx"
 
 /* ================================================================
  Home – our projects (Argus, Proteus) and competitions (Njord, RoboBoat)
- Door cards: on desktop and tablet the text sits on the photo.
- On phones the photo sits on top in 4:3 and the text below it, so a wide
- photo is not cut down to a narrow upright strip.
+ Door cards: on desktop and tablet the text sits on the photo, and the two cards
+ stand side by side down to tablets (request: "opptimaliesere nettsiden bedre til
+ mobil og tablet"). On phones they go one under the other, with the photo on top
+ in 4:3 and the text below it (the card as tall as both), so a wide photo is not cut down to
+ a narrow upright strip and no text is cut off.
  ================================================================ */
 
 const DOOR_PHONE = `
@@ -48,8 +50,8 @@ export const DOOR_CSS = `
 .hw-door.is-tall{height:640px}
 .hw-door.is-tall .hw-title{font-size:clamp(64px,7.4vw,112px);font-size:clamp(64px,7.4cqi,112px)}
 ${at(BP.lg, `.hw-door{height:540px}.hw-door.is-tall{height:580px}`)}
-${at(BP.md, `.hw-doors{flex-direction:column;gap:14px}.hw-doors>.hw-door,.hw-doors>.hw-door:first-child{flex:none;height:480px}.hw-doors>.hw-door.is-tall{height:520px}`)}
-${at(BP.sm, `.hw-doors>.hw-door,.hw-doors>.hw-door:first-child{height:440px}.hw-doors>.hw-door.is-tall{height:460px}.hw-door{border-radius:20px}.hw-top{padding:18px 18px 0}.hw-body{padding:0 20px 22px;gap:12px}.hw-title,.hw-door.is-tall .hw-title{font-size:52px}.hw-door.is-small .hw-title{font-size:40px}.hw-body p{font-size:15px}.hw-bp svg{top:14%;height:56%}.hw-logo{width:80px}`)}
+${at(BP.md, `.hw-doors{gap:14px}.hw-doors>.hw-door,.hw-doors>.hw-door:first-child{height:460px}.hw-doors>.hw-door.is-tall{height:500px}.hw-door{border-radius:22px}.hw-top{padding:20px 20px 0}.hw-body{padding:0 22px 24px;gap:12px}.hw-title,.hw-door.is-tall .hw-title{font-size:52px}.hw-door.is-small .hw-title{font-size:40px}.hw-body p{font-size:15px}.hw-bp svg{top:14%;height:50%}`)}
+${at(BP.sm, `.hw-doors{flex-direction:column;gap:14px}.hw-doors>.hw-door,.hw-doors>.hw-door:first-child{flex:none;height:440px}.hw-doors>.hw-door.is-tall{height:460px}.hw-door{border-radius:20px}.hw-top{padding:18px 18px 0}.hw-body{padding:0 20px 22px;gap:12px}.hw-title,.hw-door.is-tall .hw-title{font-size:52px}.hw-door.is-small .hw-title{font-size:40px}.hw-body p{font-size:15px}.hw-bp svg{top:14%;height:56%}.hw-logo{width:80px}`)}
 ${at(BP.sm, DOOR_PHONE)}
 `
 
@@ -94,7 +96,7 @@ ${ROAD_CSS}
 .hc-right{display:grid;grid-template-rows:1fr 1fr;gap:18px}
 .hc-right .hw-door{flex:none;height:auto;min-height:250px}
 ${at(BP.md, `.hc-grid{grid-template-columns:minmax(0,1fr)}.hc-right{grid-template-rows:none}.hc-right .hw-door{height:330px}`)}
-${at(BP.sm, `.hc-map{border-radius:20px}.hc-map-title{left:14px;top:12px;font-size:10.5px}.hc-pin{padding:6px 9px;border-radius:10px}.hc-pin b{font-size:12.5px}.hc-pin span{font-size:9.5px}.hc-pin.is-a{right:23%;top:36%}.hc-pin.is-b{left:12%;top:79%}.hc-right .hw-door{height:320px}`)}
+${at(BP.sm, `.hc-map{border-radius:20px}.hc-map-title{left:14px;top:12px;font-size:10.5px}.hc-pin{padding:6px 9px;border-radius:10px}.hc-pin b{font-size:12.5px}.hc-pin span{font-size:9.5px}.hc-pin.is-a{right:23%;top:36%}.hc-pin.is-b{left:12%;top:79%}.hc-right .hw-door{height:auto}`)}
 `
 
 /* Next to the map the left column is narrow: the road there keeps to the year and the title */
@@ -105,14 +107,15 @@ ${at(BP.md, `.hc-grid:not(.is-stack) .hc-step p{display:block}.hc-grid:not(.is-s
 ${at(BP.sm, `.hc-grid:not(.is-stack) .hc-step-title{font-size:19px}`)}
 `
 
-/* Competitions without the map: the road as a strip, the two cards side by side under it */
+/* Competitions without the map: the road as a strip, the two cards side by side under it
+   (still side by side on a tablet; one under the other on a phone) */
 const STACK_CSS = `
 .hc-grid.is-stack{display:flex;flex-direction:column;gap:18px}
 .hc-grid.is-stack .hc-right{grid-template-rows:none;grid-template-columns:repeat(2,minmax(0,1fr))}
 .hc-grid.is-stack .hc-right .hw-door{height:460px}
 ${at(BP.lg, `.hc-grid.is-stack .hc-right .hw-door{height:420px}`)}
-${at(BP.md, `.hc-grid.is-stack .hc-right{grid-template-columns:minmax(0,1fr)}.hc-grid.is-stack .hc-right .hw-door{height:330px}`)}
-${at(BP.sm, `.hc-grid.is-stack .hc-right .hw-door{height:320px}`)}
+${at(BP.md, `.hc-grid.is-stack{gap:14px}.hc-grid.is-stack .hc-right{gap:14px}.hc-grid.is-stack .hc-right .hw-door{height:380px}`)}
+${at(BP.sm, `.hc-grid.is-stack .hc-right{grid-template-columns:minmax(0,1fr)}.hc-grid.is-stack .hc-right .hw-door{height:auto}`)}
 `
 
 export const WORLD_CSS = DOOR_CSS + MAP_CSS + ROAD_NARROW_CSS + STACK_CSS
@@ -153,7 +156,7 @@ export type Door = {
     logo?: string
 }
 
-export function DoorCard({ c, small = false, tall = false, sizes = "(max-width: 860px) 100vw, 55vw" }: { c: Door; small?: boolean; tall?: boolean; sizes?: string }) {
+export function DoorCard({ c, small = false, tall = false, sizes = "(max-width: 600px) 100vw, 55vw" }: { c: Door; small?: boolean; tall?: boolean; sizes?: string }) {
     const tags = (c.tags || "").split("·").map((t) => t.trim()).filter(Boolean)
     const hasPhoto = !!(c.image && c.image.src)
     return (
@@ -335,12 +338,12 @@ export function Competitions(props: {
                 <Reveal className="hc-right" delay={0.08}>
                     <DoorCard
                         small
-                        sizes="(max-width: 860px) 100vw, 40vw"
+                        sizes="(max-width: 600px) 100vw, 50vw"
                         c={{ name: "Njord", status: "We compete here", live: true, text: props.njordText, tags: "", link: "/competitions/njord-challange", cta: "Explore Njord", image: props.njordImage }}
                     />
                     <DoorCard
                         small
-                        sizes="(max-width: 860px) 100vw, 40vw"
+                        sizes="(max-width: 600px) 100vw, 50vw"
                         c={{ name: "RoboBoat", status: "Next goal", live: false, text: props.roboText, tags: "", link: "/competitions/roboat", cta: "Explore RoboBoat", image: props.roboImage, logo: props.roboLogo }}
                     />
                 </Reveal>
