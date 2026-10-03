@@ -605,27 +605,29 @@ function build(lite) {
     add("dome", new THREE.SphereGeometry(0.017, seg(20), seg(10), 0, Math.PI * 2, 0, Math.PI / 2), { p: [lx + 0.055, ly + 0.004, lz + 0.055] })
     add("plastic", new THREE.CylinderGeometry(0.018, 0.018, 0.004, seg(20)), { p: [lx + 0.055, ly + 0.003, lz + 0.055] })
     MARKS.lidar = [lx, base + 0.04, lz]
-    // four black whip antennas for the 5G router (request: "kan du legge til disse antenne til argus båten",
-    // then "fiks disse antennene så de ligger bakover den svarte boksen", from photos of the boat):
-    // on the stern side of the lid, behind the LiDAR, one on its own to port and three together to starboard,
-    // all laid well back over the case towards the bow (seen from astern, as in the photo, they lean away).
-    // A nut on the lid, a swivel knuckle, then the rubber whip, thicker at the foot and rounded at the tip.
-    const wx = cx0 - 0.182
-    for (const [i, az] of [-0.12, -0.03, 0.02, 0.07].entries()) {
-        add("steel", new THREE.CylinderGeometry(0.0095, 0.0095, 0.005, 6), { p: [wx, TOP + 0.0055, az] })
-        add("plastic", new THREE.CylinderGeometry(0.0085, 0.009, 0.014, seg(14)), { p: [wx, TOP + 0.015, az] })
-        add("plastic", new THREE.SphereGeometry(0.0092, seg(14), seg(8)), { p: [wx, TOP + 0.024, az] })
+    // four black whip antennas for the 5G router (requests: "kan du legge til disse antenne til argus båten",
+    // "fiks disse antennene så de ligger bakover den svarte boksen" and "antene bak på båten skal stikke ut av
+    // siden bakpå den svarte boksen ikke toppen av den svarte boksen", from photos of the boat): they come out
+    // of the stern side of the lid, one on its own to port and three together to starboard, and lean up and
+    // back behind the case. A nut on the wall, a short stub straight out of it, a swivel knuckle, then the
+    // rubber whip, thicker at the foot and rounded at the tip. (On the lid, so they go with it when it opens.)
+    const rear = cx0 - LX / 2 // the stern face of the lid
+    const ay = (SEAM + TOP) / 2 - 0.004
+    for (const [i, az] of [-0.11, -0.025, 0.025, 0.075].entries()) {
+        add("steel", new THREE.CylinderGeometry(0.0095, 0.0095, 0.005, 6), { p: [rear - 0.0025, ay, az], r: [0, 0, Math.PI / 2] })
+        add("plastic", new THREE.CylinderGeometry(0.0085, 0.009, 0.016, seg(14)), { p: [rear - 0.013, ay, az], r: [0, 0, Math.PI / 2] })
+        add("plastic", new THREE.SphereGeometry(0.0092, seg(14), seg(8)), { p: [rear - 0.023, ay, az] })
         const L = 0.15
         const whip = new THREE.CylinderGeometry(0.0072, 0.0088, L, seg(14), 1, true)
         whip.translate(0, L / 2, 0)
         const tip = new THREE.SphereGeometry(0.0072, seg(14), seg(6), 0, Math.PI * 2, 0, Math.PI / 2)
         tip.translate(0, L, 0)
-        // about a third of the way down towards the bow, each a little different, the lone one leaning out to port
-        const lean = [-0.62, -0.57, -0.6, -0.55][i]
-        const splay = [-0.07, 0.03, 0.06, 0.1][i]
-        for (const g of [whip, tip]) add("rubber", g, { p: [wx, TOP + 0.024, az], r: [splay, 0, lean] })
+        // leaning back towards the stern, each a little different; the lone one leans out to port
+        const lean = [0.62, 0.5, 0.56, 0.46][i]
+        const splay = [-0.12, -0.02, 0.03, 0.09][i]
+        for (const g of [whip, tip]) add("rubber", g, { p: [rear - 0.023, ay, az], r: [splay, 0, lean] })
     }
-    MARKS.antennas = [wx + 0.05, TOP + 0.1, -0.02]
+    MARKS.antennas = [rear - 0.07, ay + 0.08, -0.02]
     bucket = parts
     cable([
         [sternTop - 0.013, SEAM, -0.168],

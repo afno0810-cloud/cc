@@ -17,9 +17,9 @@ import * as React from "react"
 import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { addPropertyControls, ControlType, useIsStaticRenderer } from "framer"
 
-const BASE = "https://cdn.jsdelivr.net/gh/afno0810-cloud/cc@0a52b8b2f44d86897b03787684978124cbf4d929/"
-const POSTER = BASE + "framer/game-poster.jpg"
 const GAME = "https://afno0810-cloud.github.io/cc/"
+// the still of Argus in the harbour, on GitHub Pages with the game (a new still needs no change here)
+const POSTER = GAME + "media/game-poster.jpg"
 const GAME_ORIGIN = "https://afno0810-cloud.github.io"
 const FONT = '"Inter Display", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif'
 const MONO = 'ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace'

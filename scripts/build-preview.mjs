@@ -184,6 +184,8 @@ const used = new Set([...page.matchAll(/media\/img\/([^"\s,)]+)/g)].map((m) => m
 for (const f of fs.readdirSync(path.join(tmp, "media", "img"))) {
     if (used.has(f)) fs.copyFileSync(path.join(tmp, "media", "img", f), path.join(out, "media", "img", f))
 }
+// the still of the game for the title card on the Framer site (framer/MarinorGame.tsx loads it from here)
+if (fs.existsSync(path.join(tmp, "media", "game-poster.jpg"))) fs.copyFileSync(path.join(tmp, "media", "game-poster.jpg"), path.join(out, "media", "game-poster.jpg"))
 fs.mkdirSync(path.join(out, "media", "models"), { recursive: true })
 await MeshoptDecoder.ready
 const io = new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({ "meshopt.decoder": MeshoptDecoder })
