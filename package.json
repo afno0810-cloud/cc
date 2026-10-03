@@ -6,18 +6,23 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "build:embed": "vite build --config vite.embed.config.js",
+    "build:pages": "node scripts/build-preview.mjs .pages-tmp --standalone && rm -rf docs/assets docs/media docs/index.html && cp -r .pages-tmp/. docs/ && touch docs/.nojekyll && rm -rf .pages-tmp .pages-tmp-build"
   },
   "devDependencies": {
-    "vite": "^5.4.21",
-    "vite-plugin-singlefile": "^2.3.3"
+    "@gltf-transform/cli": "^4.5.0",
+    "three-mesh-bvh": "^0.8.3",
+    "vite": "^5.4.21"
   },
   "dependencies": {
     "@fontsource-variable/instrument-sans": "^5.3.0",
     "@fontsource/big-shoulders-display": "^5.3.0",
     "@fontsource/jetbrains-mono": "^5.3.0",
-    "gsap": "^3.12.5",
     "lenis": "^1.1.13",
-    "three": "^0.169.0"
+    "three": "^0.169.0",
+    "topojson-client": "^3.1.0",
+    "trystero": "^0.25.4",
+    "world-atlas": "^2.0.2"
   }
 }

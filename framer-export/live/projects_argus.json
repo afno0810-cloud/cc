@@ -1,0 +1,454 @@
+{
+  "url": "https://marinorntnu.no/projects/argus",
+  "title": "Marinor NTNU",
+  "lang": "en",
+  "meta": [
+    {
+      "name": "viewport",
+      "content": "width=device-width"
+    },
+    {
+      "name": "generator",
+      "content": "Framer b4b3e20"
+    },
+    {
+      "name": "og:url",
+      "content": "https://marinorntnu.no/projects/argus"
+    },
+    {
+      "name": "description",
+      "content": ""
+    },
+    {
+      "name": "framer-search-index",
+      "content": "https://framerusercontent.com/sites/7jZVMMcQAF4vXcHWrCmCjp/searchIndex-yKV8MB3zWfNG.json"
+    },
+    {
+      "name": "framer-search-index-fallback",
+      "content": "https://framerusercontent.com/sites/7jZVMMcQAF4vXcHWrCmCjp/searchIndex-xbLeQW80S1Hh.json"
+    },
+    {
+      "name": "og:type",
+      "content": "website"
+    },
+    {
+      "name": "og:title",
+      "content": "Marinor NTNU"
+    },
+    {
+      "name": "og:description",
+      "content": ""
+    },
+    {
+      "name": "twitter:card",
+      "content": "summary_large_image"
+    },
+    {
+      "name": "twitter:title",
+      "content": "Marinor NTNU"
+    },
+    {
+      "name": "twitter:description",
+      "content": ""
+    },
+    {
+      "name": "robots",
+      "content": "max-image-preview:large"
+    }
+  ],
+  "links": [
+    {
+      "rel": "canonical",
+      "href": "https://marinorntnu.no/projects/argus",
+      "sizes": null
+    },
+    {
+      "rel": "icon",
+      "href": "https://framerusercontent.com/images/xfYBqjDL8esUcuRdvlOCUbvBM.jpg",
+      "sizes": null
+    },
+    {
+      "rel": "icon",
+      "href": "https://framerusercontent.com/images/xfYBqjDL8esUcuRdvlOCUbvBM.jpg",
+      "sizes": null
+    },
+    {
+      "rel": "apple-touch-icon",
+      "href": "https://framerusercontent.com/images/f3BE62cPHjDKlnX96Ec1fPR4o0.png",
+      "sizes": null
+    }
+  ],
+  "text": "About us\nProjects\nTeam\nCompetitions\nSponsor us\nJoin Marinor\nMARINOR NTNU · PROJECT ARGUS\nAUTONOMOUS SURFACE VESSEL\nMeet Argus\n\nOur first autonomous boat. A catamaran built by students in Trondheim and tested in the harbour.\n\nOpen the interface\nSee the build\n1st\nautonomous surface vessel built by Marinor NTNU\n2\nhulls in a stable catamaran design\n5\nmonths from the first hull to launch day\n100%\ndesigned, built and tested by students\nTHE PROJECT\nAbout Argus\n\nArgus is our first autonomous surface vessel. It finds its way on the water with no one at the wheel.\n\nThe hulls, electronics, sensors, control system and software all have to work together on one boat. Our members made every part of it.\n\nTested in Trondheim harbour\nON BOARD\nWhat is on board\n\nThe sensors and hardware Argus uses to see, find its position and steer.\n\nSENSING\nSensors mounted on top of the electronics case\n01\nTwo hulls\n\nArgus is a catamaran. The two hulls give a wide and stable platform for the sensors and electronics.\n\n02\nFour propellers\n\nWith four propellers Argus can turn a full 360 degrees while it keeps moving forward.\n\n03\nKongsberg Seapath 130\n\nA GNSS-aided inertial navigation system. It combines multi-frequency GNSS receivers with gyroscopes and accelerometers, and gives Argus its position, heading, speed, roll and pitch.\n\n04\nStereo depth camera\n\nTwo lenses measure the distance to things in front of the boat. The images are also used to recognise what the objects are.\n\n05\nLiDAR\n\nMeasures the distance to docks, buoys, boats and other obstacles around the boat.\n\n06\nPixhawk flight controller\n\nControls the motors. It calculates the PWM signal that sets the speed of each propeller.\n\n07\n5G link\n\nSends all data from the boat to land, so we can follow its internal state while it sails.\n\n08\nWaterproof electronics case\n\nThe computer, power and wiring are kept dry inside one sealed case.\n\nAUTONOMY\nHow Argus finds its way\n\nFrom what the sensors see to the signal that turns the propellers, in the order it happens on board.\n\n01\nSEE\nStereo camera and LiDAR\n\nThe depth camera measures distance and recognises objects like buoys and boats. The LiDAR measures the distance to everything around the boat.\n\n02\nLOCATE\nKongsberg Seapath 130\n\nGNSS receivers give the position and heading. Gyroscopes and accelerometers fill in between the satellite fixes and keep the estimate going if the signal drops out. Correction data over 5G makes the position more accurate.\n\nSeapath 130 at Kongsberg\n03\nMAP\nCost map\n\nWhat the sensors find goes into a map of the water around the boat. Obstacles, and the water close to them, cost more to sail through.\n\n04\nDECIDE\nState machine\n\nKeeps track of what Argus is doing right now, for example following the course, going around another boat or docking, and switches when something changes.\n\n05\nPLAN\nField D*\n\nThe path planning algorithm finds the cheapest route across the cost map, and plans again when the map changes.\n\n06\nDRIVE\nPixhawk\n\nThe flight controller turns the plan into PWM signals for the four motors.\n\n5G to shore\n\nAll data from Argus is sent to land over 5G, so we can follow its internal state and get important information while it sails.\n\nTHE BUILD\nHow we built it\n\nThe build, from the first hull in the workshop to the first test in the harbour.\n\n16 NOVEMBER 2025\nShaping the hulls\n\nWork starts in the workshop. The first hull slowly takes shape.\n\n8 JANUARY 2026\nSanding and finishing\n\nLong days of sanding, filling and painting to make the hulls smooth and watertight.\n\n8 MARCH 2026\nFirst time on the water\n\nThe first float test in the harbour. Does it float? It does.\n\n19 APRIL 2026\nPutting it all together\n\nHulls, frame and electronics are joined together on the dock for the first time.\n\n26 APRIL 2026\nLaunch day\n\nArgus goes into the water with all sensors on board – ready for testing.\n\nBEHIND THE SCENES\nPhotos from the dock\nWiring the electronics on the dock\nLast checks before launch\nLowering Argus into the water\nWorking on the hull\nRolling Argus out to the harbour\nReady on the dock\nThe team behind Argus\nOUR GOALS\nOur goals\nGoal 01\nA fully autonomous boat\n\nBuild and test our first maritime platform that can navigate and do tasks on its own.\n\nGoal 02\nStronger partnerships\n\nWork closer with the Department of Engineering Cybernetics and our industry partners.\n\nGoal 03\nA base for the future\n\nLay the foundation for new projects in maritime autonomy, research and innovation.\n\nPROJECT ARGUS\nOpen the Argus interface\n\nOur GUI team built a web interface for following Argus while it sails. You can open it here.\n\nOpen the interface\nJoin Marinor\n\nA student organisation at NTNU in Trondheim that builds autonomous boats.\n\nmarinorntnu@gmail.com\nCopy\nHøgskoleringen 1\n7034 Trondheim\nInstagram\nLinkedIn\nMARINOR\nHome\nAbout us\nTeam\nCompetitions\nOUR WORK\nArgus\nProteus\nNjord Challenge\nRoboBoat\nGET INVOLVED\nJoin the crew\nSponsor us\nEmail us\n© 2026 Marinor NTNU\nOrg.nr. 936 064 809\nBack to top",
+  "imgs": [
+    {
+      "src": "https://framerusercontent.com/images/BO2urvxgz7PCfU3cj5LFakOZRKs.png?scale-down-to=512",
+      "alt": "",
+      "w": 352,
+      "h": 331,
+      "shownW": 56,
+      "shownH": 56
+    },
+    {
+      "src": "https://framerusercontent.com/images/7JK8ZyEUioMp7EwhkipkjxdPib0.png?scale-down-to=512",
+      "alt": "Marinor NTNU",
+      "w": 368,
+      "h": 56,
+      "shownW": 150,
+      "shownH": 39
+    },
+    {
+      "src": "https://framerusercontent.com/images/okoPvPfG1Mc7SjtWCqN6BRlnKQ.jpeg?scale-down-to=2048",
+      "alt": "Argus on the water in Trondheim harbour",
+      "w": 1440,
+      "h": 959,
+      "shownW": 1240,
+      "shownH": 829
+    },
+    {
+      "src": "https://framerusercontent.com/images/iD5n7P5PmXPXewIrUMJsfhii2rQ.jpeg?scale-down-to=2048",
+      "alt": "Argus in the water",
+      "w": 633,
+      "h": 422,
+      "shownW": 482,
+      "shownH": 468
+    },
+    {
+      "src": "https://framerusercontent.com/images/Xt3NToRpvd0fFTDvicZcgFlrjiE.jpeg?scale-down-to=2048",
+      "alt": "Working on the boat on the dock",
+      "w": 959,
+      "h": 1440,
+      "shownW": 301,
+      "shownH": 288
+    },
+    {
+      "src": "https://framerusercontent.com/images/wE8Fd622sKOX4zZ47Yd5LTp9oo.jpeg?scale-down-to=2048",
+      "alt": "Sensors mounted on the electronics case",
+      "w": 633,
+      "h": 422,
+      "shownW": 507,
+      "shownH": 640
+    },
+    {
+      "src": "https://framerusercontent.com/images/XCTH8UnFJpPlbZTWKyEdvdjsN1A.jpg?scale-down-to=2048",
+      "alt": "Working on the hull in the workshop",
+      "w": 633,
+      "h": 475,
+      "shownW": 584,
+      "shownH": 438
+    },
+    {
+      "src": "https://framerusercontent.com/images/sscihEc0vW6hGiMootkpCcppvtg.jpg?scale-down-to=1024",
+      "alt": "Sanding and finishing the hulls",
+      "w": 633,
+      "h": 475,
+      "shownW": 584,
+      "shownH": 438
+    },
+    {
+      "src": "https://framerusercontent.com/images/4TVFbItxOj73jH3lRTCoPsZy9z4.jpg?scale-down-to=2048",
+      "alt": "First float test in the harbour",
+      "w": 1440,
+      "h": 959,
+      "shownW": 584,
+      "shownH": 438
+    },
+    {
+      "src": "https://framerusercontent.com/images/Xt3NToRpvd0fFTDvicZcgFlrjiE.jpeg?scale-down-to=2048",
+      "alt": "Putting Argus together on the dock",
+      "w": 959,
+      "h": 1440,
+      "shownW": 584,
+      "shownH": 438
+    },
+    {
+      "src": "https://framerusercontent.com/images/iD5n7P5PmXPXewIrUMJsfhii2rQ.jpeg?scale-down-to=2048",
+      "alt": "Argus in the water on launch day",
+      "w": 633,
+      "h": 422,
+      "shownW": 584,
+      "shownH": 438
+    },
+    {
+      "src": "https://framerusercontent.com/images/4TVFbItxOj73jH3lRTCoPsZy9z4.jpg?scale-down-to=2048",
+      "alt": "Wiring the electronics on the dock",
+      "w": 1440,
+      "h": 959,
+      "shownW": 403,
+      "shownH": 503
+    },
+    {
+      "src": "https://framerusercontent.com/images/e4K2lW5CTwePm1UXtq3SxHSsjM.jpeg?scale-down-to=2048",
+      "alt": "Last checks before launch",
+      "w": 316,
+      "h": 475,
+      "shownW": 403,
+      "shownH": 302
+    },
+    {
+      "src": "https://framerusercontent.com/images/2E7XId6Dx1tZgYXAEGufUkarzk.jpeg?scale-down-to=512",
+      "alt": "Lowering Argus into the water",
+      "w": 475,
+      "h": 316,
+      "shownW": 403,
+      "shownH": 403
+    },
+    {
+      "src": "https://framerusercontent.com/images/8chMXzdhjcFqVfnM9pVnEK7Bis.jpeg?scale-down-to=512",
+      "alt": "Working on the hull",
+      "w": 316,
+      "h": 475,
+      "shownW": 403,
+      "shownH": 537
+    },
+    {
+      "src": "https://framerusercontent.com/images/wYxgqlESpg8tAsvJy8vgPrQSQGI.jpeg?scale-down-to=512",
+      "alt": "Rolling Argus out to the harbour",
+      "w": 316,
+      "h": 475,
+      "shownW": 403,
+      "shownH": 302
+    },
+    {
+      "src": "https://framerusercontent.com/images/xPkG7WlvZAhgtjCo7wtwrNjhzE.jpeg?scale-down-to=512",
+      "alt": "Ready on the dock",
+      "w": 316,
+      "h": 475,
+      "shownW": 403,
+      "shownH": 503
+    },
+    {
+      "src": "https://framerusercontent.com/images/vejpeUPaXWhQEjooH4OycbpXan8.webp?scale-down-to=512",
+      "alt": "The team behind Argus",
+      "w": 890,
+      "h": 581,
+      "shownW": 403,
+      "shownH": 252
+    },
+    {
+      "src": "https://framerusercontent.com/images/BO2urvxgz7PCfU3cj5LFakOZRKs.png?scale-down-to=512",
+      "alt": "",
+      "w": 352,
+      "h": 331,
+      "shownW": 62,
+      "shownH": 62
+    },
+    {
+      "src": "https://framerusercontent.com/images/7JK8ZyEUioMp7EwhkipkjxdPib0.png?scale-down-to=512",
+      "alt": "Marinor NTNU",
+      "w": 368,
+      "h": 56,
+      "shownW": 170,
+      "shownH": 44
+    }
+  ],
+  "bgs": [],
+  "anchors": [
+    {
+      "href": "/",
+      "abs": "https://marinorntnu.no/",
+      "text": "",
+      "newTab": false
+    },
+    {
+      "href": "/about",
+      "abs": "https://marinorntnu.no/about",
+      "text": "About us",
+      "newTab": false
+    },
+    {
+      "href": "/projects",
+      "abs": "https://marinorntnu.no/projects",
+      "text": "Projects",
+      "newTab": false
+    },
+    {
+      "href": "/team",
+      "abs": "https://marinorntnu.no/team",
+      "text": "Team",
+      "newTab": false
+    },
+    {
+      "href": "/competitions",
+      "abs": "https://marinorntnu.no/competitions",
+      "text": "Competitions",
+      "newTab": false
+    },
+    {
+      "href": "/want-to-spons-us",
+      "abs": "https://marinorntnu.no/want-to-spons-us",
+      "text": "Sponsor us",
+      "newTab": false
+    },
+    {
+      "href": "/join",
+      "abs": "https://marinorntnu.no/join",
+      "text": "Join Marinor",
+      "newTab": false
+    },
+    {
+      "href": "/join",
+      "abs": "https://marinorntnu.no/join",
+      "text": "Join",
+      "newTab": false
+    },
+    {
+      "href": "https://gui.marinorntnu.no",
+      "abs": "https://gui.marinorntnu.no/",
+      "text": "Open the interface",
+      "newTab": true
+    },
+    {
+      "href": "#argus-journey",
+      "abs": "https://marinorntnu.no/projects/argus#argus-journey",
+      "text": "See the build",
+      "newTab": false
+    },
+    {
+      "href": "https://www.kongsberg.com/what-we-do/ocean-space/inertial-solutions/seapath/seapath-130-series/",
+      "abs": "https://www.kongsberg.com/what-we-do/ocean-space/inertial-solutions/seapath/seapath-130-series/",
+      "text": "Seapath 130 at Kongsberg",
+      "newTab": true
+    },
+    {
+      "href": "https://gui.marinorntnu.no",
+      "abs": "https://gui.marinorntnu.no/",
+      "text": "Open the interface",
+      "newTab": true
+    },
+    {
+      "href": "/join",
+      "abs": "https://marinorntnu.no/join",
+      "text": "Join Marinor",
+      "newTab": false
+    },
+    {
+      "href": "/",
+      "abs": "https://marinorntnu.no/",
+      "text": "",
+      "newTab": false
+    },
+    {
+      "href": "mailto:marinorntnu@gmail.com",
+      "abs": "mailto:marinorntnu@gmail.com",
+      "text": "marinorntnu@gmail.com",
+      "newTab": false
+    },
+    {
+      "href": "https://www.google.com/maps/search/?api=1&query=H%C3%B8gskoleringen%201%2C%207034%20Trondheim",
+      "abs": "https://www.google.com/maps/search/?api=1&query=H%C3%B8gskoleringen%201%2C%207034%20Trondheim",
+      "text": "Høgskoleringen 1 7034 Trondheim",
+      "newTab": true
+    },
+    {
+      "href": "https://www.instagram.com/marinorntnu/",
+      "abs": "https://www.instagram.com/marinorntnu/",
+      "text": "Instagram",
+      "newTab": true
+    },
+    {
+      "href": "https://www.linkedin.com/company/marinor-ntnu",
+      "abs": "https://www.linkedin.com/company/marinor-ntnu",
+      "text": "LinkedIn",
+      "newTab": true
+    },
+    {
+      "href": "/",
+      "abs": "https://marinorntnu.no/",
+      "text": "Home",
+      "newTab": false
+    },
+    {
+      "href": "/about",
+      "abs": "https://marinorntnu.no/about",
+      "text": "About us",
+      "newTab": false
+    },
+    {
+      "href": "/team",
+      "abs": "https://marinorntnu.no/team",
+      "text": "Team",
+      "newTab": false
+    },
+    {
+      "href": "/competitions",
+      "abs": "https://marinorntnu.no/competitions",
+      "text": "Competitions",
+      "newTab": false
+    },
+    {
+      "href": "/projects/argus",
+      "abs": "https://marinorntnu.no/projects/argus",
+      "text": "Argus",
+      "newTab": false
+    },
+    {
+      "href": "/projects/proteus",
+      "abs": "https://marinorntnu.no/projects/proteus",
+      "text": "Proteus",
+      "newTab": false
+    },
+    {
+      "href": "/competitions/njord-challange",
+      "abs": "https://marinorntnu.no/competitions/njord-challange",
+      "text": "Njord Challenge",
+      "newTab": false
+    },
+    {
+      "href": "/competitions/roboat",
+      "abs": "https://marinorntnu.no/competitions/roboat",
+      "text": "RoboBoat",
+      "newTab": false
+    },
+    {
+      "href": "/join",
+      "abs": "https://marinorntnu.no/join",
+      "text": "Join the crew",
+      "newTab": false
+    },
+    {
+      "href": "/want-to-spons-us",
+      "abs": "https://marinorntnu.no/want-to-spons-us",
+      "text": "Sponsor us",
+      "newTab": false
+    },
+    {
+      "href": "mailto:marinorntnu@gmail.com",
+      "abs": "mailto:marinorntnu@gmail.com",
+      "text": "Email us",
+      "newTab": false
+    }
+  ],
+  "heads": [
+    "H1: Meet Argus",
+    "H2: About Argus",
+    "H2: What is on board",
+    "H3: Two hulls",
+    "H3: Four propellers",
+    "H3: Kongsberg Seapath 130",
+    "H3: Stereo depth camera",
+    "H3: LiDAR",
+    "H3: Pixhawk flight controller",
+    "H3: 5G link",
+    "H3: Waterproof electronics case",
+    "H2: How Argus finds its way",
+    "H3: Stereo camera and LiDAR",
+    "H3: Kongsberg Seapath 130",
+    "H3: Cost map",
+    "H3: State machine",
+    "H3: Field D*",
+    "H3: Pixhawk",
+    "H2: How we built it",
+    "H3: Shaping the hulls",
+    "H3: Sanding and finishing",
+    "H3: First time on the water",
+    "H3: Putting it all together",
+    "H3: Launch day",
+    "H2: Photos from the dock",
+    "H2: Our goals",
+    "H3: A fully autonomous boat",
+    "H3: Stronger partnerships",
+    "H3: A base for the future",
+    "H2: Open the Argus interface"
+  ],
+  "height": 10053
+}

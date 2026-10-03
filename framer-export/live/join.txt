@@ -1,0 +1,118 @@
+About us
+Projects
+Team
+Competitions
+Sponsor us
+Join Marinor
+MARINOR NTNU · RECRUITMENT
+Join Marinor.
+
+We build autonomous boats in Trondheim. All NTNU students can apply, and you do not need to know anything about boats.
+
+STATUS
+We are not recruiting right now
+
+We take in new members at set times. Follow us on Instagram, where we post when applications open.
+
+Follow us on Instagram
+Meet the team
+THE 2025 CREW
+SEVEN GROUPS
+Our groups.
+
+These are our seven groups. Have a look, so you know which one to apply for.
+
+01
+Perception
+
+LiDAR, cameras and the software that lets the boat understand what is around it.
+
+SENSORS
+COMPUTER VISION
+DATA
+02
+Autonomy
+
+Planning and decision making, so the boat finds a safe route on its own.
+
+PATH PLANNING
+ALGORITHMS
+SIMULATION
+03
+Control
+
+Steering and thrust. Keeps the boat on the planned path in wind and waves.
+
+CONTROL THEORY
+MODELLING
+TESTING
+04
+GUI
+
+The interface where we follow the boat, read its data and send it commands.
+
+WEB
+UX
+VISUALISATION
+05
+Hardware
+
+Hulls, frame, power and electronics. Everything the software runs on.
+
+ELECTRONICS
+CAD
+BUILDING
+06
+Economy
+
+Budget, sponsors and all the practical work that keeps the project running.
+
+BUDGET
+SPONSORS
+APPLICATIONS
+07
+PR
+
+Social media, photos, website and how we tell people what we are building.
+
+CONTENT
+DESIGN
+WEB
+What you get out of it.
+Hands-on vessel development
+
+You build and test real autonomous marine systems, not only theory on paper.
+
+Work across fields
+
+Robotics, automation and marine engineering in the same team, on the same boat.
+
+Meet the industry
+
+We work with academic departments and partners who follow what we do.
+
+A student organisation at NTNU in Trondheim that builds autonomous boats.
+
+marinorntnu@gmail.com
+Copy
+Høgskoleringen 1
+7034 Trondheim
+Instagram
+LinkedIn
+MARINOR
+Home
+About us
+Team
+Competitions
+OUR WORK
+Argus
+Proteus
+Njord Challenge
+RoboBoat
+GET INVOLVED
+Join the crew
+Sponsor us
+Email us
+© 2026 Marinor NTNU
+Org.nr. 936 064 809
+Back to top
