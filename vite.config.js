@@ -32,7 +32,7 @@ const PAGES = [
 export default defineConfig({
     plugins: [site({ imageManifest: JSON.parse(readFileSync(resolve(__dirname, "public/media/img/manifest.json"), "utf8")) })],
     build: {
-        target: "es2019",
+        target: "es2020", // es2020: the online mode's crypto (BigInt); every browser that runs the 3D has it
         chunkSizeWarningLimit: 900,
         rollupOptions: {
             input: Object.fromEntries(PAGES.filter((p) => existsSync(resolve(__dirname, p))).map((p) => [p.replace(/\/?index\.html$/, "") || "home", resolve(__dirname, p)])),

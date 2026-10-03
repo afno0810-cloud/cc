@@ -64,7 +64,10 @@ export async function startScene({ reduced = false } = {}) {
     document.body.prepend(canvas)
 
     const small = Math.min(innerWidth, innerHeight) < 700
-    const lowPower = small || (navigator.hardwareConcurrency || 8) <= 4
+    // a phone or a weak machine: judged by the screen itself, not the window, so the game in a frame
+    // on a big screen (the Framer site) still gets the sharp settings
+    const smallScreen = Math.min(screen.width || innerWidth, screen.height || innerHeight) < 700
+    const lowPower = smallScreen || (navigator.hardwareConcurrency || 8) <= 4
     let renderer
     try {
         renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: false, powerPreference: "high-performance" })
@@ -140,6 +143,7 @@ export async function startScene({ reduced = false } = {}) {
     let score = null
     let autopilot = null
     let gameMenu = null // the game page's title screen and pause menu
+    let online = null // the other players and their voices
     let postfx = null
     let birds = null
     let shoreLights = null
@@ -209,6 +213,9 @@ export async function startScene({ reduced = false } = {}) {
                     return out
                 },
             })
+            // online: everyone who plays is in the same harbour, with proximity voice chat
+            const { createOnline } = await import("./online.js")
+            online = createOnline({ scene, drive, camera, getModel: () => (model.children.length ? model : null) })
             if (gameMenu) gameMenu.refresh()
         }
         if (!reduced) {
@@ -597,7 +604,7 @@ export async function startScene({ reduced = false } = {}) {
     })
     if (document.body.hasAttribute("data-game")) {
         const { createGameMenu } = await import("./gamemenu.js")
-        gameMenu = createGameMenu({ drive, get: () => ({ missions, places, autopilot, score }) })
+        gameMenu = createGameMenu({ drive, get: () => ({ missions, places, autopilot, score, online }) })
     }
     for (const [mark, text, side] of LID_LABELS) {
         const el = document.createElement("span")
@@ -1082,6 +1089,7 @@ export async function startScene({ reduced = false } = {}) {
         if (autopilot) autopilot.update(t, dt)
         if (postfx) postfx.update(t, dt, { gain: 1 / Math.max(exposure, 0.5), show: !!(drive && drive.active), from: drive ? drive.pos : boat.position })
         if (score) score.update(t, dt, { inTask: !!(missions && missions.busy) })
+        if (online) online.update(t, dt, { gain: 1 / Math.max(exposure, 0.5) })
         spray.update(dt)
         spray.uniforms.uCol.value.copy(S.sunColor).multiplyScalar(Math.max(S.dir.y, 0) * 2.2).add(zenC).multiplyScalar(1.4)
         spray.uniforms.uProj.value = argus.points.uProj.value
@@ -1124,7 +1132,8 @@ export async function startScene({ reduced = false } = {}) {
         post.render(t)
     }
 
-    // keep it smooth: if frames get slow, render fewer pixels (never below 0.75)
+    // keep it smooth: if frames get really slow, render fewer pixels (never below 0.85 on a good machine,
+    // 0.75 on a weak one: fewer than that looks grainy)
     let fAcc = 0
     let fN = 0
     let fCool = 2
@@ -1136,8 +1145,9 @@ export async function startScene({ reduced = false } = {}) {
         const avg = fAcc / fN
         fAcc = fN = 0
         if (fCool-- > 0) return // let the page settle first
-        if (avg > 1 / 38 && dprNow > 0.76) {
-            dprNow = Math.max(0.75, dprNow * 0.82)
+        const floor = lowPower ? 0.75 : 0.85
+        if (avg > 1 / 32 && dprNow > floor + 0.01) {
+            dprNow = Math.max(floor, dprNow * 0.85)
             post.bloom.enabled = dprNow > 0.9 || !lowPower
             resize()
         } else if (avg < 1 / 57 && dprNow < dpr - 0.01) {
@@ -1295,6 +1305,9 @@ export async function startScene({ reduced = false } = {}) {
             },
             get autopilot() {
                 return autopilot
+            },
+            get online() {
+                return online
             },
             get birds() {
                 return birds

@@ -66,6 +66,10 @@ export function createGameMenu({ drive, get }) {
                 <button type="button" class="gm-row" data-set="time"><span class="gm-row-name">Time of day</span><span class="gm-val"><i aria-hidden="true">‹</i><b></b><i aria-hidden="true">›</i></span></button>
                 <button type="button" class="gm-row" data-set="weather"><span class="gm-row-name">Weather</span><span class="gm-val"><i aria-hidden="true">‹</i><b></b><i aria-hidden="true">›</i></span></button>
                 <button type="button" class="gm-row" data-set="sound"><span class="gm-row-name">Sound</span><span class="gm-val"><i aria-hidden="true">‹</i><b></b><i aria-hidden="true">›</i></span></button>
+                <span class="gm-view-head gm-view-sub">Online</span>
+                <button type="button" class="gm-row" data-set="online"><span class="gm-row-name">Online<small>Sail in the same harbour as everyone else</small></span><span class="gm-val"><i aria-hidden="true">‹</i><b></b><i aria-hidden="true">›</i></span></button>
+                <button type="button" class="gm-row" data-set="voice"><span class="gm-row-name">Proximity chat<small>Hear the boats close by</small></span><span class="gm-val"><i aria-hidden="true">‹</i><b></b><i aria-hidden="true">›</i></span></button>
+                <button type="button" class="gm-row" data-set="mic"><span class="gm-row-name">Microphone<small>Let the boats close by hear you · C</small></span><span class="gm-val"><i aria-hidden="true">‹</i><b></b><i aria-hidden="true">›</i></span></button>
                 <button type="button" class="gm-item gm-back" data-gm="back"><span class="gm-ico">${icon("back")}</span><span class="gm-txt"><b class="gm-label">Back</b></span><kbd>Esc</kbd></button>
             </div>
             <footer class="gm-foot"><span><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> choose</span><span><kbd>Enter</kbd> select</span><span class="gm-foot-esc"><kbd>Esc</kbd> <span class="gm-esc-text">back to the water</span></span></footer>
@@ -117,6 +121,22 @@ export function createGameMenu({ drive, get }) {
         settings.querySelector('[data-set="time"] b').textContent = drive.TIME_NAMES[drive.timeIndex]
         settings.querySelector('[data-set="weather"] b').textContent = drive.WEATHERS[drive.weatherIndex].name
         settings.querySelector('[data-set="sound"] b').textContent = drive.soundOn ? "On" : "Off"
+        const on = get().online
+        const row = (k, text, disabled) => {
+            const b = settings.querySelector(`[data-set="${k}"]`)
+            b.querySelector("b").textContent = text
+            b.disabled = !!disabled
+        }
+        row("online", !on ? "…" : on.enabled ? (on.status === "on" ? `On · ${on.count + 1}` : "On") : "Off", !on)
+        row("voice", !on ? "…" : on.hear ? "On" : "Off", !on || !on.enabled)
+        row("mic", !on ? "…" : on.mic ? "On" : "Off", !on || !on.enabled)
+    }
+    let onlineHooked = false
+    function hookOnline() {
+        const on = get().online
+        if (!on || onlineHooked) return
+        onlineHooked = true
+        on.onChange(() => isOpen() && el.dataset.view === "settings" && renderSettings())
     }
     // entries for the parts of the game that are not built yet wait
     function renderReady() {
@@ -134,7 +154,10 @@ export function createGameMenu({ drive, get }) {
         el.dataset.view = view
         side.scrollTop = 0
         escText.textContent = view === "settings" ? "back" : started ? "back to the water" : "start sailing"
-        if (view === "settings") renderSettings()
+        if (view === "settings") {
+            hookOnline()
+            renderSettings()
+        }
         const first = (view === "main" ? main : settings).querySelector("button:not([disabled])")
         if (first) first.focus({ preventScroll: true })
     }
@@ -187,6 +210,10 @@ export function createGameMenu({ drive, get }) {
         if (what === "time") drive.setTime(drive.timeIndex + dir)
         if (what === "weather") drive.setWeather(drive.weatherIndex + dir)
         if (what === "sound") drive.setSound(!drive.soundOn)
+        const on = get().online
+        if (on && what === "online") on.setEnabled(!on.enabled)
+        if (on && what === "voice") on.setHear(!on.hear)
+        if (on && what === "mic") on.setMic(!on.mic)
         drive.sfx && drive.sfx("click")
         renderSettings()
     }

@@ -76,6 +76,7 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
         orbit: false, // the camera swings round slowly (autopilot)
         menu: false, // the game menu is open: the camera stands back and keeps the boat to the right
         menuK: 0, // 0 … 1, eased
+        others: null, // the other players' boats online: [{ x, z, color }] (radar)
         outBlend: 0, // 1 → 0 after leaving, so the page camera takes over smoothly
     }
     const keys = new Set()
@@ -171,6 +172,7 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
                             <div><dt><kbd>T</kbd></dt><dd>Time of day</dd></div>
                             <div><dt><kbd>V</kbd></dt><dd>Weather</dd></div>
                             <div><dt><kbd>H</kbd></dt><dd>This list</dd></div>
+                            <div><dt><kbd>C</kbd></dt><dd>Your microphone on or off (online)</dd></div>
                             <div class="hk-esc"><dt><kbd>Esc</kbd></dt><dd>Leave the helm</dd></div>
                         </dl>
                     </section>
@@ -992,6 +994,22 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
             }
         }
         for (const b of buoys()) dot(b.x, b.z, b.kind === "port" ? "#ff5a4a" : b.kind === "stbd" ? "#45d07f" : b.kind === "info" ? "#c39cf0" : "#f2c230", b.kind === "info" ? 6 : 5)
+        // the other players online, in their own colours
+        // (a ring with a light middle, so they are not taken for a post or a buoy)
+        if (state.others)
+            for (const o of state.others) {
+                const [px, py] = toRadar(o.x, o.z)
+                if (px * px + py * py > R * R) continue
+                g.fillStyle = "#ffffff"
+                g.beginPath()
+                g.arc(px, py, 4, 0, Math.PI * 2)
+                g.fill()
+                g.strokeStyle = o.color
+                g.lineWidth = 3.5
+                g.beginPath()
+                g.arc(px, py, 8.5, 0, Math.PI * 2)
+                g.stroke()
+            }
         if (state.target) {
             const [px, py] = toRadar(state.target.x, state.target.z)
             const l = Math.hypot(px, py)

@@ -20,7 +20,8 @@ const GradeShader = {
         uExposure: { value: 1.0 },
         uRes: { value: new THREE.Vector2(1, 1) },
         uCA: { value: 0.00008 }, // a hint of colour fringing at the edges, not a red rim on every ridge
-        uGrain: { value: 0.03 },
+        uGrain: { value: 0.006 }, // only enough to hide banding in the sky (more looked grainy)
+        uSharp: { value: 0.35 }, // a light sharpening: crisp edges, also when fewer pixels are drawn
         uVig: { value: 0.4 },
         uFlash: { value: 0 },
         uDim: { value: 1 },
@@ -36,7 +37,7 @@ const GradeShader = {
     `,
     fragmentShader: /* glsl */ `
         uniform sampler2D tDiffuse; uniform float uTime; uniform float uExposure; uniform vec2 uRes;
-        uniform float uCA; uniform float uGrain; uniform float uVig; uniform float uFlash; uniform float uDim;
+        uniform float uCA; uniform float uGrain; uniform float uVig; uniform float uFlash; uniform float uDim; uniform float uSharp;
         uniform vec2 uSunPos; uniform vec3 uSunCol; uniform float uSunOn; uniform float uRays; uniform float uFlare;
         varying vec2 vUv;
 
@@ -68,6 +69,15 @@ const GradeShader = {
             c.r = texture2D(tDiffuse, vUv + off).r;
             c.g = texture2D(tDiffuse, vUv).g;
             c.b = texture2D(tDiffuse, vUv - off).b;
+            // sharpen: the pixel against its four neighbours, held within its own brightness
+            // (so bright edges like the sun on the water do not ring)
+            if (uSharp > 0.0) {
+                vec2 px1 = 1.0 / uRes;
+                vec3 nb = texture2D(tDiffuse, vUv + vec2(px1.x, 0.0)).rgb + texture2D(tDiffuse, vUv - vec2(px1.x, 0.0)).rgb
+                        + texture2D(tDiffuse, vUv + vec2(0.0, px1.y)).rgb + texture2D(tDiffuse, vUv - vec2(0.0, px1.y)).rgb;
+                vec3 sc = c + (c - nb * 0.25) * uSharp;
+                c = clamp(sc, c * 0.7, c * 1.35);
+            }
 
             float aspect = uRes.x / uRes.y;
             if (uSunOn > 0.0) {
