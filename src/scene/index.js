@@ -45,14 +45,14 @@ const ease = (t) => 1 - Math.pow(1 - clamp(t), 3)
 /* Where the parts are on the Argus model (model units, centred model, bow = +x).
    Printed by scripts/argus/build.mjs (the model is built from photos of the boat). a/e = camera angle and height that show the part. */
 export const PARTS = {
-    lidar: { label: "LiDAR", p: [-0.052, 0.342, 0.02], a: 0.7, e: 4.6 },
-    gnss: { label: "Seapath 130 · GNSS", p: [-0.416, 0.152, 0.296], a: 2.0, e: 3.2 },
-    camera: { label: "Stereo depth camera", p: [0.204, 0.186, 0.0], a: 0.25, e: 2.2 },
-    case: { label: "Electronics case", p: [0.008, 0.242, 0.152], a: 1.2, e: 3 },
-    hull: { label: "Two hulls", p: [0.224, 0.048, -0.424], a: -0.6, e: 1.6 },
-    props: { label: "Four propellers", p: [-0.368, -0.385, 0.296], a: 2.7, e: 0.9 },
-    pixhawk: { label: "Pixhawk", p: [0.08, 0.254, -0.02], a: -0.3, e: 5.5 },
-    link: { label: "5G link", p: [0.032, 0.246, -0.004], a: -1.8, e: 5 },
+    lidar: { label: "LiDAR", p: [-0.052, 0.35, 0.02], a: 0.7, e: 4.6 },
+    gnss: { label: "Seapath 130 · GNSS", p: [-0.416, 0.16, 0.296], a: 2.0, e: 3.2 },
+    camera: { label: "Stereo depth camera", p: [0.204, 0.194, 0.0], a: 0.25, e: 2.2 },
+    case: { label: "Electronics case", p: [0.008, 0.251, 0.152], a: 1.2, e: 3 },
+    hull: { label: "Two hulls", p: [0.224, 0.056, -0.424], a: -0.6, e: 1.6 },
+    props: { label: "Four propellers", p: [-0.368, -0.377, 0.296], a: 2.7, e: 0.9 },
+    pixhawk: { label: "Pixhawk", p: [0.08, 0.262, -0.02], a: -0.3, e: 5.5 },
+    link: { label: "5G link", p: [0.032, 0.254, -0.004], a: -1.8, e: 5 },
 }
 
 const emit = (name, detail) => window.dispatchEvent(new CustomEvent(name, { detail }))
@@ -230,7 +230,7 @@ export async function startScene({ reduced = false } = {}) {
     const model = argus.model
     model.scale.setScalar(SCALE)
     // waterline: a little below the middle of the hulls (the thrusters hang under the water)
-    model.position.y = 0.0882 * SCALE
+    model.position.y = 0.08 * SCALE
     boat.add(model)
 
     // soft round light for the navigation lights

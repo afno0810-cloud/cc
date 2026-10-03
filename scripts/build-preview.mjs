@@ -13,6 +13,7 @@
    ================================================================ */
 import { execSync } from "node:child_process"
 import fs from "node:fs"
+import { createHash } from "node:crypto"
 import path from "node:path"
 import { NodeIO } from "@gltf-transform/core"
 import { ALL_EXTENSIONS } from "@gltf-transform/extensions"
@@ -79,10 +80,25 @@ for (const [route, key] of Object.entries(ROUTES)) {
 const [links, modulesJson] = head.split("@@MODULES@@")
 const modules = JSON.parse(modulesJson).join("\n")
 
+// a stamp from the models' bytes on their address, so a browser never keeps an old model after a new build
+const modelStamp = (() => {
+    const h = createHash("sha1")
+    const dir = path.join("public", "media", "models")
+    const walk = (d) => {
+        for (const e of fs.readdirSync(d, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+            const f = path.join(d, e.name)
+            if (e.isDirectory()) walk(f)
+            else if (f.endsWith(".glb")) h.update(e.name).update(fs.readFileSync(f))
+        }
+    }
+    walk(dir)
+    return h.digest("hex").slice(0, 10)
+})()
+
 const boot = `<script>
 /* the 3D models come from JS modules here (see media/models/*.js) */
 window.__glbSource = function (name) {
-    return import("./media/models/" + name + ".js").then(function (m) {
+    return import("./media/models/" + name + ".js?v=${modelStamp}").then(function (m) {
         var s = atob(m.default)
         var b = new Uint8Array(s.length)
         for (var i = 0; i < s.length; i++) b[i] = s.charCodeAt(i)

@@ -67,9 +67,10 @@ if (loaderEl && document.documentElement.classList.contains("is-loading")) {
     window.__endLoader = finish
 } else if (loaderEl) loaderEl.remove()
 
-// ---------- smooth scroll (desktop with a mouse only) ----------
+// ---------- smooth scroll (desktop with a mouse only; not on the game page, which does not scroll,
+// so that in a frame on another page the wheel goes on to scroll that page) ----------
 let lenis = null
-if (!reduced && fine) {
+if (!reduced && fine && !document.body.hasAttribute("data-game")) {
     lenis = new Lenis({ lerp: 0.1, wheelMultiplier: 1 })
     const raf = (time) => {
         lenis.raf(time)

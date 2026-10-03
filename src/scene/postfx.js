@@ -441,10 +441,18 @@ export function createPostFx({ places, getArgusModel, lowPower = false }) {
         fan.rotation.x = -Math.PI / 2
         fan.position.y = 1.6
         g.add(fan)
+        // three buoys in light, lit up as the sweep passes them
         const targets = [0.7, 2.6, 4.4].map((a) => {
-            const b = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(2.2, 2.2, 2.2)), lineMat(0x7ff0c8, 0.2))
-            b.position.set(Math.cos(a) * 11, 1.1, -Math.sin(a) * 11)
+            const m = new THREE.MeshBasicMaterial({ color: 0x7ff0c8, transparent: true, opacity: 0.2, depthWrite: false, blending: THREE.AdditiveBlending })
+            const b = new THREE.Group()
+            const body = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.85, 1.6, 16), m)
+            body.position.y = 0.8
+            const top = new THREE.Mesh(new THREE.ConeGeometry(0.45, 0.8, 16), m)
+            top.position.y = 2.0
+            b.add(body, top)
+            b.position.set(Math.cos(a) * 11, 0, -Math.sin(a) * 11)
             b.userData.a = a
+            b.material = m
             g.add(b)
             return b
         })

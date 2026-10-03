@@ -7,7 +7,7 @@ import { CARDINALS } from "./taskart.js"
    describes it, from what the sensors see to the propellers:
    - what is around the boat (the quays, the boats, the buoys, the
      Otter) goes into a cost map of the water: blocked close to
-     things, dearer near them (shown as a grid on the water),
+     things, dearer near them (shown as a small map in the panel),
    - a planner finds the cheapest way across it (the line on the
      water) and plans again every moment, as things move,
    - a small state machine decides what to do now (follow the course,
@@ -262,21 +262,14 @@ export function createAutopilot({ scene, drive, missions, places, score, getColl
     }
 
     // ================= what you see =================
-    // the cost map: a grid of cells on the water round the boat
+    // the cost map: a small map in the panel (north up), not a grid on the water
     const MAP = 120 // units across
     const PX = 160
     const mapCanvas = document.createElement("canvas")
     mapCanvas.width = mapCanvas.height = PX
+    mapCanvas.className = "ha-map"
+    mapCanvas.setAttribute("aria-hidden", "true")
     const mapCtx = mapCanvas.getContext("2d")
-    const mapTex = new THREE.CanvasTexture(mapCanvas)
-    mapTex.magFilter = THREE.NearestFilter
-    mapTex.minFilter = THREE.LinearFilter
-    const mapMat = new THREE.MeshBasicMaterial({ map: mapTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.9 })
-    const mapMesh = new THREE.Mesh(new THREE.PlaneGeometry(MAP, MAP), mapMat)
-    mapMesh.rotation.x = -Math.PI / 2
-    mapMesh.renderOrder = 1
-    mapMesh.visible = false
-    group.add(mapMesh)
     const mapAt = { x: 0, z: 0 }
     function drawMap(cx, cz) {
         mapAt.x = cx
@@ -301,10 +294,14 @@ export function createAutopilot({ scene, drive, missions, places, score, getColl
                 else if (c > 1.05) {
                     const k = clamp((c - 1) / 8, 0, 1)
                     mapCtx.fillStyle = `rgba(${Math.round(150 + 105 * k)}, ${Math.round(110 + 40 * (1 - k))}, ${Math.round(240 - 180 * k)}, ${(0.18 + 0.5 * k) * fade})`
-                } else mapCtx.fillStyle = `rgba(110, 200, 255, ${0.025 * fade})`
+                } else mapCtx.fillStyle = `rgba(110, 200, 255, ${0.05 * fade})`
                 mapCtx.fillRect(px, py, step - 1, step - 1)
             }
-        mapTex.needsUpdate = true
+        // Argus in the middle
+        mapCtx.fillStyle = "#e8fdff"
+        mapCtx.beginPath()
+        mapCtx.arc(PX / 2, PX / 2, 3.2, 0, Math.PI * 2)
+        mapCtx.fill()
     }
     // the planned way: a bright dashed line on the water
     const PATH_N = 400
@@ -326,10 +323,13 @@ export function createAutopilot({ scene, drive, missions, places, score, getColl
         vertexShader: /* glsl */ `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
         fragmentShader: /* glsl */ `uniform float uTime; uniform float uGain; varying vec2 vUv;
             void main(){
+                // a soft line of light (no hard edges or blocks), with pulses running along it
                 float across = 1.0 - abs(vUv.y - 0.5) * 2.0;
-                float dash = step(0.4, fract(vUv.x * 0.25 - uTime * 1.2));
+                float core = across * across * across;
+                float flow = 0.5 + 0.5 * smoothstep(0.1, 0.9, 0.5 + 0.5 * sin(vUv.x * 0.8 - uTime * 6.0));
+                float ends = smoothstep(2.0, 12.0, vUv.x);
                 vec3 c = mix(vec3(0.35, 0.95, 1.0), vec3(0.75, 0.6, 1.0), clamp(vUv.x / 300.0, 0.0, 1.0));
-                gl_FragColor = vec4(c * across * (0.35 + 0.65 * dash) * uGain, 1.0);
+                gl_FragColor = vec4(c * core * flow * ends * 0.75 * uGain, 1.0);
             }`,
     })
     const pathMesh = new THREE.Mesh(pathGeo, pathMat)
@@ -371,15 +371,6 @@ export function createAutopilot({ scene, drive, missions, places, score, getColl
     goalMesh.rotation.x = -Math.PI / 2
     goalMesh.visible = false
     group.add(goalMesh)
-    // what the sensors see: a box round each thing close by
-    const boxGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(1, 1, 1))
-    const seen = []
-    for (let i = 0; i < 28; i++) {
-        const m = new THREE.LineSegments(boxGeo, new THREE.LineBasicMaterial({ color: 0x7ff0c8, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }))
-        m.visible = false
-        group.add(m)
-        seen.push(m)
-    }
 
     // ================= the HUD =================
     const hud = drive.hud
@@ -401,6 +392,7 @@ export function createAutopilot({ scene, drive, missions, places, score, getColl
         <ol class="ha-pipe">${PIPE.map((p) => `<li>${p}</li>`).join("")}</ol>
         <p class="ha-stats"></p>`
     hud.appendChild(box)
+    box.querySelector(".ha-pipe").after(mapCanvas)
     const stateEl = box.querySelector(".ha-state")
     const goalEl = box.querySelector(".ha-goal")
     const statsEl = box.querySelector(".ha-stats")
@@ -534,9 +526,7 @@ export function createAutopilot({ scene, drive, missions, places, score, getColl
         box.classList.remove("is-on")
         btn.classList.remove("is-on")
         layPath(null)
-        mapMesh.visible = false
         goalMesh.visible = false
-        for (const m of seen) m.visible = false
         if (msg) say(msg)
     }
     const placeGoal = (p) => {
@@ -877,7 +867,7 @@ export function createAutopilot({ scene, drive, missions, places, score, getColl
         for (let i = 0; i < pathSamples.length; i++) {
             const [x, z, sx, sz] = pathSamples[i]
             const y = waveHeight(x, z, t, 1) * 0.85 + 0.22
-            pathPos.set([x + sx * 0.7, y, z + sz * 0.7, x - sx * 0.7, y, z - sz * 0.7], i * 6)
+            pathPos.set([x + sx * 0.5, y, z + sz * 0.5, x - sx * 0.5, y, z - sz * 0.5], i * 6)
         }
         pathGeo.attributes.position.needsUpdate = true
         if (goal) {
@@ -885,32 +875,12 @@ export function createAutopilot({ scene, drive, missions, places, score, getColl
             goalMesh.position.set(goal.x, waveHeight(goal.x, goal.z, t, 1) * 0.85 + 0.3, goal.z)
             goalMesh.scale.setScalar(1 + 0.15 * Math.sin(t * 4))
         }
-        mapMesh.visible = !!grid
-        mapMesh.position.set(mapAt.x, 0.25, mapAt.z)
-        // boxes round what is close
+        // what the sensors see close by (counted for the panel; the LiDAR view shows them)
         let n = 0
         const near = 70
-        const show = (x, z, w, h, d, rot, col) => {
-            if (n >= seen.length) return
-            const m = seen[n++]
-            m.visible = true
-            m.position.set(x, h / 2, z)
-            m.rotation.set(0, rot, 0)
-            m.scale.set(w, h, d)
-            m.material.color.set(col)
-            m.material.opacity = 0.55 + 0.35 * Math.sin(t * 5 + x)
-        }
         for (const list of getColliders())
-            for (const b of list) {
-                if (Math.abs(b.x - p.x) > near || Math.abs(b.z - p.z) > near) continue
-                if (Math.hypot(b.x - p.x, b.z - p.z) > near) continue
-                show(b.x, b.z, b.hx * 2, Math.min(9, 2 + b.hx * 0.25), b.hz * 2, b.rot, 0xffb347)
-            }
-        for (const b of getBuoys()) {
-            if (Math.hypot(b.x - p.x, b.z - p.z) > near) continue
-            show(b.x, b.z, b.r * 2 + 1, 7, b.r * 2 + 1, 0, b.kind === "port" ? 0xff6a5a : b.kind === "stbd" ? 0x5ce08f : b.kind === "info" ? 0xc39cf0 : 0xf2c230)
-        }
-        for (let i = n; i < seen.length; i++) seen[i].visible = false
+            for (const b of list) if (Math.abs(b.x - p.x) < near && Math.abs(b.z - p.z) < near && Math.hypot(b.x - p.x, b.z - p.z) < near) n++
+        for (const b of getBuoys()) if (Math.hypot(b.x - p.x, b.z - p.z) < near) n++
 
         // ---- the panel ----
         stateEl.textContent = stateName

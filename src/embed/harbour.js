@@ -119,7 +119,7 @@ export function mountHarbour(el, options = {}) {
     const SCALE = 6.2
     const argus = createArgus({ renderer, lowPower, url: o.models + (lowPower ? "argus-lite.glb" : "argus.glb") })
     argus.model.scale.setScalar(SCALE)
-    argus.model.position.y = 0.0882 * SCALE
+    argus.model.position.y = 0.08 * SCALE
     boat.add(argus.model)
     let cut = o.scan && !reduced ? CUT_ALL_CLOUD : CUT_ALL_SOLID
     if (!(o.scan && !reduced)) argus.points.uAssemble.value = 1

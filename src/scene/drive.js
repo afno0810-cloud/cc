@@ -26,6 +26,31 @@ const RADAR_RANGE = 170
 const HALF_L = 3.1
 const HALF_W = 2.7
 
+// shown in a frame on another page (the game on the Framer site)
+const EMBEDDED = (() => {
+    try {
+        return window.self !== window.top
+    } catch (e) {
+        return true
+    }
+})()
+if (EMBEDDED) document.documentElement.classList.add("is-embedded")
+// in a frame that fills the screen (the site opens the game in full screen: ?full=1, or tells the frame later),
+// nothing round it to scroll: the wheel and a drag steer the camera, as on the game's own page
+let hostFull = /[?&]full=1\b/.test(location.search)
+addEventListener("message", (e) => {
+    if (EMBEDDED && e.source === window.parent && e.data && e.data.marinor === "full") hostFull = !!e.data.on
+})
+const scrollsHost = () => EMBEDDED && !hostFull
+// the page round the frame scrolls when asked (the Framer component listens for this)
+const scrollHost = (dy) => {
+    try {
+        window.parent.postMessage({ marinor: "scroll", dy }, "*")
+    } catch (e) {
+        /* nothing to scroll */
+    }
+}
+
 export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, colliders, buoys, spray, onPing, reduced }) {
     const state = {
         active: false,
@@ -81,6 +106,8 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
     hud.className = "drive-hud"
     hud.setAttribute("role", "dialog")
     hud.setAttribute("aria-label", "Drive Argus")
+    // the smooth scroll of the page leaves the wheel alone here, so the posts and menus scroll with a mouse or trackpad
+    hud.setAttribute("data-lenis-prevent", "")
     hud.innerHTML = `
         <div class="hud-look" aria-hidden="true"></div>
         <div class="hud-top">
@@ -96,7 +123,7 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
         <p class="hud-help"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrows to drive · <kbd>H</kbd> all the controls</p>
         <div class="hud-bottom">
             <div class="hud-left">
-            <button type="button" class="hud-btn hud-lid" data-hud="lid" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11h16v8H4z"/><path d="M4 11 7 4h13l-3 7"/></svg><span>Open lid</span> <kbd>L</kbd></button>
+            <button type="button" class="hud-btn hud-lid" data-hud="lid" aria-pressed="false" aria-label="Open lid"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11h16v8H4z"/><path d="M4 11 7 4h13l-3 7"/></svg><span>Open lid</span> <kbd>L</kbd></button>
             <div class="hud-gauges">
                 <div class="hud-gauge"><span>Throttle</span><i><b class="hud-thr"></b></i></div>
                 <canvas class="hud-compass" width="440" height="60" aria-hidden="true"></canvas>
@@ -133,7 +160,7 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
                             <div><dt><kbd>Space</kbd></dt><dd>LiDAR ping</dd></div>
                             <div><dt><kbd>L</kbd></dt><dd>Open the lid and look inside</dd></div>
                             <div><dt>Drag</dt><dd>Look around</dd></div>
-                            <div><dt>Scroll</dt><dd>Camera closer or further away</dd></div>
+                            <div><dt>${scrollsHost() ? "Ctrl + scroll" : "Scroll"}</dt><dd>Camera closer or further away</dd></div>
                         </dl>
                     </section>
                     <section class="hk-group">
@@ -211,6 +238,7 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
         state.lidOpen = on
         lidBtn.setAttribute("aria-pressed", on ? "true" : "false")
         lidBtn.querySelector("span").textContent = on ? "Close lid" : "Open lid"
+        lidBtn.setAttribute("aria-label", on ? "Close lid" : "Open lid")
         hud.classList.toggle("is-inspecting", on)
     }
     function showKeys(on) {
@@ -237,6 +265,13 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
     })
     look.addEventListener("pointermove", (e) => {
         if (!dragging) return
+        // in a frame, a finger moving up or down scrolls the page round it; sideways it still looks round
+        if (scrollsHost() && e.pointerType === "touch" && Math.abs(e.clientY - ly) > Math.abs(e.clientX - lx)) {
+            scrollHost(-(e.clientY - ly))
+            lx = e.clientX
+            ly = e.clientY
+            return
+        }
         camYaw -= (e.clientX - lx) * 0.006
         camPitch = clamp(camPitch + (e.clientY - ly) * 0.003, 0.08, 1.1)
         lx = e.clientX
@@ -249,9 +284,16 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
     }
     look.addEventListener("pointerup", endDrag)
     look.addEventListener("pointercancel", endDrag)
+    // in a frame on another page (the game on the Framer site), the wheel scrolls that page:
+    // the camera only zooms with Ctrl held (a pinch on a trackpad comes as that too)
     look.addEventListener(
         "wheel",
         (e) => {
+            if (scrollsHost() && !e.ctrlKey && !e.metaKey) {
+                e.preventDefault()
+                scrollHost(e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? innerHeight : 1))
+                return
+            }
             camDist = clamp(camDist * Math.exp(e.deltaY * 0.001), 10, 60)
             e.preventDefault()
         },
@@ -498,6 +540,9 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
         timeI = TIMES.reduce((best, v, i) => (Math.abs(v - state.sunElev) < Math.abs(TIMES[best] - state.sunElev) ? i : best), 0)
         camFrom.copy(camera.position)
         lookFrom.copy(b.pos)
+        // the game page opens on a wide view from high up behind the boat, and comes down to the helm
+        // (the page's own camera is right by the hull, and would swing through it)
+        if (document.body.hasAttribute("data-game")) camFrom.set(b.pos.x - Math.cos(b.heading) * 90, 46, b.pos.z + Math.sin(b.heading) * 90)
         inBlend = 0
         camYaw = 0
         savedScroll = scrollY
@@ -778,7 +823,7 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
         // with the menu open, look a little to the left of the boat, so it stands right of the menu
         wantLook.x += Math.sin(a) * dist * 0.24 * km
         wantLook.z += Math.cos(a) * dist * 0.24 * km
-        inBlend = Math.min(1, inBlend + dt * 0.8)
+        inBlend = Math.min(1, inBlend + dt * (document.body.hasAttribute("data-game") ? 0.5 : 0.8))
         const k = inBlend * inBlend * (3 - 2 * inBlend)
         if (inBlend < 1) {
             state.camPos.lerpVectors(camFrom, want, k)
@@ -833,7 +878,7 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
                 c.fillText(name, x, 40)
             }
         }
-        c.fillStyle = "#f2c230"
+        c.fillStyle = "#ffffff"
         c.fillRect(W / 2 - 1.5, 0, 3, 24)
         // places not yet visited: small violet marks on the tape
         if (state.pois && !state.target) {

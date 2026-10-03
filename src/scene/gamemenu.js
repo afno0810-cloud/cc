@@ -39,6 +39,11 @@ export function createGameMenu({ drive, get }) {
     el.className = "gm"
     el.setAttribute("role", "dialog")
     el.setAttribute("aria-label", "Game menu")
+    const tile = (it) => `<button type="button" class="gm-item gm-tile" data-gm="${it.id}">
+                        <span class="gm-ico">${icon(it.id)}</span>
+                        <span class="gm-txt"><b class="gm-label">${it.label}</b><small>${it.text}</small></span>
+                        ${it.key ? `<kbd>${it.key}</kbd>` : ""}
+                    </button>`
     el.innerHTML = `
         <div class="gm-veil" aria-hidden="true"></div>
         <div class="gm-side">
@@ -48,21 +53,22 @@ export function createGameMenu({ drive, get }) {
                 <p class="gm-sub">Take the helm of Argus, our autonomous boat, in the harbour in Trondheim.</p>
             </header>
             <nav class="gm-view gm-main" aria-label="Game menu">
-                ${ITEMS.map(
-                    (it, i) => `<button type="button" class="gm-item${i === 0 ? " is-primary" : ""}" data-gm="${it.id}">
-                        <span class="gm-ico">${icon(it.id)}</span>
-                        <span class="gm-txt"><b class="gm-label">${it.label}</b><small>${it.text}</small></span>
-                        ${it.key ? `<kbd>${it.key}</kbd>` : `<span class="gm-arrow" aria-hidden="true">${icon("back")}</span>`}
-                    </button>`
-                ).join("")}
+                <button type="button" class="gm-item is-primary" data-gm="play">
+                    <span class="gm-ico">${icon("play")}</span>
+                    <span class="gm-txt"><b class="gm-label">${ITEMS[0].label}</b><small>${ITEMS[0].text}</small></span>
+                    <kbd class="gm-enter">Enter</kbd>
+                </button>
+                <div class="gm-grid">${ITEMS.slice(1).map(tile).join("")}</div>
+                <p class="gm-mini" aria-hidden="true"><span><b data-mini="score">0</b> points</span><span><b data-mini="medals">0</b> of 5 medals</span><span><b data-mini="places">0</b> places</span></p>
             </nav>
             <div class="gm-view gm-settings" aria-label="Settings" hidden>
+                <span class="gm-view-head">Settings</span>
                 <button type="button" class="gm-row" data-set="time"><span class="gm-row-name">Time of day</span><span class="gm-val"><i aria-hidden="true">‹</i><b></b><i aria-hidden="true">›</i></span></button>
                 <button type="button" class="gm-row" data-set="weather"><span class="gm-row-name">Weather</span><span class="gm-val"><i aria-hidden="true">‹</i><b></b><i aria-hidden="true">›</i></span></button>
                 <button type="button" class="gm-row" data-set="sound"><span class="gm-row-name">Sound</span><span class="gm-val"><i aria-hidden="true">‹</i><b></b><i aria-hidden="true">›</i></span></button>
                 <button type="button" class="gm-item gm-back" data-gm="back"><span class="gm-ico">${icon("back")}</span><span class="gm-txt"><b class="gm-label">Back</b></span><kbd>Esc</kbd></button>
             </div>
-            <footer class="gm-foot"><span><kbd>↑</kbd><kbd>↓</kbd> choose</span><span><kbd>Enter</kbd> select</span><span class="gm-foot-esc"><kbd>Esc</kbd> <span class="gm-esc-text">back to the water</span></span></footer>
+            <footer class="gm-foot"><span><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> choose</span><span><kbd>Enter</kbd> select</span><span class="gm-foot-esc"><kbd>Esc</kbd> <span class="gm-esc-text">back to the water</span></span></footer>
         </div>
         <aside class="gm-stats" aria-label="Your harbour">
             <span class="gm-stats-head">Your harbour</span>
@@ -83,6 +89,7 @@ export function createGameMenu({ drive, get }) {
     menuBtn.addEventListener("click", () => open(true))
     drive.actions.appendChild(menuBtn)
 
+    const side = el.querySelector(".gm-side")
     const main = el.querySelector(".gm-main")
     const settings = el.querySelector(".gm-settings")
     const playLabel = el.querySelector('[data-gm="play"] .gm-label')
@@ -102,6 +109,9 @@ export function createGameMenu({ drive, get }) {
         el.querySelector('[data-stat="medals"]').textContent = missions ? missions.medals : 0
         el.querySelector('[data-stat="places"]').textContent = places ? places.visited.length : 0
         el.querySelector('[data-stat="places-of"]').textContent = places ? `of ${places.list.length} places visited` : "places visited"
+        el.querySelector('[data-mini="score"]').textContent = fmt(total)
+        el.querySelector('[data-mini="medals"]').textContent = missions ? missions.medals : 0
+        el.querySelector('[data-mini="places"]').textContent = places ? `${places.visited.length}/${places.list.length}` : 0
     }
     function renderSettings() {
         settings.querySelector('[data-set="time"] b').textContent = drive.TIME_NAMES[drive.timeIndex]
@@ -122,6 +132,7 @@ export function createGameMenu({ drive, get }) {
         main.hidden = view !== "main"
         settings.hidden = view !== "settings"
         el.dataset.view = view
+        side.scrollTop = 0
         escText.textContent = view === "settings" ? "back" : started ? "back to the water" : "start sailing"
         if (view === "settings") renderSettings()
         const first = (view === "main" ? main : settings).querySelector("button:not([disabled])")

@@ -5,6 +5,8 @@
 // so every post in the game can open the right page here.
 // Request: "kan du lage en game menu til spillet og gjøre det bedre så det generelt ser mere ferdig ut" –
 // the title card here, and the game menu inside the game (src/scene/gamemenu.js).
+// Request: "passe på at all implementering av spillet på nettisden blir bra" – in a section of a page, the
+// wheel and a vertical swipe over the game scroll the page (the game forwards them, see src/scene/drive.js).
 import * as React from "react"
 import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { addPropertyControls, ControlType, useIsStaticRenderer } from "framer"
@@ -129,7 +131,14 @@ export default function MarinorGame(props: MarinorGameProps) {
         if (isStatic || typeof window === "undefined") return
         const ok = new Set(Object.values(SITE_PAGES))
         const onMessage = (e: MessageEvent) => {
-            if (e.origin !== GAME_ORIGIN || !e.data || e.data.type !== "marinor:navigate") return
+            if (e.origin !== GAME_ORIGIN || !e.data) return
+            // the wheel and a finger moving up or down over the game scroll this page (the game sends them here)
+            if (e.data.marinor === "scroll") {
+                const dy = Number(e.data.dy)
+                if (frame.current && e.source === frame.current.contentWindow && isFinite(dy)) window.scrollBy({ top: Math.max(-800, Math.min(800, dy)), left: 0 })
+                return
+            }
+            if (e.data.type !== "marinor:navigate") return
             const path = String(e.data.path || "")
             if (!ok.has(path)) return
             try {

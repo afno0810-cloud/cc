@@ -589,8 +589,23 @@ export function createPlaces({ scene, props, drive, missions }) {
     }
     const groupOf = (p) => GROUPS.find((q) => q.id === p.group)
 
-    // ---- the posts, their signs and a ring on the water around each ----
-    const ringGeo = new THREE.RingGeometry(NEAR - 0.7, NEAR, 96, 1)
+    // ---- the posts, their signs and a soft glow on the water around each ----
+    const ringGeo = new THREE.CircleGeometry(NEAR, 48)
+    const glowTex = (() => {
+        // light in a soft band round the post, nothing under it, no hard edge
+        const c = document.createElement("canvas")
+        c.width = c.height = 128
+        const g = c.getContext("2d")
+        const grd = g.createRadialGradient(64, 64, 0, 64, 64, 64)
+        grd.addColorStop(0, "rgba(255,255,255,0)")
+        grd.addColorStop(0.18, "rgba(255,255,255,0.15)")
+        grd.addColorStop(0.42, "rgba(255,255,255,0.55)")
+        grd.addColorStop(0.7, "rgba(255,255,255,0.2)")
+        grd.addColorStop(1, "rgba(255,255,255,0)")
+        g.fillStyle = grd
+        g.fillRect(0, 0, 128, 128)
+        return new THREE.CanvasTexture(c)
+    })()
     const items = PLACES.map((p) => {
         const gr = groupOf(p)
         const col = new THREE.Color(gr.color)
@@ -601,7 +616,7 @@ export function createPlaces({ scene, props, drive, missions }) {
         const sign = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthWrite: false, fog: false }))
         sign.renderOrder = 2
         group.add(sign)
-        const ring = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: col, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }))
+        const ring = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: col, map: glowTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }))
         ring.rotation.x = -Math.PI / 2
         group.add(ring)
         const members = PLACES.filter((q) => q.group === p.group)
@@ -916,7 +931,7 @@ export function createPlaces({ scene, props, drive, missions }) {
             // close by, the card says it all: the sign and the ring step back (and do not fill the view)
             const dd = Math.hypot(drive.pos.x - p.item.x, drive.pos.z - p.item.z)
             const ringK = THREE.MathUtils.smoothstep(dd, NEAR - 1, NEAR + 14)
-            p.ring.material.color.copy(p.col).multiplyScalar(gain * (done ? 0.1 : 0.2 + 0.18 * pulse) * (busy ? 0.3 : 1) * ringK)
+            p.ring.material.color.copy(p.col).multiplyScalar(gain * (done ? 0.14 : 0.34 + 0.24 * pulse) * (busy ? 0.3 : 1) * ringK)
             p.ring.visible = ringK > 0.01
             p.sign.material.opacity = (busy ? 0.35 : 1) * THREE.MathUtils.smoothstep(dd, p.photo ? 22 : 16, p.photo ? 44 : 38) * (1 - THREE.MathUtils.smoothstep(dd, 420, 600))
             p.sign.visible = p.sign.material.opacity > 0.01

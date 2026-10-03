@@ -1003,10 +1003,13 @@ export function createBoats({ props, lowPower = false }) {
         vertexShader: /* glsl */ `varying vec2 vP; void main(){ vP = position.xy; gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(position, 1.0); }`,
         fragmentShader: /* glsl */ `uniform float uLight; uniform float uTime; varying vec2 vP;
             void main(){
+                // foam where the buoy meets the water: thick by it, breaking up and thinning out away from it
                 float r = length(vP);
-                float ring = smoothstep(0.55, 0.8, r) * (1.0 - smoothstep(0.8, 1.0, r));
-                float n = 0.6 + 0.4 * sin(atan(vP.y, vP.x) * 9.0 + uTime * 1.7) * sin(r * 20.0 - uTime * 2.0);
-                gl_FragColor = vec4(vec3(0.93, 0.96, 0.98) * uLight, ring * n * 0.55);
+                float a = atan(vP.y, vP.x);
+                float band = smoothstep(0.3, 0.5, r) * (1.0 - smoothstep(0.55, 1.0, r));
+                float n = 0.5 + 0.5 * sin(a * 7.0 + uTime * 1.3 + sin(r * 9.0 - uTime)) * sin(a * 13.0 - uTime * 0.9 + r * 6.0);
+                float lace = smoothstep(0.35, 0.75, n + (0.6 - r) * 0.6);
+                gl_FragColor = vec4(vec3(0.93, 0.96, 0.98) * uLight, band * lace * 0.42);
             }`,
     })
     const collars = new THREE.InstancedMesh(new THREE.CircleGeometry(1, 40), collarMat, COLLARS)
