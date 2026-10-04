@@ -4064,6 +4064,8 @@ body[data-game] .menu {
 }
 
 /* ---- the game menu (the game page): title screen and pause menu, src/scene/gamemenu.js ---- */
+/* the game page: the menu takes the place of Exit (there is no page to go back to) */
+.drive-hud.has-gm .hud-exit,
 .drive-hud.has-gm [data-hud="time"],
 .drive-hud.has-gm [data-hud="weather"],
 .drive-hud.has-gm [data-hud="sound"] {
@@ -4473,5 +4475,461 @@ body[data-game] .menu {
     .gm.is-on .gm-side > *,
     .gm-stats {
         animation: none;
+    }
+}
+
+/* ================================================================
+   The game on phones and tablets (request: "fiks spillet så det er
+   optimalisert bedre for mobil, phone og tablet")
+   · touch buttons for the LiDAR ping and boost (hold), above the radar
+   · the controls panel shows the touch controls on a touch screen
+   · phones held sideways: a compact HUD, the title menu in two columns,
+     and the panels and cards use the full height
+   ================================================================ */
+.hud-tbtns {
+    display: none;
+    position: absolute;
+    z-index: 2;
+    right: var(--gut);
+    bottom: calc(var(--radar, 180px) + 32px + env(safe-area-inset-bottom, 0px));
+    grid-template-columns: repeat(2, auto);
+    gap: 10px;
+    pointer-events: none;
+}
+.hud-tbtn {
+    pointer-events: auto;
+    display: grid;
+    place-items: center;
+    align-content: center;
+    gap: 2px;
+    width: 58px;
+    height: 58px;
+    padding: 0;
+    border-radius: 50%;
+    border: 1px solid rgba(var(--ink-rgb), 0.3);
+    background: rgba(var(--paper-rgb), 0.5);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: #e8eef8;
+    font: 600 10px/1 var(--mono);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+    cursor: pointer;
+}
+.hud-tbtn svg {
+    width: 20px;
+    height: 20px;
+}
+.hud-tbtn:active,
+.hud-boost.is-held {
+    border-color: rgba(242, 194, 48, 0.85);
+    background: rgba(242, 194, 48, 0.28);
+    color: #f2c230;
+}
+.hk-touchset {
+    display: none;
+}
+@media (hover: none), (pointer: coarse) {
+    .hud-tbtns {
+        display: grid;
+    }
+    .drive-hud.is-inspecting .hud-tbtns {
+        display: none;
+    }
+    /* the controls panel: what you have on a touch screen, not the keyboard */
+    .hk-body,
+    .hk-touch {
+        display: none;
+    }
+    .hk-touchset {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 4px 24px;
+    }
+    /* the name of the control over what it does: it reads well in narrow columns too */
+    .hk-touchset .hk-list div {
+        grid-template-columns: 1fr;
+        gap: 3px;
+        padding: 8px 0;
+    }
+    .hk-touchset .hk-list dt {
+        font: 600 13px/1.2 var(--body);
+        color: #f2c230;
+    }
+    .hk-touchset .hk-list dd {
+        font-size: 13.5px;
+        color: rgba(232, 238, 248, 0.82);
+    }
+    .hud-btn,
+    .hud-tbtn,
+    .hud-stick,
+    .hud-look {
+        -webkit-user-select: none;
+        user-select: none;
+        -webkit-touch-callout: none;
+    }
+}
+@media (max-width: 640px) {
+    .drive-hud {
+        --radar: 124px;
+    }
+    .hud-tbtn {
+        width: 52px;
+        height: 52px;
+    }
+    .hud-tbtns {
+        gap: 8px;
+    }
+}
+
+/* phones held sideways (and small windows): little height, so everything is smaller and the panels use all of it */
+@media (max-height: 520px) and (orientation: landscape) {
+    .drive-hud {
+        --radar: 108px;
+        padding-top: calc(10px + env(safe-area-inset-top, 0px));
+        padding-left: max(var(--gut), env(safe-area-inset-left, 0px));
+        padding-right: max(var(--gut), env(safe-area-inset-right, 0px));
+    }
+    .hud-top {
+        gap: 6px;
+        flex-wrap: nowrap;
+    }
+    .hud-tag {
+        padding: 7px 10px;
+        font-size: 10.5px;
+    }
+    .hud-actions {
+        flex-wrap: nowrap;
+        gap: 6px;
+        margin-left: auto;
+    }
+    .hud-btn {
+        height: 32px;
+        padding: 0 10px;
+        font-size: 12px;
+        border-radius: 9px;
+    }
+    .hud-score {
+        padding: 5px 9px;
+    }
+    .hud-score .hs-lv {
+        display: none;
+    }
+    .hud-bottom {
+        bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+        left: max(var(--gut), env(safe-area-inset-left, 0px));
+        right: max(var(--gut), env(safe-area-inset-right, 0px));
+        /* the radar stays on the right (the lid and the compass are in the middle, the stick on the left) */
+        justify-content: flex-end;
+    }
+    .hud-radar-wrap {
+        width: var(--radar);
+        height: var(--radar);
+    }
+    .hud-radar-wrap span {
+        top: 7px;
+        font-size: 8.5px;
+    }
+    /* the lid button and the compass go in the middle, between the stick and the radar */
+    .hud-left {
+        position: absolute;
+        left: 50%;
+        bottom: 0;
+        transform: translateX(-50%);
+        justify-items: center;
+        gap: 6px;
+    }
+    .hud-gauges {
+        padding: 8px 12px 6px;
+        gap: 6px;
+    }
+    .hud-gauge {
+        display: none;
+    }
+    .hud-compass {
+        width: 160px;
+        height: 22px;
+    }
+    .hud-stick {
+        left: max(calc(var(--gut) + 4px), env(safe-area-inset-left, 0px));
+        bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+        width: 104px;
+        height: 104px;
+    }
+    .hud-stick i {
+        width: 46px;
+        height: 46px;
+        margin: -23px 0 0 -23px;
+    }
+    .hud-tbtns {
+        grid-template-columns: repeat(4, auto);
+        gap: 6px;
+        bottom: calc(var(--radar) + 16px + env(safe-area-inset-bottom, 0px));
+    }
+    .hud-tbtn {
+        width: 46px;
+        height: 46px;
+        font-size: 8.5px;
+    }
+    .hud-tbtn svg {
+        width: 17px;
+        height: 17px;
+    }
+    /* panels and cards: from under the buttons to the bottom */
+    .hud-keys,
+    .hud-missions,
+    .hud-result,
+    .hud-autom {
+        top: calc(var(--hud-top, 54px) + 6px);
+        bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+        max-height: none;
+        transform: translate(-50%, 8px);
+        width: min(620px, calc(100% - 2 * var(--gut)));
+        padding: 16px 18px;
+    }
+    .hud-keys.is-on,
+    .hud-missions.is-on,
+    .hud-result.is-on,
+    .hud-autom.is-on {
+        transform: translate(-50%, 0);
+    }
+    .hud-place {
+        left: auto;
+        right: max(var(--gut), env(safe-area-inset-right, 0px));
+        top: calc(var(--hud-top, 54px) + 6px);
+        bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+        width: min(380px, 52%);
+        max-height: none;
+        min-height: 0;
+        transform: translateX(16px);
+        padding: 14px 16px;
+    }
+    .hud-place.is-on {
+        transform: none;
+    }
+    .hpl-img {
+        display: none;
+    }
+    .hud-place h2 {
+        font-size: 20px;
+    }
+    .hk-head {
+        margin-bottom: 8px;
+    }
+    .hk-head h2 {
+        font-size: 22px;
+    }
+    /* the title menu: the name on the left, the choices on the right in two columns */
+    .gm-side {
+        left: max(var(--gut), env(safe-area-inset-left, 0px));
+        width: calc(100% - 2 * max(var(--gut), env(safe-area-inset-left, 0px)));
+        display: grid;
+        grid-template-columns: minmax(0, 0.7fr) minmax(0, 1.3fr);
+        align-content: center;
+        align-items: center;
+        gap: 10px 28px;
+        padding-top: calc(12px + env(safe-area-inset-top, 0px));
+        padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    }
+    .gm-side > :first-child,
+    .gm-side > :last-child {
+        margin: 0;
+    }
+    .gm-title,
+    .gm:not(.is-title) .gm-title {
+        font-size: clamp(36px, 12vh, 54px);
+    }
+    .gm-sub,
+    .gm-foot {
+        display: none;
+    }
+    .gm-main {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 4px 8px;
+        margin-left: 0;
+    }
+    .gm-main .is-primary {
+        grid-column: 1 / -1;
+        margin-bottom: 2px;
+    }
+    .gm-item {
+        grid-template-columns: 32px minmax(0, 1fr) auto;
+        gap: 10px;
+        padding: 6px 10px 6px 8px;
+    }
+    .gm-ico {
+        width: 32px;
+        height: 32px;
+        border-radius: 9px;
+    }
+    .gm-ico svg {
+        width: 17px;
+        height: 17px;
+    }
+    .gm-label {
+        font-size: 16px;
+    }
+    .gm-item.is-primary .gm-label {
+        font-size: 20px;
+    }
+    .gm-item.is-primary {
+        padding-top: 8px;
+        padding-bottom: 8px;
+    }
+    .gm-row {
+        min-height: 44px;
+    }
+    .gm-veil {
+        background: linear-gradient(90deg, rgba(7, 6, 13, 0.92) 0%, rgba(7, 6, 13, 0.8) 55%, rgba(7, 6, 13, 0.55) 100%);
+    }
+}
+@media (max-height: 520px) and (max-width: 760px) and (orientation: landscape) {
+    .hud-top > .hud-tag {
+        display: none;
+    }
+}
+/* a phone held upright: the name tag goes (the game is called Drive Argus anyway), so the buttons fit in two rows */
+@media (max-width: 640px) {
+    .hud-top > .hud-tag {
+        display: none;
+    }
+    .hud-top {
+        gap: 8px;
+    }
+    .hud-actions {
+        gap: 6px;
+    }
+}
+@media (max-height: 520px) and (orientation: landscape) {
+    /* the autopilot box: small, under the buttons, clear of the stick */
+    .hud-auto {
+        top: calc(var(--hud-top, 54px) + 8px);
+        bottom: auto;
+        left: max(var(--gut), env(safe-area-inset-left, 0px));
+        right: auto;
+        width: min(250px, 34%);
+        padding: 9px 12px;
+    }
+    .ha-pipe,
+    .ha-stats {
+        display: none;
+    }
+    .hud-mission {
+        top: calc(var(--hud-top, 54px) + 8px);
+    }
+    .hud-flash.is-count {
+        font-size: 56px;
+    }
+}
+/* tablets: room enough at the bottom, so the touch buttons sit in a row beside the radar (clear of the cards) */
+@media (hover: none) and (min-width: 641px) and (min-height: 521px), (pointer: coarse) and (min-width: 641px) and (min-height: 521px) {
+    .hud-tbtns {
+        right: calc(var(--gut) + 180px + 18px);
+        bottom: calc(18px + 27px + env(safe-area-inset-bottom, 0px));
+    }
+}
+@media (hover: none) and (min-width: 900px) and (min-height: 521px), (pointer: coarse) and (min-width: 900px) and (min-height: 521px) {
+    .hud-tbtns {
+        grid-template-columns: repeat(4, auto);
+        bottom: calc(18px + 61px + env(safe-area-inset-bottom, 0px));
+    }
+}
+
+/* the game in a small upright box (the 3:4 game window on the Framer pages on a phone): the controls smaller and lower */
+@media (max-height: 640px) and (orientation: portrait) {
+    .drive-hud {
+        --radar: 96px;
+        padding-top: calc(10px + env(safe-area-inset-top, 0px));
+    }
+    .hud-btn {
+        height: 32px;
+        padding: 0 9px;
+        font-size: 12px;
+    }
+    .hud-bottom {
+        bottom: 10px;
+    }
+    .hud-radar-wrap {
+        width: var(--radar);
+        height: var(--radar);
+    }
+    .hud-radar-wrap span {
+        top: 6px;
+        font-size: 8px;
+    }
+    .hud-gauge {
+        display: none;
+    }
+    .hud-gauges {
+        padding: 7px 10px 5px;
+    }
+    .hud-compass {
+        width: 130px;
+        height: 18px;
+    }
+    .hud-stick {
+        bottom: 104px;
+        width: 92px;
+        height: 92px;
+    }
+    .hud-stick i {
+        width: 40px;
+        height: 40px;
+        margin: -20px 0 0 -20px;
+    }
+    .hud-tbtns {
+        bottom: calc(var(--radar) + 18px);
+        gap: 6px;
+    }
+    .hud-tbtn {
+        width: 42px;
+        height: 42px;
+        font-size: 8px;
+    }
+    .hud-tbtn svg {
+        width: 16px;
+        height: 16px;
+    }
+    .hud-place {
+        top: calc(var(--hud-top, 90px) + 8px);
+        max-height: calc(100% - var(--hud-top, 90px) - 8px - 210px);
+        min-height: 120px;
+    }
+    .hpl-img {
+        display: none;
+    }
+    .hud-keys,
+    .hud-missions,
+    .hud-result {
+        max-height: calc(100% - var(--hud-top, 90px) - 24px);
+        top: calc(var(--hud-top, 90px) + 8px);
+        transform: translate(-50%, 8px);
+        padding: 16px;
+    }
+    .hud-keys.is-on,
+    .hud-missions.is-on,
+    .hud-result.is-on {
+        transform: translate(-50%, 0);
+    }
+    .gm-title {
+        font-size: 44px;
+    }
+}
+/* the buttons at the top never break their words over two lines; mid-size screens get the short names */
+.hud-btn {
+    white-space: nowrap;
+}
+@media (max-width: 900px) {
+    .hud-btn .hb-long {
+        display: none;
+    }
+    .hud-btn .hb-short {
+        display: inline;
     }
 }

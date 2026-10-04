@@ -5,6 +5,10 @@
 // so every post in the game can open the right page here.
 // Request: "kan du lage en game menu til spillet og gjøre det bedre så det generelt ser mere ferdig ut" –
 // the title card here, and the game menu inside the game (src/scene/gamemenu.js).
+// Request: "når du prøver og trykke deg inn på nettsiden fra en post i spillet funker det ikke" – a post in the
+// game asks this page (postMessage) to open one of the site's pages, and this page goes there.
+// Request: "fiks spillet så det er optimalisert bedre for mobil, phone og tablet" – the game is never taller
+// than the visible screen (100dvh), so the stick and the radar are not hidden behind a phone's browser bar.
 import * as React from "react"
 import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { addPropertyControls, ControlType, useIsStaticRenderer } from "framer"
@@ -46,7 +50,8 @@ const FACTS = [
 /* The title card: sized by both the width and the height of the component, so it
  always fits; the same type, colours and buttons as the rest of the site */
 const CSS = `
-.mg-root{container-type:inline-size}
+/* never taller than the part of the screen you can see (on a phone the browser's bars cover the rest of 100vh) */
+.mg-root{container-type:inline-size;height:100%;height:min(100%,100dvh)}
 .mg-card{position:absolute;inset:0;display:flex;align-items:center;padding:0 clamp(24px,7cqi,96px);color:#fff;text-align:left;container-type:size}
 .mg-shade{position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,rgba(9,7,16,.92) 0%,rgba(9,7,16,.74) 32%,rgba(9,7,16,.18) 62%,rgba(9,7,16,0) 80%),linear-gradient(0deg,rgba(9,7,16,.6) 0%,rgba(9,7,16,0) 30%),radial-gradient(60% 80% at 10% 50%,rgba(124,70,156,.35) 0%,rgba(124,70,156,0) 70%)}
 .mg-in{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:clamp(14px,3.2cqh,28px);max-width:min(540px,92cqi)}
@@ -73,6 +78,7 @@ const CSS = `
 @keyframes mg-spin{to{transform:rotate(360deg)}}
 @container (max-width:620px){.mg-card{align-items:flex-end;padding-bottom:28px}.mg-shade{background:linear-gradient(0deg,rgba(9,7,16,.95) 0%,rgba(9,7,16,.72) 50%,rgba(9,7,16,.15) 100%)}.mg-keys{display:none}.mg-fact{padding:0 14px}}
 @container (max-height:520px){.mg-sub{display:none}.mg-keys{display:none}}
+@media (pointer:coarse){.mg-keys{display:none}}
 @media (prefers-reduced-motion:reduce){.mg-load i{animation:none}}
 `
 
@@ -166,7 +172,6 @@ export default function MarinorGame(props: MarinorGameProps) {
                 ...style,
                 position: "relative",
                 width: "100%",
-                height: "100%",
                 overflow: "hidden",
                 borderRadius: full ? 0 : radius,
                 background: "#09070f",

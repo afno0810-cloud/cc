@@ -50,12 +50,21 @@ export const PARTS = {
     camera: { label: "Stereo depth camera", p: [0.204, 0.186, 0.0], a: 0.25, e: 2.2 },
     case: { label: "Electronics case", p: [0.008, 0.242, 0.152], a: 1.2, e: 3 },
     hull: { label: "Two hulls", p: [0.224, 0.048, -0.424], a: -0.6, e: 1.6 },
-    props: { label: "Four propellers", p: [-0.368, -0.385, 0.296], a: 2.7, e: 0.9 },
+    props: { label: "Four propellers", p: [-0.368, -0.386, 0.296], a: 2.7, e: 0.9 },
     pixhawk: { label: "Pixhawk", p: [0.08, 0.254, -0.02], a: -0.3, e: 5.5 },
     link: { label: "5G link", p: [0.032, 0.246, -0.004], a: -1.8, e: 5 },
 }
 
 const emit = (name, detail) => window.dispatchEvent(new CustomEvent(name, { detail }))
+
+// phones, tablets and slow machines get the lighter version of everything (fewer pixels, smaller
+// shadow and reflection buffers): a touch screen as the main pointer means a phone or a tablet,
+// whose graphics memory is small and shared, even when the screen is big (an iPad)
+function lowPowerGuess() {
+    const small = Math.min(innerWidth, innerHeight) < 700
+    const touch = typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches
+    return small || touch || (navigator.hardwareConcurrency || 8) <= 4 || (navigator.deviceMemory || 8) <= 4
+}
 
 export async function startScene({ reduced = false } = {}) {
     const canvas = document.createElement("canvas")
@@ -64,15 +73,34 @@ export async function startScene({ reduced = false } = {}) {
     document.body.prepend(canvas)
 
     const small = Math.min(innerWidth, innerHeight) < 700
-    const lowPower = small || (navigator.hardwareConcurrency || 8) <= 4
+    const lowPower = lowPowerGuess()
+    const isGame = document.body.hasAttribute("data-game")
     let renderer
     try {
-        renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: false, powerPreference: "high-performance" })
+        renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: false, powerPreference: lowPowerGuess() ? "default" : "high-performance" })
     } catch (e) {
         canvas.remove()
         emit("scene:failed")
         return null
     }
+    // phones and tablets can take the graphics away when memory runs short (the screen goes black):
+    // keep drawing nothing until the browser gives it back, then build the light and the sky again
+    let contextLost = false
+    canvas.addEventListener("webglcontextlost", (e) => {
+        e.preventDefault()
+        contextLost = true
+    })
+    canvas.addEventListener("webglcontextrestored", () => {
+        contextLost = false
+        try {
+            sky.bake(true)
+            scene.environment = sky.env
+            resize()
+            renderer.shadowMap.needsUpdate = true
+        } catch (err) {
+            console.warn("could not restore the scene", err)
+        }
+    })
     const dpr = Math.min(devicePixelRatio || 1, lowPower ? 1.5 : 2) // sharp on high-density screens (lowered on the fly if too slow)
     let dprNow = dpr // lowered on the fly if the machine can't keep up
     renderer.setPixelRatio(dpr)
@@ -105,7 +133,8 @@ export async function startScene({ reduced = false } = {}) {
     scene.add(sunLight, sunLight.target, moonLight)
     // a small, sharp shadow map that follows the boat
     sunLight.castShadow = true
-    sunLight.shadow.mapSize.set(lowPower ? 2048 : 4096, lowPower ? 2048 : 4096)
+    const shadowSize = small ? 1024 : lowPower ? 2048 : 4096
+    sunLight.shadow.mapSize.set(shadowSize, shadowSize)
     Object.assign(sunLight.shadow.camera, { left: -5.5, right: 5.5, top: 5.5, bottom: -5.5, near: 1, far: 120 })
     sunLight.shadow.camera.updateProjectionMatrix()
     sunLight.shadow.bias = -0.0004
@@ -230,7 +259,7 @@ export async function startScene({ reduced = false } = {}) {
     const model = argus.model
     model.scale.setScalar(SCALE)
     // waterline: a little below the middle of the hulls (the thrusters hang under the water)
-    model.position.y = 0.0882 * SCALE
+    model.position.y = 0.0884 * SCALE
     boat.add(model)
 
     // soft round light for the navigation lights
@@ -537,6 +566,12 @@ export async function startScene({ reduced = false } = {}) {
         renderer.setPixelRatio(dprNow)
         renderer.setSize(W, H, false)
         camera.aspect = W / H
+        // the game on a tall screen (a phone held upright): a wider lens, so the boat and the water
+        // beside it still fit across (at least ~44° from side to side, at most 66° from top to bottom)
+        if (isGame) {
+            const want = (2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(44) / 2) / camera.aspect) * 180) / Math.PI
+            camera.fov = clamp(want, 38, 66)
+        }
         camera.updateProjectionMatrix()
         post.setSize(W, H, dprNow)
         const rk = lowPower ? 0.5 : 0.75
@@ -544,7 +579,12 @@ export async function startScene({ reduced = false } = {}) {
         argus.points.uProj.value = (H * dprNow) / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)))
         if (globe) globe.setPx(1, argus.points.uProj.value)
     }
-    addEventListener("resize", resize)
+    // a phone fires many resizes in a row (the address bar, turning the phone): new buffers only once it has settled
+    let resizeT = 0
+    addEventListener("resize", () => {
+        clearTimeout(resizeT)
+        resizeT = setTimeout(resize, 120)
+    })
 
     // ---- the scan-in: points fly in, then the LiDAR line turns them into the boat ----
     const intro = { start: -1, done: reduced }
@@ -671,7 +711,7 @@ export async function startScene({ reduced = false } = {}) {
 
     function frame() {
         requestAnimationFrame(frame)
-        if (!visible) return
+        if (!visible || contextLost) return
         const raw = clock.getDelta()
         const dt = Math.min(raw, window.__dtMax || 0.05) // (tests may allow longer steps)
         if (!reduced) t += dt
@@ -679,7 +719,8 @@ export async function startScene({ reduced = false } = {}) {
 
         measure()
         // nothing of the harbour on screen: skip the frame
-        if (!clipToWindows(drive && (drive.active || drive.outBlend > 0)) && !(intro.start >= 0 && !intro.done)) return
+        // (the game page is only the harbour: it is always drawn there)
+        if (!clipToWindows(isGame || (drive && (drive.active || drive.outBlend > 0))) && !(intro.start >= 0 && !intro.done)) return
         const docH = Math.max(1, document.documentElement.scrollHeight - innerHeight)
         const scrollP = clamp(scrollY / docH)
 
@@ -847,8 +888,14 @@ export async function startScene({ reduced = false } = {}) {
         sunLight.position.copy(S.dir).multiplyScalar(1000).add(camLook)
         sunLight.target.position.copy(camLook)
         // a camera adapts to the light: brighter at dusk, but night stays night
-        const expWant = clamp(Math.pow(0.1 / Math.max(zenLum, 1e-4), 0.5), 0.85, 4.2)
-        moonLight.intensity = night * 0.35
+        // at the helm the night may be lighter than on the pages: a night you can still sail in
+        // (request: "fiks det så skjermen ikke plutselig blir svart når du spiller" – dusk and night were nearly black)
+        const helmNow = !!(drive && drive.active)
+        const expWant = clamp(Math.pow(0.1 / Math.max(zenLum, 1e-4), 0.5), 0.85, helmNow ? 10 : 4.2)
+        // how dark it is: from the sun just under the horizon (dusk) to full night
+        const dark = helmNow ? Math.max(night, smooth(clamp((1 - S.elev) / 8))) : 0
+        moonLight.intensity = helmNow ? Math.max(night, dark * 0.7) * 1.1 : night * 0.35
+        scene.environmentIntensity = 1 + dark * 3.2
         exposure += (expWant - exposure) * (1 - Math.exp(-dt * 3))
         AIR.uNight.value = night
         if (shoreLights) {
@@ -1116,7 +1163,7 @@ export async function startScene({ reduced = false } = {}) {
         // the sun's shadow follows the boat (none at night or while the boat is still a point cloud)
         sunLight.position.copy(S.dir).multiplyScalar(50).add(boat.position)
         sunLight.target.position.copy(boat.position)
-        sunLight.castShadow = S.elev > 0.3 && over < 0.6 && boat.visible && cut > CUT_ALL_SOLID - 0.02
+        sunLight.castShadow = !noShadows && S.elev > 0.3 && over < 0.6 && boat.visible && cut > CUT_ALL_SOLID - 0.02
         renderer.shadowMap.needsUpdate = sunLight.castShadow
 
         // 1) the mirror image, 2) the scene, bloom and grade
@@ -1128,6 +1175,7 @@ export async function startScene({ reduced = false } = {}) {
     let fAcc = 0
     let fN = 0
     let fCool = 2
+    let noShadows = false
     function adapt(raw) {
         if (raw > 0.25) return // tab switch or a hitch, not a trend
         fAcc += raw
@@ -1136,6 +1184,14 @@ export async function startScene({ reduced = false } = {}) {
         const avg = fAcc / fN
         fAcc = fN = 0
         if (fCool-- > 0) return // let the page settle first
+        // still slow with the fewest pixels (an old phone): leave out the mirror image in the water,
+        // then the shadows, so the game keeps moving smoothly
+        if (avg > 1 / 30 && dprNow <= 0.76) {
+            if (wu.uReflectOn.value > 0) wu.uReflectOn.value = 0
+            else noShadows = true // (the sun then casts no shadow: no shadow pass each frame)
+            fCool = 1
+            return
+        }
         if (avg > 1 / 38 && dprNow > 0.76) {
             dprNow = Math.max(0.75, dprNow * 0.82)
             post.bloom.enabled = dprNow > 0.9 || !lowPower

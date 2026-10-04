@@ -950,7 +950,7 @@ export function createPlaces({ scene, props, drive, missions }) {
         for (const p of items) {
             p.d = Math.hypot(pos.x - p.item.x, pos.z - p.item.z)
             if (p.d > NEAR + 14) p.armed = true
-            if (p.d < NEAR && p.armed && !drive.lidOpen) {
+            if (p.d < NEAR && p.armed && !drive.lidOpen && !drive.panelOpen) {
                 p.armed = false
                 const isNew = !visited.has(p.id)
                 if (isNew) visit(p)
@@ -963,8 +963,8 @@ export function createPlaces({ scene, props, drive, missions }) {
         }
         // a course set to a place follows its post, and goes when you are there
         if (course && drive.state.target) drive.state.target = { x: course.item.x, z: course.item.z }
-        // sailing on closes the card
-        if (open && open.d > NEAR + 30) closeCard()
+        // sailing on closes the card, and so does a panel that opens over it
+        if (open && (open.d > NEAR + 30 || drive.panelOpen)) closeCard()
         // keep the distances in the list fresh
         if (panel.classList.contains("is-on") && Math.floor(t * 2) !== Math.floor((t - dt) * 2)) {
             for (const el of panel.querySelectorAll("[data-where]")) {

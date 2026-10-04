@@ -89,7 +89,7 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
                 <button type="button" class="hud-btn" data-hud="time"><span class="hb-long">Time of day</span><span class="hb-short">Time</span></button>
                 <button type="button" class="hud-btn" data-hud="weather"><span class="hb-long">Weather: </span><span class="hud-weather">Clear</span></button>
                 <button type="button" class="hud-btn" data-hud="sound" aria-pressed="false">Sound</button>
-                <button type="button" class="hud-btn" data-hud="keys" aria-expanded="false">Controls <kbd>H</kbd></button>
+                <button type="button" class="hud-btn" data-hud="keys" aria-expanded="false"><span class="hb-long">Controls</span><span class="hb-short">Help</span> <kbd>H</kbd></button>
                 <button type="button" class="hud-btn hud-exit" data-hud="exit">Exit <kbd>Esc</kbd></button>
             </div>
         </div>
@@ -105,6 +105,12 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
             <div class="hud-radar-wrap"><canvas class="hud-radar" width="360" height="360" aria-hidden="true"></canvas><span>LiDAR</span></div>
         </div>
         <div class="hud-stick" aria-hidden="true"><i></i></div>
+        <div class="hud-tbtns">
+            <button type="button" class="hud-tbtn hud-spin" data-spin="1" aria-label="Turn the boat left on the spot (hold)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.3-5.6"/><path d="M4 4v4h4"/></svg><span>Turn</span></button>
+            <button type="button" class="hud-tbtn hud-spin" data-spin="-1" aria-label="Turn the boat right on the spot (hold)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v4h-4"/></svg><span>Turn</span></button>
+            <button type="button" class="hud-tbtn" data-hud="ping" aria-label="LiDAR ping"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2"/><path d="M7.8 7.8a6 6 0 0 0 0 8.4M16.2 7.8a6 6 0 0 1 0 8.4M5 5a10 10 0 0 0 0 14M19 5a10 10 0 0 1 0 14"/></svg><span>Ping</span></button>
+            <button type="button" class="hud-tbtn hud-boost" aria-label="More power (hold)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 3 5 13.5h6L10 21l8-10.5h-6z"/></svg><span>Boost</span></button>
+        </div>
         <div class="hud-keys" role="dialog" aria-label="Controls">
             <div class="hk-head"><div><span class="hk-kicker">How to play</span><h2>Controls</h2></div><button type="button" class="hud-btn" data-hud="keys-close">Close <kbd>H</kbd></button></div>
             <div class="hk-body">
@@ -157,7 +163,35 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
                     </section>
                 </div>
             </div>
-            <p class="hk-touch">On a phone or tablet: the round stick drives, drag anywhere else to look around.</p>
+            <div class="hk-touchset">
+                <section class="hk-group">
+                    <h3>Drive</h3>
+                    <dl class="hk-list">
+                        <div><dt>Stick</dt><dd>The round stick at the bottom left: push up to go, down to slow down and back, to the sides to steer</dd></div>
+                        <div><dt>Boost</dt><dd>Hold for more power</dd></div>
+                        <div><dt>Turn</dt><dd>Hold to turn the boat on the spot while it keeps its course (it has four thrusters)</dd></div>
+                    </dl>
+                </section>
+                <section class="hk-group">
+                    <h3>Look and Argus</h3>
+                    <dl class="hk-list">
+                        <div><dt>Drag</dt><dd>Drag anywhere on the water to look around</dd></div>
+                        <div><dt>Pinch</dt><dd>Two fingers: camera closer or further away</dd></div>
+                        <div><dt>Ping</dt><dd>A LiDAR ping: rings on the water and the radar</dd></div>
+                        <div><dt>Open lid</dt><dd>Look inside the electronics case</dd></div>
+                    </dl>
+                </section>
+                <section class="hk-group">
+                    <h3>Game</h3>
+                    <dl class="hk-list">
+                        <div><dt>Njord tasks</dt><dd>Four tasks from the real competition</dd></div>
+                        <div><dt>Places</dt><dd>Posts round the harbour with our story</dd></div>
+                        <div><dt>Autonomous</dt><dd>Let Argus sail on its own</dd></div>
+                        <div><dt>Menu</dt><dd>Pause, settings and your score</dd></div>
+                    </dl>
+                </section>
+            </div>
+            <p class="hk-touch">On a computer: the keys above. On a phone or tablet: the stick, the buttons and your fingers.</p>
         </div>
     `
     document.body.appendChild(hud)
@@ -199,7 +233,46 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
         if (what === "lid") setLid(!state.lidOpen)
         if (what === "keys" || what === "keys-close") showKeys(!keysEl.classList.contains("is-on"))
         if (what === "sound") setSound(!soundOn)
+        if (what === "ping") doPing()
     })
+    function doPing() {
+        ping = performance.now() / 1000
+        onPing && onPing(state.pos)
+    }
+    // hold Boost on a touch screen for more power
+    let touchBoost = false
+    const boostBtn = hud.querySelector(".hud-boost")
+    const boostOn = (on) => (e) => {
+        if (on && state.auto) for (const f of manual) f()
+        touchBoost = on
+        boostBtn.classList.toggle("is-held", on)
+        if (on) capture(boostBtn, e)
+    }
+    boostBtn.addEventListener("pointerdown", boostOn(true))
+    boostBtn.addEventListener("pointerup", boostOn(false))
+    boostBtn.addEventListener("pointercancel", boostOn(false))
+    boostBtn.addEventListener("lostpointercapture", boostOn(false))
+    boostBtn.addEventListener("contextmenu", (e) => e.preventDefault())
+    // hold a Turn button to turn the hull on the spot (Q and E on a keyboard)
+    let touchSpin = 0
+    for (const b of hud.querySelectorAll(".hud-spin")) {
+        const dir = Number(b.dataset.spin)
+        const on = (e) => {
+            if (state.auto) for (const f of manual) f()
+            touchSpin = dir
+            b.classList.add("is-held")
+            capture(b, e)
+        }
+        const off = () => {
+            if (touchSpin === dir) touchSpin = 0
+            b.classList.remove("is-held")
+        }
+        b.addEventListener("pointerdown", on)
+        b.addEventListener("pointerup", off)
+        b.addEventListener("pointercancel", off)
+        b.addEventListener("lostpointercapture", off)
+        b.addEventListener("contextmenu", (e) => e.preventDefault())
+    }
     function cycleTime() {
         setTime(timeI + 1)
     }
@@ -225,17 +298,49 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
         weatherEl.textContent = WEATHERS[weatherI].name
     }
 
+    // keep a finger on the control it started on (some browsers refuse, e.g. when the finger has just left: carry on without)
+    const capture = (el, e) => {
+        try {
+            if (e.pointerId != null) el.setPointerCapture(e.pointerId)
+        } catch (err) {
+            /* not needed to work */
+        }
+    }
+
     // look around: drag anywhere
     const look = hud.querySelector(".hud-look")
     let lx = 0
     let ly = 0
+    // one finger (or the mouse) drags the view round; two fingers pinch the camera closer or further away
+    const touches = new Map()
+    let pinchD = 0
+    const pinchDist = () => {
+        const [a, b] = [...touches.values()]
+        return Math.hypot(a.x - b.x, a.y - b.y)
+    }
     look.addEventListener("pointerdown", (e) => {
+        touches.set(e.pointerId, { x: e.clientX, y: e.clientY })
+        capture(look, e)
+        if (touches.size === 2) {
+            pinchD = pinchDist()
+            dragging = false
+            return
+        }
+        if (touches.size > 2) return
         dragging = true
         lx = e.clientX
         ly = e.clientY
-        look.setPointerCapture(e.pointerId)
     })
     look.addEventListener("pointermove", (e) => {
+        if (!touches.has(e.pointerId)) return
+        touches.set(e.pointerId, { x: e.clientX, y: e.clientY })
+        if (touches.size === 2) {
+            const d = pinchDist()
+            if (pinchD > 0 && d > 0) camDist = clamp(camDist * (pinchD / d), 10, 60)
+            pinchD = d
+            lastDrag = performance.now()
+            return
+        }
         if (!dragging) return
         camYaw -= (e.clientX - lx) * 0.006
         camPitch = clamp(camPitch + (e.clientY - ly) * 0.003, 0.08, 1.1)
@@ -243,8 +348,16 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
         ly = e.clientY
         lastDrag = performance.now()
     })
-    const endDrag = () => {
-        dragging = false
+    const endDrag = (e) => {
+        touches.delete(e.pointerId)
+        pinchD = 0
+        // the finger left on the screen after a pinch carries on dragging from where it is
+        if (touches.size === 1) {
+            const [p] = [...touches.values()]
+            lx = p.x
+            ly = p.y
+            dragging = true
+        } else dragging = false
         lastDrag = performance.now()
     }
     look.addEventListener("pointerup", endDrag)
@@ -263,9 +376,9 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
     const stickCenter = new THREE.Vector2()
     stickEl.addEventListener("pointerdown", (e) => {
         stickId = e.pointerId
-        stickEl.setPointerCapture(e.pointerId)
         const r = stickEl.getBoundingClientRect()
         stickCenter.set(r.left + r.width / 2, r.top + r.height / 2)
+        capture(stickEl, e)
         moveStick(e)
     })
     stickEl.addEventListener("pointermove", (e) => e.pointerId === stickId && moveStick(e))
@@ -362,10 +475,7 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
             if (k === "v") cycleWeather()
             if (k === "l") setLid(!state.lidOpen)
             if (k === "h" || k === "?") showKeys(!keysEl.classList.contains("is-on"))
-            if (k === " ") {
-                ping = performance.now() / 1000
-                onPing && onPing(state.pos)
-            }
+            if (k === " " && !e.repeat) doPing()
             if (["arrowup", "arrowdown", "arrowleft", "arrowright", " "].includes(k)) e.preventDefault()
             keys.add(k)
         } else keys.delete(k)
@@ -513,9 +623,17 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
     }
     function stop() {
         if (!state.active) return
+        // the game page is only the harbour: leaving the helm would leave an empty (black) screen,
+        // so Exit opens the game menu there instead
+        if (document.body.hasAttribute("data-game") && pausers.length) {
+            for (const f of pausers) f()
+            return
+        }
         state.active = false
         state.outBlend = 1
         keys.clear()
+        touchBoost = false
+        touchSpin = 0
         setLid(false)
         showKeys(false)
         document.documentElement.classList.remove("is-driving")
@@ -664,6 +782,9 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
         }
     }
 
+    // a tall, narrow screen (a phone held upright) sees little to the sides: the camera stands further back
+    const viewK = () => 1 + clamp(innerHeight / Math.max(1, innerWidth) - 1, 0, 1.2) * 0.5
+
     const fwd = new THREE.Vector3()
     const side = new THREE.Vector3()
     const want = new THREE.Vector3()
@@ -683,6 +804,7 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
         if (keys.has("d") || (arrows && keys.has("arrowright"))) st -= 1
         if (keys.has("q")) spin += 1
         if (keys.has("e")) spin -= 1
+        spin += touchSpin
         th += -stick.y
         st += -stick.x
         // the autopilot steers when no one else does
@@ -698,7 +820,7 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
             st = 0
             spin = 0
         }
-        const boost = keys.has("shift") || !!(state.auto && state.auto.boost)
+        const boost = keys.has("shift") || touchBoost || !!(state.auto && state.auto.boost)
         thr += (th - thr) * (1 - Math.exp(-dt * 4))
 
         // along the course and across it
@@ -768,9 +890,11 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
         const ki = state.inspect * state.inspect * (3 - 2 * state.inspect)
         const a = state.course + Math.PI + camYaw - state.yawRate * 0.25 + ki * (-Math.PI / 2 - 0.45 + Math.PI)
         const pitch = camPitch + (0.72 - camPitch) * ki
-        state.menuK += ((state.menu ? 1 : 0) - state.menuK) * (1 - Math.exp(-dt * 1.6))
+        // (back on the water the camera comes in quicker than it went out)
+        state.menuK += ((state.menu ? 1 : 0) - state.menuK) * (1 - Math.exp(-dt * (state.menu ? 1.6 : 3)))
         const km = state.menuK * state.menuK * (3 - 2 * state.menuK)
-        const dist = camDist + (6.4 - camDist) * ki + 15 * km
+        const cd = camDist * viewK()
+        const dist = cd + (6.4 - cd) * ki + 15 * km
         const flat = Math.cos(pitch + 0.06 * km) * dist
         const lookY = 1.6 + (2.05 - 1.6) * ki
         want.set(state.pos.x + Math.cos(a) * flat, 1.2 + (lookY - 1.6) + Math.sin(pitch + 0.06 * km) * dist, state.pos.z - Math.sin(a) * flat)
@@ -1067,6 +1191,10 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
         get menuOpen() {
             return !!activeMenu()
         },
+        // a panel that covers the middle of the screen is open (the list of tasks, the controls, the menu ...)
+        get panelOpen() {
+            return menus.some((m) => m.modal && m.el.classList.contains("is-on"))
+        },
         sfx,
         shake(k) {
             state.shake = Math.min(1, state.shake + k)
@@ -1083,8 +1211,9 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
             thr = 0
             camYaw = 0
             const a = heading + Math.PI
-            const flat = Math.cos(camPitch) * camDist
-            state.camPos.set(x + Math.cos(a) * flat, 1.2 + Math.sin(camPitch) * camDist, z - Math.sin(a) * flat)
+            const cd = camDist * viewK()
+            const flat = Math.cos(camPitch) * cd
+            state.camPos.set(x + Math.cos(a) * flat, 1.2 + Math.sin(camPitch) * cd, z - Math.sin(a) * flat)
             state.camLook.set(x + Math.cos(heading) * 5, 1.6, z - Math.sin(heading) * 5)
             inBlend = 1
         },

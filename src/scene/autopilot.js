@@ -386,7 +386,7 @@ export function createAutopilot({ scene, drive, missions, places, score, getColl
     const btn = document.createElement("button")
     btn.type = "button"
     btn.className = "hud-btn hud-autobtn"
-    btn.innerHTML = `<i class="ha-led" aria-hidden="true"></i>Autonomous <kbd>G</kbd>`
+    btn.innerHTML = `<i class="ha-led" aria-hidden="true"></i><span class="hb-long">Autonomous</span><span class="hb-short">Auto</span> <kbd>G</kbd>`
     const placesBtn = [...drive.actions.children].find((b) => /Places/.test(b.textContent))
     if (placesBtn) placesBtn.after(btn)
     else drive.actions.prepend(btn)
@@ -815,8 +815,7 @@ export function createAutopilot({ scene, drive, missions, places, score, getColl
                         path = pl
                     }
                     // a mark: plan only up to the next one, so it goes through the point first
-                    if (tg.mark) replanT = 2.5
-                    replanT = 0.6
+                    replanT = tg.mark ? 2.5 : 0.6
                     drawMap(p.x, p.z)
                 }
                 inputs = follow(dt, { stopAtEnd: false, cap: tg.mark ? 0.85 : 1 })

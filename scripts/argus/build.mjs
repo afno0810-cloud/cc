@@ -605,11 +605,13 @@ function build(lite) {
     add("dome", new THREE.SphereGeometry(0.017, seg(20), seg(10), 0, Math.PI * 2, 0, Math.PI / 2), { p: [lx + 0.055, ly + 0.004, lz + 0.055] })
     add("plastic", new THREE.CylinderGeometry(0.018, 0.018, 0.004, seg(20)), { p: [lx + 0.055, ly + 0.003, lz + 0.055] })
     MARKS.lidar = [lx, base + 0.04, lz]
-    // four black whip antennas for the 5G router, in a row across the lid on the bow side of the LiDAR,
-    // leaning away from the LiDAR a little (request: "kan du legge til disse antenne til argus båten", from a photo of the boat):
-    // a nut on the lid, a swivel knuckle, then the rubber whip, thicker at the foot and rounded at the tip
-    const wx = cx0 + 0.05
-    for (const [i, az] of [-0.115, -0.055, 0.005, 0.065].entries()) {
+    // four black whip antennas for the 5G router, in a row across the stern end of the lid, behind the LiDAR,
+    // leaning back a little (requests: "kan du legge til disse antenne til argus båten", from a photo of the boat,
+    // and "antene skal være bakpå den svarte boksen ikke på midten"):
+    // a nut on the lid, a swivel knuckle, then the rubber whip, thicker at the foot and rounded at the tip.
+    // The row sits on the starboard side of the LiDAR cable, which runs over the stern edge towards port.
+    const wx = cx0 - CASE.x / 2 + 0.032
+    for (const [i, az] of [-0.018, 0.036, 0.09, 0.144].entries()) {
         add("steel", new THREE.CylinderGeometry(0.0095, 0.0095, 0.005, 6), { p: [wx, TOP + 0.0055, az] })
         add("plastic", new THREE.CylinderGeometry(0.0085, 0.009, 0.014, seg(14)), { p: [wx, TOP + 0.015, az] })
         add("plastic", new THREE.SphereGeometry(0.0092, seg(14), seg(8)), { p: [wx, TOP + 0.024, az] })
@@ -618,12 +620,12 @@ function build(lite) {
         whip.translate(0, L / 2, 0)
         const tip = new THREE.SphereGeometry(0.0072, seg(14), seg(6), 0, Math.PI * 2, 0, Math.PI / 2)
         tip.translate(0, L, 0)
-        // a slight fan: each one leans towards the bow, the outer ones a touch outwards
-        const lean = [-0.24, -0.2, -0.17, -0.22][i]
-        const splay = [0.1, 0.03, -0.03, -0.09][i]
+        // a slight fan: each one leans back towards the stern, the outer ones a touch outwards
+        const lean = [0.2, 0.16, 0.15, 0.19][i]
+        const splay = [0.06, 0.02, -0.03, -0.08][i]
         for (const g of [whip, tip]) add("rubber", g, { p: [wx, TOP + 0.024, az], r: [splay, 0, lean] })
     }
-    MARKS.antennas = [wx, TOP + 0.09, -0.025]
+    MARKS.antennas = [wx, TOP + 0.09, 0.063]
     bucket = parts
     cable([
         [sternTop - 0.013, SEAM, -0.168],

@@ -16,8 +16,8 @@ const LEVEL = 500
 const ACH = [
     { id: "lid", name: "Look inside", note: "Open the lid of Argus", pts: 25 },
     { id: "ping", name: "LiDAR ping", note: "Ping with the LiDAR", pts: 10 },
-    { id: "boost", name: "Full power", note: "Keep Shift down at full speed for 8 s", pts: 20 },
-    { id: "spin", name: "Four propellers", note: "Turn the boat a full round with Q or E", pts: 20 },
+    { id: "boost", name: "Full power", note: "Full power (Shift, or Boost on a phone) for 8 s", pts: 20 },
+    { id: "spin", name: "Four propellers", note: "Turn the boat a full round on the spot (Q or E, or Turn on a phone)", pts: 20 },
     { id: "night", name: "Night sail", note: "Sail after dark", pts: 40 },
     { id: "weather", name: "All weathers", note: "Sail in clear, cloudy, fog and rain", pts: 40 },
     { id: "auto", name: "Hands off", note: "Let Argus sail on its own", pts: 30 },

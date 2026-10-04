@@ -37,7 +37,7 @@ const TASKS = [
         site: "The boat has to steer through a marked course on the water and show that it can control its own movement.",
         how: [
             "Steer through every gate: the red buoy to port, the green to starboard.",
-            "Halfway there is a ring on the water. Inside it, turn the boat a full 360° with <kbd>Q</kbd> or <kbd>E</kbd>.",
+            "Halfway there is a ring on the water. Inside it, turn the boat a full 360°: <kbd>Q</kbd> or <kbd>E</kbd>, or hold Turn on a phone (steering round in the ring works too).",
         ],
         quote: "With four propellers Argus can turn a full 360 degrees while it keeps moving forward.",
         par: 45,
@@ -345,7 +345,7 @@ export function createMissions({ scene, props, drive, isGame = false }) {
     const btn = document.createElement("button")
     btn.type = "button"
     btn.className = "hud-btn"
-    btn.innerHTML = `Njord tasks <kbd>M</kbd>`
+    btn.innerHTML = `<span class="hb-long">Njord tasks</span><span class="hb-short">Tasks</span> <kbd>M</kbd>`
     drive.actions.prepend(btn)
 
     let best = {}
@@ -905,6 +905,12 @@ export function createMissions({ scene, props, drive, isGame = false }) {
         if (!run || !run.start) return
         const r = run
         const p = drive.pos
+        // the game menu is open: the task waits (the clock, the countdown and the Otters stand still)
+        if (drive.state.menu) {
+            prev.set(p.x, p.z)
+            lastHeading = drive.heading
+            return
+        }
 
         // the Otters move once they have been sent off (also after the finish)
         for (const o of r.otters) {
