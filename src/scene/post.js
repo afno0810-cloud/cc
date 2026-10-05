@@ -59,22 +59,28 @@ const GradeShader = {
             return mix(c * 12.92, 1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055, step(0.0031308, c));
         }
         float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
-        float lum(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
+        // a pixel that came out as NaN or infinity (a too bright highlight in half float) is made harmless
+        // (NaN fails every comparison, so it becomes 0; infinity is capped) – one such pixel would
+        // otherwise spread through the bloom and turn the whole screen black
+        float safe(float v) { return v > 0.0 ? min(v, 60000.0) : 0.0; }
+        vec3 safe3(vec3 c) { return vec3(safe(c.r), safe(c.g), safe(c.b)); }
+        vec3 tex(vec2 uv) { return safe3(texture2D(tDiffuse, uv).rgb); }
+        float lum(vec3 c) { return dot(safe3(c), vec3(0.2126, 0.7152, 0.0722)); }
 
         void main() {
             vec2 d = vUv - 0.5;
             float r2 = dot(d, d);
             vec2 off = d * r2 * uCA * 40.0;
             vec3 c;
-            c.r = texture2D(tDiffuse, vUv + off).r;
-            c.g = texture2D(tDiffuse, vUv).g;
-            c.b = texture2D(tDiffuse, vUv - off).b;
+            c.r = tex(vUv + off).r;
+            c.g = tex(vUv).g;
+            c.b = tex(vUv - off).b;
             // sharpen: the pixel against its four neighbours, held within its own brightness
             // (so bright edges like the sun on the water do not ring)
             if (uSharp > 0.0) {
                 vec2 px1 = 1.0 / uRes;
-                vec3 nb = texture2D(tDiffuse, vUv + vec2(px1.x, 0.0)).rgb + texture2D(tDiffuse, vUv - vec2(px1.x, 0.0)).rgb
-                        + texture2D(tDiffuse, vUv + vec2(0.0, px1.y)).rgb + texture2D(tDiffuse, vUv - vec2(0.0, px1.y)).rgb;
+                vec3 nb = tex(vUv + vec2(px1.x, 0.0)) + tex(vUv - vec2(px1.x, 0.0))
+                        + tex(vUv + vec2(0.0, px1.y)) + tex(vUv - vec2(0.0, px1.y));
                 vec3 sc = c + (c - nb * 0.25) * uSharp;
                 c = clamp(sc, c * 0.7, c * 1.35);
             }
@@ -132,7 +138,7 @@ const GradeShader = {
                 }
             }
 
-            c = aces(c);
+            c = aces(safe3(c));
             c = toSRGB(c);
             c += uFlash * vec3(0.9, 0.93, 1.0);
             c *= uDim;
@@ -160,8 +166,13 @@ export function createPost(renderer, scene, camera, { lowPower }) {
         uniform sampler2D tDiffuse; uniform vec3 defaultColor; uniform float defaultOpacity;
         uniform float luminosityThreshold; uniform float smoothWidth;
         varying vec2 vUv;
+        // NaN or infinity (a highlight too bright for half float) must never get into the blur:
+        // it would spread over the whole frame and turn the screen black
+        float safe(float v) { return v > 0.0 ? min(v, 60000.0) : 0.0; }
         void main() {
             vec4 texel = texture2D(tDiffuse, vUv);
+            texel.rgb = vec3(safe(texel.r), safe(texel.g), safe(texel.b));
+            texel.a = 1.0;
             float v = dot(texel.rgb, vec3(0.299, 0.587, 0.114));
             texel.rgb *= min(1.0, luminosityThreshold * 3.0 / max(v, 1e-4));
             float alpha = smoothstep(luminosityThreshold, luminosityThreshold + smoothWidth, v);

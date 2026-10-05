@@ -76,6 +76,25 @@ export async function startScene({ reduced = false } = {}) {
         emit("scene:failed")
         return null
     }
+    const isGame = document.body.hasAttribute("data-game")
+    // phones and tablets can take the graphics away when memory runs short (the screen goes black):
+    // draw nothing until the browser gives it back, then build the light and the sky again
+    let contextLost = false
+    canvas.addEventListener("webglcontextlost", (e) => {
+        e.preventDefault()
+        contextLost = true
+    })
+    canvas.addEventListener("webglcontextrestored", () => {
+        contextLost = false
+        try {
+            sky.bake(true)
+            scene.environment = sky.env
+            resize()
+            renderer.shadowMap.needsUpdate = true
+        } catch (err) {
+            console.warn("could not restore the scene", err)
+        }
+    })
     const dpr = Math.min(devicePixelRatio || 1, lowPower ? 1.5 : 2) // sharp on high-density screens (lowered on the fly if too slow)
     let dprNow = dpr // lowered on the fly if the machine can't keep up
     renderer.setPixelRatio(dpr)
@@ -587,6 +606,7 @@ export async function startScene({ reduced = false } = {}) {
         getBoat: () => ({ pos: boat.position, heading: headingNow }),
         getElev: () => elev,
         landHeight: (x, z) => (terrainMod ? terrainMod.landHeight(x, z) : -10),
+        groundHeight: (x, z) => (terrainMod ? terrainMod.groundHeight(x, z) : -10),
         obstacles: () => (props ? props.obstacles : []),
         // quays and wharves (from the terrain) and boats and the pontoon (from the props)
         colliders: () => {
@@ -678,7 +698,7 @@ export async function startScene({ reduced = false } = {}) {
 
     function frame() {
         requestAnimationFrame(frame)
-        if (!visible) return
+        if (!visible || contextLost) return
         const raw = clock.getDelta()
         const dt = Math.min(raw, window.__dtMax || 0.05) // (tests may allow longer steps)
         if (!reduced) t += dt
@@ -686,7 +706,8 @@ export async function startScene({ reduced = false } = {}) {
 
         measure()
         // nothing of the harbour on screen: skip the frame
-        if (!clipToWindows(drive && (drive.active || drive.outBlend > 0)) && !(intro.start >= 0 && !intro.done)) return
+        // (the game page is only the harbour: it is always drawn there)
+        if (!clipToWindows(isGame || (drive && (drive.active || drive.outBlend > 0))) && !(intro.start >= 0 && !intro.done)) return
         const docH = Math.max(1, document.documentElement.scrollHeight - innerHeight)
         const scrollP = clamp(scrollY / docH)
 
@@ -854,8 +875,13 @@ export async function startScene({ reduced = false } = {}) {
         sunLight.position.copy(S.dir).multiplyScalar(1000).add(camLook)
         sunLight.target.position.copy(camLook)
         // a camera adapts to the light: brighter at dusk, but night stays night
-        const expWant = clamp(Math.pow(0.1 / Math.max(zenLum, 1e-4), 0.5), 0.85, 4.2)
-        moonLight.intensity = night * 0.35
+        // at the helm the dusk and the night are lit so you can still sail: the screen never goes (nearly) black
+        const helmNow = !!(drive && drive.active)
+        const expWant = clamp(Math.pow(0.1 / Math.max(zenLum, 1e-4), 0.5), 0.85, helmNow ? 10 : 4.2)
+        // how dark it is: from the sun just under the horizon (dusk) to full night
+        const dark = helmNow ? Math.max(night, smooth(clamp((1 - S.elev) / 8))) : 0
+        moonLight.intensity = helmNow ? Math.max(night, dark * 0.7) * 1.1 : night * 0.35
+        scene.environmentIntensity = 1 + dark * 3.2
         exposure += (expWant - exposure) * (1 - Math.exp(-dt * 3))
         AIR.uNight.value = night
         if (shoreLights) {
@@ -1313,6 +1339,7 @@ export async function startScene({ reduced = false } = {}) {
                 return birds
             },
             landHeight: (x, z) => (terrainMod ? terrainMod.landHeight(x, z) : null),
+            groundHeight: (x, z) => (terrainMod ? terrainMod.groundHeight(x, z) : null),
             get colliders() {
                 return terrainMod ? terrainMod.COLLIDERS : []
             },

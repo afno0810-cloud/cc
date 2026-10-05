@@ -118,6 +118,59 @@ function inCity(deg) {
     return smooth(CITY.from, CITY.from + 10, deg) * (1 - smooth(CITY.to - 10, CITY.to, deg))
 }
 
+/* the buildings as oriented boxes in a coarse grid, so the drive camera can stay out of them */
+const BLOCK_CELL = 64
+const BLOCKS = new Map()
+const blockKey = (i, j) => (i + 1024) * 2048 + (j + 1024)
+function addBlock(x, z, hx, hz, rot, top) {
+    const b = { x, z, hx, hz, c: Math.cos(rot), s: Math.sin(rot), top }
+    const R = Math.hypot(hx, hz)
+    for (let i = Math.floor((x - R) / BLOCK_CELL); i <= Math.floor((x + R) / BLOCK_CELL); i++) {
+        for (let j = Math.floor((z - R) / BLOCK_CELL); j <= Math.floor((z + R) / BLOCK_CELL); j++) {
+            const k = blockKey(i, j)
+            if (!BLOCKS.has(k)) BLOCKS.set(k, [])
+            BLOCKS.get(k).push(b)
+        }
+    }
+}
+function blockTop(x, z) {
+    const list = BLOCKS.get(blockKey(Math.floor(x / BLOCK_CELL), Math.floor(z / BLOCK_CELL)))
+    let top = -Infinity
+    if (!list) return top
+    for (const b of list) {
+        // into the box's own frame (it is turned like rotation.y)
+        const dx = x - b.x
+        const dz = z - b.z
+        if (Math.abs(b.c * dx - b.s * dz) <= b.hx && Math.abs(b.s * dx + b.c * dz) <= b.hz && b.top > top) top = b.top
+    }
+    return top
+}
+
+/* the drawn land is a polar grid, coarser than landHeight, so by the shore it stands higher than
+   landHeight says: this is the height of the mesh itself (what the camera must stay above) */
+let grid = null
+export function groundHeight(x, z) {
+    const h = Math.max(landHeight(x, z), blockTop(x, z))
+    if (!grid) return h
+    const { hs, sectors: S, rings, r0, growth } = grid
+    const r = Math.hypot(x, z)
+    const i = Math.floor(Math.log(Math.max(r, 1e-3) / r0) / Math.log(growth))
+    if (i < 0 || i >= rings - 1) return h
+    const ri = r0 * Math.pow(growth, i)
+    const v = Math.min(1, Math.max(0, (r - ri) / (ri * growth - ri)))
+    const fj = ((Math.atan2(z, x) / (Math.PI * 2)) % 1 + 1) % 1 * S
+    const j = Math.floor(fj) % S
+    const j1 = (j + 1) % S
+    const u = fj - Math.floor(fj)
+    const a = hs[i * S + j]
+    const b = hs[i * S + j1]
+    const c = hs[(i + 1) * S + j]
+    const d = hs[(i + 1) * S + j1]
+    // the two triangles of the quad (a b c) and (b d c)
+    const m = u + v <= 1 ? a + (b - a) * u + (c - a) * v : d + (c - d) * (1 - u) + (b - d) * (1 - v)
+    return Math.max(h, m)
+}
+
 export async function createTerrain({ lowPower = false } = {}) {
     // built a few rings at a time, letting the page breathe in between (it is a lot of land)
     const breathe = () => new Promise((r) => setTimeout(r, 0))
@@ -149,6 +202,7 @@ export async function createTerrain({ lowPower = false } = {}) {
             hs[k] = h
         }
     }
+    grid = { hs, sectors, rings, r0, growth }
     const idx = []
     for (let i = 0; i < rings - 1; i++) {
         for (let j = 0; j < sectors; j++) {
@@ -302,9 +356,11 @@ function createTown({ lowPower }) {
         const d = central ? 22 + rnd() * 30 : 12 + rnd() * 10
         const ht = central ? 18 + Math.pow(rnd(), 2.5) * 60 : 12 + rnd() * 10
         // streets roughly follow the shore
-        q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), -a + (rnd() < 0.5 ? 0 : Math.PI / 2) + (rnd() - 0.5) * 0.3)
+        const rot = -a + (rnd() < 0.5 ? 0 : Math.PI / 2) + (rnd() - 0.5) * 0.3
+        q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), rot)
         s.set(w, ht, d)
         p.set(x, h - 2, z)
+        addBlock(x, z, w / 2, d / 2, rot, h - 2 + ht * 1.35)
         m.compose(p, q, s)
         mesh.setMatrixAt(placed, m)
         mesh.setColorAt(placed, facades[Math.floor(rnd() * facades.length)])
@@ -448,9 +504,11 @@ function createCoastHouses({ lowPower }) {
             const w = 18 + rnd() * 12
             const d = 13 + rnd() * 8
             const ht = 12 + rnd() * 8
-            q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), rnd() * Math.PI)
+            const rot = rnd() * Math.PI
+            q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), rot)
             sc.set(w, ht, d)
             p.set(x, h - 2, z)
+            addBlock(x, z, w / 2, d / 2, rot, h - 2 + ht * 1.35)
             m.compose(p, q, sc)
             mesh.setMatrixAt(placed, m)
             mesh.setColorAt(placed, paint[Math.floor(rnd() * paint.length)])
@@ -610,6 +668,7 @@ function createWharfRow({ lowPower }) {
             const start = house(w, d, h, 6.5, colour, ROOF_COLOURS[Math.floor(rnd() * ROOF_COLOURS.length)])
             place(start, x, z, yaw)
             COLLIDERS.push({ x, z, hx: w / 2 + 0.5, hz: d / 2 + 0.5, rot: yaw })
+            addBlock(x, z, w / 2 + 1, d / 2 + 1, yaw, h + w * 0.6)
             // the next house, with a narrow gap now and then
             deg += ((w + (rnd() < 0.25 ? 3 + rnd() * 5 : 0.4)) / cz) * (180 / Math.PI)
         }
@@ -644,6 +703,7 @@ function createQuay() {
         b.rotation.y = -a
         g.add(b)
         COLLIDERS.push({ x: b.position.x, z: b.position.z, hx: 30, hz: 20, rot: -a })
+        addBlock(b.position.x, b.position.z, 30, 20, -a, 13)
     }
     // cranes
     const crane = (deg, mat, rot) => {

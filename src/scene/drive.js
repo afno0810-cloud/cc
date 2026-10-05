@@ -51,7 +51,7 @@ const scrollHost = (dy) => {
     }
 }
 
-export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, colliders, buoys, spray, onPing, reduced }) {
+export function createDrive({ camera, getBoat, getElev, landHeight, groundHeight = landHeight, obstacles, colliders, buoys, spray, onPing, reduced }) {
     const state = {
         active: false,
         pos: new THREE.Vector3(),
@@ -560,6 +560,12 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
     }
     function stop() {
         if (!state.active) return
+        // the game page is only the harbour: leaving the helm would leave an empty (black) screen,
+        // so it opens the game menu there instead
+        if (document.body.hasAttribute("data-game") && pausers.length) {
+            for (const f of pausers) f()
+            return
+        }
         state.active = false
         state.outBlend = 1
         keys.clear()
@@ -821,6 +827,32 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
         const flat = Math.cos(pitch + 0.06 * km) * dist
         const lookY = 1.6 + (2.05 - 1.6) * ki
         want.set(state.pos.x + Math.cos(a) * flat, 1.2 + (lookY - 1.6) + Math.sin(pitch + 0.06 * km) * dist, state.pos.z - Math.sin(a) * flat)
+        // keep the camera out of the hills: when land rises between the boat and the camera,
+        // come in closer and higher, or the view fills with the inside of the hill
+        if (groundHeight) {
+            let f = 1
+            let lift = 0
+            let over = 0
+            for (let tries = 0; tries < 5; tries++) {
+                lift = 0
+                over = 0
+                for (let i = 1; i <= 8; i++) {
+                    const s = i / 8
+                    const h = groundHeight(state.pos.x + (want.x - state.pos.x) * f * s, state.pos.z + (want.z - state.pos.z) * f * s)
+                    if (h == null) continue
+                    const need = h + 2.5 - (lookY + (want.y - lookY) * s)
+                    if (need > 0) lift = Math.max(lift, need / s)
+                    over = Math.max(over, h + 2.5 - want.y)
+                }
+                if (lift < dist * 0.4) break
+                f *= 0.75
+            }
+            // right up against something tall: just stand above it, looking down at the boat
+            if (lift >= dist * 0.4) lift = Math.min(lift, over)
+            want.x = state.pos.x + (want.x - state.pos.x) * f
+            want.z = state.pos.z + (want.z - state.pos.z) * f
+            want.y += lift
+        }
         wantLook.copy(state.pos).addScaledVector(fwd, 5 * (1 - ki) * (1 - km)).setY(lookY)
         // with the menu open, look a little to the left of the boat, so it stands right of the menu
         wantLook.x += Math.sin(a) * dist * 0.24 * km
@@ -841,6 +873,11 @@ export function createDrive({ camera, getBoat, getElev, landHeight, obstacles, c
             state.camPos.y += (Math.random() - 0.5) * sh * 0.6
             state.camPos.z += (Math.random() - 0.5) * sh
             state.shake *= Math.exp(-dt * 6)
+        }
+        // and never below the ground where the camera actually is (it trails behind the wanted spot)
+        if (groundHeight) {
+            const g = groundHeight(state.camPos.x, state.camPos.z)
+            if (g != null && state.camPos.y < g + 2) state.camPos.y = g + 2
         }
 
         // sound
