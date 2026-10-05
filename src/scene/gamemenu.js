@@ -93,6 +93,34 @@ export function createGameMenu({ drive, get }) {
     menuBtn.addEventListener("click", () => open(true))
     drive.actions.appendChild(menuBtn)
 
+    // the buttons at the helm get the same icons as the menu, and their names in a span of their own,
+    // so on a phone they fit on one row as icons (the name stays as the button's label for screen readers)
+    const DECO = [
+        [(b) => /^Njord tasks/.test(b.textContent.trim()), "njord", "Njord tasks"],
+        [(b) => /^Places/.test(b.textContent.trim()), "places", "Places"],
+        [(b) => b.classList.contains("hud-autobtn"), "auto", "Autonomous"],
+        [(b) => b.dataset.hud === "keys", "keys", "Controls"],
+    ]
+    function decorate() {
+        for (const b of drive.actions.querySelectorAll(".hud-btn")) {
+            if (b.dataset.deco) continue
+            const d = DECO.find(([f]) => f(b))
+            if (!d) continue
+            b.dataset.deco = d[1]
+            for (const n of [...b.childNodes]) {
+                if (n.nodeType === 3 && n.textContent.trim()) {
+                    const sp = document.createElement("span")
+                    sp.className = "hb-label"
+                    sp.textContent = n.textContent.trim()
+                    n.replaceWith(sp, " ")
+                }
+            }
+            b.insertAdjacentHTML("afterbegin", icon(d[1]).replace("<svg ", '<svg class="hb-ic" '))
+            if (!b.getAttribute("aria-label")) b.setAttribute("aria-label", d[2])
+        }
+    }
+    decorate()
+
     const side = el.querySelector(".gm-side")
     const main = el.querySelector(".gm-main")
     const settings = el.querySelector(".gm-settings")
@@ -161,7 +189,7 @@ export function createGameMenu({ drive, get }) {
         if (first) first.focus({ preventScroll: true })
     }
 
-    function open(on) {
+    function open(on, { keys = true } = {}) {
         if (on === isOpen()) return
         el.classList.toggle("is-on", on)
         drive.hud.classList.toggle("is-menu", on)
@@ -178,7 +206,8 @@ export function createGameMenu({ drive, get }) {
             show("main")
         } else {
             // the first time out on the water: the controls come up first
-            if (!started) setTimeout(() => drive.active && !isOpen() && drive.showKeys(true), 200)
+            // (not when you picked something else from the menu: that opens instead, and stays open)
+            if (!started && keys) setTimeout(() => drive.active && !isOpen() && drive.showKeys(true), 200)
             started = true
             drive.state.menu = false
         }
@@ -189,9 +218,7 @@ export function createGameMenu({ drive, get }) {
         drive.sfx && drive.sfx("click")
         if (id === "settings") return show("settings")
         if (id === "back") return show("main")
-        const first = !started
-        open(false)
-        if (first && id !== "play") setTimeout(() => drive.showKeys(id === "keys"), 220)
+        open(false, { keys: id === "play" })
         if (id === "njord" && g.missions) g.missions.openPanel(true)
         if (id === "auto" && g.autopilot) g.autopilot.openMenu(true)
         if (id === "places" && g.places) g.places.openPanel(true)
@@ -267,6 +294,7 @@ export function createGameMenu({ drive, get }) {
         },
         // the world has been built: the entries that waited for it can be chosen
         refresh() {
+            decorate()
             if (!isOpen()) return
             renderReady()
             renderStats()

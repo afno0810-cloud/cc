@@ -4882,3 +4882,97 @@ body[data-game] .menu {
         transform: translate(-50%, 0);
     }
 }
+
+/* ---- the game page's top bar: one tidy row ----
+   the buttons on the left (with icons), what is going on (online, points) on the right;
+   on a phone the points and online sit above one row of icon buttons */
+body[data-game] .hud-top > .hud-tag {
+    display: none;
+}
+body[data-game] .hud-top {
+    align-items: center;
+    row-gap: 10px;
+}
+body[data-game] .hud-actions {
+    order: 1;
+}
+body[data-game] .hud-top > .hud-online,
+body[data-game] .hud-top > .hud-score {
+    order: 2;
+}
+body[data-game] .hud-top > .hud-online {
+    margin: 0 0 0 auto;
+}
+body[data-game] .hud-top > .hud-score {
+    margin: 0;
+}
+.hud-btn > .hb-ic {
+    width: 17px;
+    height: 17px;
+    flex: none;
+    opacity: 0.85;
+}
+.hud-autobtn.is-on > .hb-ic {
+    color: #7ff0ff;
+    opacity: 1;
+}
+.hud-menu svg,
+.hud-mic svg {
+    width: 17px;
+    height: 17px;
+    flex: none;
+}
+@media (max-width: 700px) {
+    body[data-game] .hud-top > .hud-online,
+    body[data-game] .hud-top > .hud-score {
+        order: 0;
+    }
+    body[data-game] .hud-top > .hud-online {
+        margin: 0;
+    }
+    body[data-game] .hud-actions {
+        width: 100%;
+        flex-wrap: nowrap;
+        gap: 6px;
+    }
+    body[data-game] .hud-actions .hud-btn {
+        flex: 1 1 0;
+        min-width: 0;
+        height: 44px;
+        padding: 0;
+        justify-content: center;
+    }
+    body[data-game] .hud-actions .hud-btn .hb-label,
+    body[data-game] .hud-actions .hud-btn kbd,
+    body[data-game] .hud-actions .hud-btn .ha-led,
+    body[data-game] .hud-actions .hud-menu span,
+    body[data-game] .hud-actions .hud-mic .hm-mic-text {
+        display: none;
+    }
+    body[data-game] .hud-actions .hud-btn > svg {
+        width: 20px;
+        height: 20px;
+    }
+}
+@media (min-width: 701px) and (max-width: 1360px) {
+    /* the key on each button is in Controls (H): without it, the buttons and the status fit on one row */
+    body[data-game] .hud-actions .hud-btn kbd {
+        display: none;
+    }
+}
+@media (min-width: 701px) and (max-width: 1200px) {
+    /* not room for one row: the status on top, the buttons in one row under it */
+    body[data-game] .hud-top > .hud-online,
+    body[data-game] .hud-top > .hud-score {
+        order: 0;
+    }
+    body[data-game] .hud-top > .hud-online {
+        margin: 0;
+    }
+    body[data-game] .hud-top > .hud-score {
+        margin-right: auto;
+    }
+    body[data-game] .hud-actions {
+        width: 100%;
+    }
+}
