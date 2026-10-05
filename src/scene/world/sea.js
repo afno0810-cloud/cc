@@ -1,5 +1,5 @@
 import * as THREE from "three"
-import { WAVE_GLSL } from "./waves.js"
+import { WAVE_GLSL_FILTERED } from "./waves.js"
 import { PANO_GLSL } from "./sky.js"
 
 /* ================================================================
@@ -132,7 +132,10 @@ function ringGeometry(rings, sectors, rMax) {
 }
 
 export function createWater({ lowPower = false } = {}) {
-    const geo = ringGeometry(lowPower ? 150 : 210, lowPower ? 160 : 256, 36000)
+    const rings = lowPower ? 150 : 210
+    const geo = ringGeometry(rings, lowPower ? 160 : 256, 36000)
+    // how much further apart each ring is than the one inside it (for the wave filter)
+    const grow = Math.pow(36000 / 0.35, 1 / rings) - 1
     const wake = []
     for (let i = 0; i < WAKE_N; i++) wake.push(new THREE.Vector4(0, 0, -999, 0))
     const ripples = []
@@ -140,6 +143,7 @@ export function createWater({ lowPower = false } = {}) {
     const U = {
         uTime: { value: 0 },
         uAmp: { value: 1 },
+        uGrow: { value: grow },
         uCenter: { value: new THREE.Vector2() },
         uCam: { value: new THREE.Vector3() },
         uWaves: { value: makeWaveTexture(lowPower ? 256 : 512) },
@@ -170,14 +174,16 @@ export function createWater({ lowPower = false } = {}) {
     const mat = new THREE.ShaderMaterial({
         uniforms: U,
         vertexShader: /* glsl */ `
-            uniform float uTime; uniform float uAmp; uniform vec2 uCenter; uniform vec3 uCam;
+            uniform float uTime; uniform float uAmp; uniform vec2 uCenter; uniform vec3 uCam; uniform float uGrow;
             varying vec3 vPos; varying vec2 vSlope; varying float vH;
-            ${WAVE_GLSL}
+            ${WAVE_GLSL_FILTERED}
             void main() {
                 vec3 p = position + vec3(uCenter.x, 0.0, uCenter.y);
                 // swells fade out far away, where they would only shimmer
                 float far = 1.0 - smoothstep(220.0, 1600.0, length(p.xz - uCam.xz));
-                vec3 w = waveH(p.xz, uTime, uAmp * far);
+                // and each one where the rings are too far apart to draw it
+                float sp = max(length(position.xz) * uGrow, 0.35);
+                vec3 w = waveHF(p.xz, uTime, uAmp * far, sp);
                 p.y += w.x;
                 vSlope = w.yz;
                 vH = w.x;

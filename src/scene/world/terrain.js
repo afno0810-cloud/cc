@@ -276,7 +276,10 @@ export async function createTerrain({ lowPower = false } = {}) {
     await breathe()
     group.add(createCoastHouses({ lowPower }))
     await breathe()
-    group.add(createForest({ lowPower }))
+    const forest = createForest({ lowPower })
+    // thousands of trees: the first thing left out of the mirror image when the machine is slow
+    forest.userData.reflectLow = false
+    group.add(forest)
     group.add(createQuay())
     group.add(createWharfRow({ lowPower }))
     return group

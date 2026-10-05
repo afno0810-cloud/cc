@@ -97,6 +97,8 @@ export async function startScene({ reduced = false } = {}) {
     })
     const dpr = Math.min(devicePixelRatio || 1, lowPower ? 1.5 : 2) // sharp on high-density screens (lowered on the fly if too slow)
     let dprNow = dpr // lowered on the fly if the machine can't keep up
+    let quality = 0 // and the extras stepped down (see adapt)
+    const noReflectLow = [] // left out of the mirror image when the machine is slow
     renderer.setPixelRatio(dpr)
     renderer.setSize(innerWidth, innerHeight, false)
     renderer.outputColorSpace = THREE.SRGBColorSpace
@@ -169,7 +171,9 @@ export async function startScene({ reduced = false } = {}) {
     const buildWorld = async () => {
         terrainMod = await import("./world/terrain.js")
         const { createTerrain, createShoreLights } = terrainMod
-        scene.add(await createTerrain({ lowPower }))
+        const land = await createTerrain({ lowPower })
+        land.traverse((o) => o.userData.reflectLow === false && noReflectLow.push(o))
+        scene.add(land)
         shoreLights = createShoreLights({ lowPower })
         shoreLights.material.uniforms.uPx.value = dpr
         scene.add(shoreLights)
@@ -302,6 +306,8 @@ export async function startScene({ reduced = false } = {}) {
     const qv = new THREE.Vector4()
     const fwd = new THREE.Vector3()
     const upv = new THREE.Vector3()
+    const hidden = []
+    const was = []
     function renderReflection() {
         camera.updateMatrixWorld()
         fwd.set(0, 0, -1).applyQuaternion(camera.quaternion)
@@ -332,14 +338,20 @@ export async function startScene({ reduced = false } = {}) {
         pm.elements[10] = clipPlane.z + 1
         pm.elements[14] = clipPlane.w
         reflCam.projectionMatrixInverse.copy(pm).invert()
-        const hidden = [water, beam, motes && motes.points].filter(Boolean)
-        const was = hidden.map((o) => o.visible)
-        hidden.forEach((o) => (o.visible = false))
+        // not in the mirror: the water itself, the beam, the motes (and when the machine is slow, the trees)
+        hidden.length = 0
+        hidden.push(water, beam)
+        if (motes && motes.points) hidden.push(motes.points)
+        if (quality >= 1) for (const o of noReflectLow) hidden.push(o)
+        for (let i = 0; i < hidden.length; i++) {
+            was[i] = hidden[i].visible
+            hidden[i].visible = false
+        }
         renderer.setRenderTarget(reflectRT)
         renderer.clear()
         renderer.render(scene, reflCam)
         renderer.setRenderTarget(null)
-        hidden.forEach((o, i) => (o.visible = was[i]))
+        for (let i = 0; i < hidden.length; i++) hidden[i].visible = was[i]
     }
 
     // ---- post-processing ----
@@ -570,7 +582,7 @@ export async function startScene({ reduced = false } = {}) {
         camera.aspect = W / H
         camera.updateProjectionMatrix()
         post.setSize(W, H, dprNow)
-        const rk = lowPower ? 0.5 : 0.75
+        const rk = (lowPower ? 0.5 : 0.75) * (quality >= 1 ? 0.6 : 1)
         reflectRT.setSize(Math.round(W * dprNow * rk), Math.round(H * dprNow * rk))
         argus.points.uProj.value = (H * dprNow) / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)))
         if (globe) globe.setPx(1, argus.points.uProj.value)
@@ -708,7 +720,8 @@ export async function startScene({ reduced = false } = {}) {
         if (!visible || contextLost) return
         const raw = clock.getDelta()
         const dt = Math.min(raw, window.__dtMax || 0.05) // (tests may allow longer steps)
-        if (!reduced) t += dt
+        // (with reduced motion the harbour stands still, but not at the helm: the game runs on time)
+        if (!reduced || (drive && drive.active)) t += dt
         adapt(raw)
 
         measure()
@@ -974,6 +987,13 @@ export async function startScene({ reduced = false } = {}) {
 
         camera.position.copy(camPos)
         camera.lookAt(camLook)
+        // at the helm the camera is never close to anything: a nearer near plane only costs depth
+        // precision, and far off the shore would flicker where the land meets the water
+        const nearWant = drive && drive.active ? 1.5 : 0.5
+        if (camera.near !== nearWant) {
+            camera.near = nearWant
+            camera.updateProjectionMatrix()
+        }
         // follow an anchored box exactly, otherwise ease
         const ko = anchored > 0.5 ? 1 : 1 - Math.exp(-dt * 5)
         viewOffset = lerp(viewOffset, off, ko)
@@ -1166,10 +1186,20 @@ export async function startScene({ reduced = false } = {}) {
     }
 
     // keep it smooth: if frames get really slow, render fewer pixels (never below 0.85 on a good machine,
-    // 0.75 on a weak one: fewer than that looks grainy)
+    // 0.75 on a weak one: fewer than that looks grainy), and if that is not enough, step the extras down:
+    // 1 a smaller mirror image without the trees, 2 no glow (bloom), 3 no mirror image of the world
+    // (the sky still mirrors). It steps back up only after a good while of fast frames.
     let fAcc = 0
     let fN = 0
     let fCool = 2
+    let goodRuns = 0
+    const bloomWanted = () => quality < 2 && (dprNow > 0.9 || !lowPower)
+    function setQuality(q) {
+        quality = q
+        wu.uReflectOn.value = quality >= 3 ? 0 : 1
+        post.bloom.enabled = bloomWanted()
+        resize()
+    }
     function adapt(raw) {
         if (raw > 0.25) return // tab switch or a hitch, not a trend
         fAcc += raw
@@ -1179,14 +1209,23 @@ export async function startScene({ reduced = false } = {}) {
         fAcc = fN = 0
         if (fCool-- > 0) return // let the page settle first
         const floor = lowPower ? 0.75 : 0.85
-        if (avg > 1 / 32 && dprNow > floor + 0.01) {
-            dprNow = Math.max(floor, dprNow * 0.85)
-            post.bloom.enabled = dprNow > 0.9 || !lowPower
-            resize()
-        } else if (avg < 1 / 57 && dprNow < dpr - 0.01) {
-            dprNow = Math.min(dpr, dprNow * 1.1)
-            resize()
-        }
+        if (avg > 1 / 32) {
+            goodRuns = 0
+            if (dprNow > floor + 0.01) {
+                dprNow = Math.max(floor, dprNow * 0.85)
+                post.bloom.enabled = bloomWanted()
+                resize()
+            } else if (quality < 3) setQuality(quality + 1)
+        } else if (avg < 1 / 57) {
+            if (++goodRuns < 3) return
+            goodRuns = 0
+            if (quality > 0) setQuality(quality - 1)
+            else if (dprNow < dpr - 0.01) {
+                dprNow = Math.min(dpr, dprNow * 1.1)
+                post.bloom.enabled = bloomWanted()
+                resize()
+            }
+        } else goodRuns = 0
     }
 
     function placeLabels() {

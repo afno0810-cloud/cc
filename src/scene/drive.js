@@ -243,7 +243,12 @@ export function createDrive({ camera, getBoat, getElev, landHeight, groundHeight
         lidBtn.setAttribute("aria-label", on ? "Close lid" : "Open lid")
         hud.classList.toggle("is-inspecting", on)
     }
+    // one menu at a time: opening one closes the other lists (not a task's briefing or result)
+    function closeOthers(el) {
+        for (const m of menus) if (m.modal && m.el !== el && !m.el.classList.contains("hud-result")) m.el.classList.remove("is-on")
+    }
     function showKeys(on) {
+        if (on) closeOthers(keysEl)
         keysEl.classList.toggle("is-on", on)
         keysBtn.setAttribute("aria-expanded", on ? "true" : "false")
     }
@@ -380,7 +385,16 @@ export function createDrive({ camera, getBoat, getElev, landHeight, groundHeight
     }
     function onKey(e) {
         if (!state.active) return
-        const k = e.key.toLowerCase()
+        const k = (e.key || "").toLowerCase()
+        // a shortcut of the browser or the system (Ctrl/Cmd/Alt + a key) is not for the boat; and on a Mac
+        // the letters held with Cmd never send their keyup, so letting go of Cmd/Ctrl lets go of everything
+        if (e.type === "keyup" && (k === "meta" || k === "control" || k === "os")) {
+            keys.clear()
+            return
+        }
+        if (e.type === "keydown" && (e.ctrlKey || e.metaKey || e.altKey)) return
+        const tg = e.target
+        if (tg && (tg.tagName === "INPUT" || tg.tagName === "TEXTAREA" || tg.tagName === "SELECT" || tg.isContentEditable)) return
         if (e.type === "keydown") {
             if (k === "escape") {
                 if (keysEl.classList.contains("is-on")) return showKeys(false)
@@ -407,6 +421,10 @@ export function createDrive({ camera, getBoat, getElev, landHeight, groundHeight
             if (k === "l") setLid(!state.lidOpen)
             if (k === "h" || k === "?") showKeys(!keysEl.classList.contains("is-on"))
             if (k === " ") {
+                // Space on a button in an open menu presses the button (no ping)
+                const m = activeMenu()
+                const f = document.activeElement
+                if (m && f && m.contains(f) && (f.tagName === "BUTTON" || f.tagName === "A")) return
                 ping = performance.now() / 1000
                 onPing && onPing(state.pos)
             }
@@ -748,7 +766,7 @@ export function createDrive({ camera, getBoat, getElev, landHeight, groundHeight
         }
         th = clamp(th, -1, 1)
         st = clamp(st, -1, 1)
-        if (state.locked || state.lidOpen) {
+        if (state.locked || state.lidOpen || state.menu) {
             th = 0
             st = 0
             spin = 0
@@ -814,7 +832,7 @@ export function createDrive({ camera, getBoat, getElev, landHeight, groundHeight
         // chase camera, a little behind the turn, and you can look around
         if (!dragging && performance.now() - lastDrag > 2200) {
             // with the autopilot on, the camera swings slowly round to show the boat from the sides
-            if (state.orbit) camYaw += (Math.sin(t * 0.13) * 0.95 - camYaw) * (1 - Math.exp(-dt * 0.6))
+            if (state.orbit || state.menu) camYaw += (Math.sin(t * 0.13) * 0.95 - camYaw) * (1 - Math.exp(-dt * 0.6))
             else camYaw *= Math.exp(-dt * 1.2)
         }
         // the camera follows the course, so it stays steady while the hull turns
@@ -895,9 +913,19 @@ export function createDrive({ camera, getBoat, getElev, landHeight, groundHeight
         drawHud(t)
     }
 
+    let hudThr = ""
+    let hudAt = 0
     function drawHud(t) {
-        thrEl.style.transform = `scaleX(${Math.abs(thr).toFixed(3)})`
-        thrEl.classList.toggle("is-back", thr < 0)
+        const tf = `scaleX(${Math.abs(thr).toFixed(2)})`
+        if (tf !== hudThr) {
+            hudThr = tf
+            thrEl.style.transform = tf
+            thrEl.classList.toggle("is-back", thr < 0)
+        }
+        // the compass and the radar are drawn 30 times a second (plenty for them, and half the work at 60)
+        const now = performance.now()
+        if (now - hudAt < 30) return
+        hudAt = now
         // compass tape: bearing from north (+z), clockwise, so a turn to starboard turns it up (east is -x)
         const bearing = ((Math.atan2(-Math.cos(state.heading), -Math.sin(state.heading)) * 180) / Math.PI + 360) % 360
         const c = compass
@@ -1167,6 +1195,7 @@ export function createDrive({ camera, getBoat, getElev, landHeight, groundHeight
         addMenu(el, { modal = true } = {}) {
             menus.push({ el, modal })
         },
+        closeOthers,
         get menuOpen() {
             return !!activeMenu()
         },

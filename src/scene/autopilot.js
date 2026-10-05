@@ -21,7 +21,6 @@ import { CARDINALS } from "./taskart.js"
 const R_BOAT = 5.0 // blocked this close to the edge of a thing (half the boat's width and some)
 const R_BUOY = 3.6
 const SOFT = 9 // and dearer for this much further out
-const PIPE = ["Stereo camera and LiDAR", "Kongsberg Seapath 130", "Cost map", "State machine", "Field D*", "Pixhawk"]
 const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;")
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a))
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v))
@@ -262,47 +261,6 @@ export function createAutopilot({ scene, drive, missions, places, score, getColl
     }
 
     // ================= what you see =================
-    // the cost map: a small map in the panel (north up), not a grid on the water
-    const MAP = 120 // units across
-    const PX = 160
-    const mapCanvas = document.createElement("canvas")
-    mapCanvas.width = mapCanvas.height = PX
-    mapCanvas.className = "ha-map"
-    mapCanvas.setAttribute("aria-hidden", "true")
-    const mapCtx = mapCanvas.getContext("2d")
-    const mapAt = { x: 0, z: 0 }
-    function drawMap(cx, cz) {
-        mapAt.x = cx
-        mapAt.z = cz
-        const g = grid
-        mapCtx.clearRect(0, 0, PX, PX)
-        if (!g) return
-        const u = MAP / PX
-        const step = Math.max(1, Math.round(g.cell / u))
-        for (let py = 0; py < PX; py += step)
-            for (let px = 0; px < PX; px += step) {
-                // the plane lies flat: its +y is world -z
-                const x = cx - MAP / 2 + (px + step / 2) * u
-                const z = cz - MAP / 2 + (py + step / 2) * u
-                const i = Math.floor((x - g.minX) / g.cell)
-                const j = Math.floor((z - g.minZ) / g.cell)
-                if (i < 0 || j < 0 || i >= g.W || j >= g.H) continue
-                const c = g.cost[j * g.W + i]
-                const r = Math.hypot(px - PX / 2, py - PX / 2) / (PX / 2)
-                const fade = clamp(1.15 - r, 0, 1)
-                if (!Number.isFinite(c)) mapCtx.fillStyle = `rgba(255, 70, 60, ${0.75 * fade})`
-                else if (c > 1.05) {
-                    const k = clamp((c - 1) / 8, 0, 1)
-                    mapCtx.fillStyle = `rgba(${Math.round(150 + 105 * k)}, ${Math.round(110 + 40 * (1 - k))}, ${Math.round(240 - 180 * k)}, ${(0.18 + 0.5 * k) * fade})`
-                } else mapCtx.fillStyle = `rgba(110, 200, 255, ${0.05 * fade})`
-                mapCtx.fillRect(px, py, step - 1, step - 1)
-            }
-        // Argus in the middle
-        mapCtx.fillStyle = "#e8fdff"
-        mapCtx.beginPath()
-        mapCtx.arc(PX / 2, PX / 2, 3.2, 0, Math.PI * 2)
-        mapCtx.fill()
-    }
     // the planned way: a bright dashed line on the water
     const PATH_N = 400
     const pathPos = new Float32Array(PATH_N * 2 * 3)
@@ -337,6 +295,7 @@ export function createAutopilot({ scene, drive, missions, places, score, getColl
     pathMesh.renderOrder = 2
     group.add(pathMesh)
     let pathSamples = [] // [x, z, sx, sz, along]
+    const laid = { path: undefined, x: 0, z: 0 }
     function layPath(pts) {
         pathSamples = []
         if (!pts || pts.length < 2) {
@@ -361,7 +320,13 @@ export function createAutopilot({ scene, drive, missions, places, score, getColl
         const last = pts[pts.length - 1]
         const pl = pathSamples[pathSamples.length - 1]
         if (pathSamples.length < PATH_N) pathSamples.push([last[0], last[1], pl[2], pl[3], along])
-        for (let i = 0; i < pathSamples.length; i++) pathUv.set([pathSamples[i][4], 0, pathSamples[i][4], 1], i * 4)
+        for (let i = 0; i < pathSamples.length; i++) {
+            const u = pathSamples[i][4]
+            pathUv[i * 4] = u
+            pathUv[i * 4 + 1] = 0
+            pathUv[i * 4 + 2] = u
+            pathUv[i * 4 + 3] = 1
+        }
         pathGeo.attributes.uv.needsUpdate = true
         pathGeo.setDrawRange(0, (pathSamples.length - 1) * 6)
     }
@@ -387,16 +352,25 @@ export function createAutopilot({ scene, drive, missions, places, score, getColl
     box.setAttribute("aria-live", "polite")
     box.innerHTML = `
         <div class="ha-head"><span class="ha-badge"><i></i>Autonomous</span><button type="button" class="hud-btn ha-stop">Take the helm</button></div>
-        <p class="ha-state">Planning</p>
-        <p class="ha-goal"></p>
-        <ol class="ha-pipe">${PIPE.map((p) => `<li>${p}</li>`).join("")}</ol>
-        <p class="ha-stats"></p>`
+        <p class="ha-to"><span>To</span><b class="ha-dest">…</b></p>
+        <p class="ha-eta"></p>
+        <div class="ha-bar" aria-hidden="true"><i></i></div>
+        <p class="ha-state">Planning</p>`
     hud.appendChild(box)
-    box.querySelector(".ha-pipe").after(mapCanvas)
+    // where Argus is going, how far and how long, how much of the way is done, and what it does now
     const stateEl = box.querySelector(".ha-state")
-    const goalEl = box.querySelector(".ha-goal")
-    const statsEl = box.querySelector(".ha-stats")
-    const pipeEls = [...box.querySelectorAll(".ha-pipe li")]
+    const destEl = box.querySelector(".ha-dest")
+    const etaEl = box.querySelector(".ha-eta")
+    const barEl = box.querySelector(".ha-bar i")
+    const shown = { state: "", dest: "", eta: "", bar: "" }
+    const put = (el, key, v, prop = "textContent") => {
+        if (shown[key] === v) return
+        shown[key] = v
+        if (prop === "width") el.style.width = v
+        else el[prop] = v
+    }
+    let legFrom = 0 // how far it was when this leg began (for the bar)
+    let legKey = ""
     box.querySelector(".ha-stop").addEventListener("click", () => stop("You have the helm"))
 
     // the menu
@@ -406,6 +380,7 @@ export function createAutopilot({ scene, drive, missions, places, score, getColl
     panel.setAttribute("aria-label", "Autonomous")
     hud.appendChild(panel)
     drive.addMenu(panel)
+    const folded = new Map() // the place groups you opened in the menu
     function renderMenu() {
         const tasks = missions.tasks
         const groups = places.groups
@@ -416,25 +391,30 @@ export function createAutopilot({ scene, drive, missions, places, score, getColl
                 ${mode ? `<button type="button" class="hud-btn" data-auto="stop">Take the helm</button>` : ""}
             </div>
             <p class="hm-intro">Argus is our first autonomous surface vessel. It finds its way on the water with no one at the wheel.</p>
+            <h3 class="ha-sec">Sail on its own</h3>
             <ol class="hm-list ha-list">
                 <li><button type="button" class="hm-item" data-auto="tour"><span class="hm-icon ha-ic">${ICON.tour}</span><span class="hm-body"><b>Tour the harbour</b><span>${left ? `Argus sails to the ${left} places you have not seen, one after another.` : "Argus sails round all the places again."}</span></span></button></li>
                 <li><button type="button" class="hm-item" data-auto="near"><span class="hm-icon ha-ic">${ICON.near}</span><span class="hm-body"><b>The nearest new place</b><span>Plans a way there round everything in between.</span></span></button></li>
             </ol>
+            ${playersMenu()}
             <section class="hp-group" style="--gc: #f2c230"><h3><span>Njord tasks on its own</span><small>you watch</small></h3>
                 <ol class="hm-list hp-list">
                     ${tasks.map((t, i) => `<li><button type="button" class="hm-item" data-auto="task:${t.id}"><span class="hp-dot">0${i + 1}</span><span class="hm-body"><b>${t.name}</b></span></button></li>`).join("")}
                     <li><button type="button" class="hm-item" data-auto="full"><span class="hp-dot">★</span><span class="hm-body"><b>Full Njord run</b></span></button></li>
                 </ol>
             </section>
-            ${playersMenu()}
+            <h3 class="ha-sec">Go to a place</h3>
             ${groups
-                .map(
-                    (gr) => `<section class="hp-group" style="--gc: ${gr.color}"><h3><span>Go to: ${esc(gr.name)}</span></h3>
-                <ol class="hm-list hp-list">${places.list
-                    .filter((p) => p.group === gr.id)
+                .map((gr) => {
+                    const mine = places.list.filter((p) => p.group === gr.id)
+                    const k = mine.filter((p) => places.isVisited(p.id)).length
+                    const isOpen = !!folded.get(gr.id)
+                    return `<section class="hp-group is-fold${isOpen ? " is-open" : ""}" style="--gc: ${gr.color}" data-group="${gr.id}">
+                <h3><button type="button" class="hp-fold" data-fold aria-expanded="${isOpen}"><span>${esc(gr.name)}</span><small>${k} of ${mine.length} seen</small><i class="hp-chev" aria-hidden="true"></i></button></h3>
+                <div class="hp-fold-body"><ol class="hm-list hp-list">${mine
                     .map((p) => `<li><button type="button" class="hm-item${places.isVisited(p.id) ? " is-done" : ""}" data-auto="go:${p.id}"><span class="hm-body"><b>${esc(p.title)}</b></span></button></li>`)
-                    .join("")}</ol></section>`
-                )
+                    .join("")}</ol></div></section>`
+                })
                 .join("")}
             <div class="hm-foot"><span class="hud-keyhint" aria-hidden="true"><kbd>↑</kbd><kbd>↓</kbd> choose <kbd>Enter</kbd> go <kbd>Esc</kbd> close</span><span class="ha-note">Any drive key takes the helm back</span></div>`
     }
@@ -448,7 +428,7 @@ export function createAutopilot({ scene, drive, missions, places, score, getColl
             .sort((a, b) => a.d - b.d)
             .map(({ pl, d }) => `<li><button type="button" class="hm-item" data-auto="player:${esc(pl.id)}"><span class="hp-dot ha-player" style="background:${esc(pl.color)}" aria-hidden="true"></span><span class="hm-body"><b>${esc(pl.name)}</b><span>${Math.round(d * 0.3)} m away</span></span></button></li>`)
             .join("")
-        return `<section class="hp-group" style="--gc: #7cc4ff"><h3><span>Go to: players online</span><small>${list.length || "none"}</small></h3>
+        return `<section class="hp-group" style="--gc: #7cc4ff"><h3><span>Go to a player online</span><small>${list.length || "none"}</small></h3>
                 <ol class="hm-list hp-list">${items || `<li><p class="ha-none">No one else is on the water right now. When someone comes online, they show up here.</p></li>`}</ol></section>`
     }
     const ICON = {
@@ -456,6 +436,7 @@ export function createAutopilot({ scene, drive, missions, places, score, getColl
         near: `<svg class="ti-svg" viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="13" fill="none" stroke="#7ff0ff" stroke-width="1.6" stroke-dasharray="2 3"/><path d="M20 32V12m-5 5 5-5 5 5" fill="none" stroke="#e8eef8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
     }
     function openMenu(on, focus = true) {
+        if (on && !panel.classList.contains("is-on")) drive.closeOthers(panel)
         if (on) {
             renderMenu()
             panel.scrollTop = 0
@@ -468,6 +449,15 @@ export function createAutopilot({ scene, drive, missions, places, score, getColl
     }
     btn.addEventListener("click", () => openMenu(!panel.classList.contains("is-on")))
     panel.addEventListener("click", (e) => {
+        const f = e.target.closest("[data-fold]")
+        if (f) {
+            const sec = f.closest(".hp-group")
+            const on = !sec.classList.contains("is-open")
+            sec.classList.toggle("is-open", on)
+            f.setAttribute("aria-expanded", on)
+            folded.set(sec.dataset.group, on)
+            return
+        }
         const b = e.target.closest("[data-auto]")
         if (!b) return
         const a = b.dataset.auto
@@ -481,7 +471,7 @@ export function createAutopilot({ scene, drive, missions, places, score, getColl
         if (a.startsWith("player:")) return startPlayer(a.slice(7))
     })
     addEventListener("keydown", (e) => {
-        if (!drive.active || e.target.closest?.("input, textarea")) return
+        if (!drive.active || e.ctrlKey || e.metaKey || e.altKey || e.target.closest?.("input, textarea")) return
         if (e.key.toLowerCase() === "g" && !e.repeat) openMenu(!panel.classList.contains("is-on"))
     })
     drive.onEscape(() => {
@@ -493,7 +483,11 @@ export function createAutopilot({ scene, drive, missions, places, score, getColl
     })
     drive.onManual(() => {
         if (mode && mode.kind !== "task") stop("You have the helm")
-        else if (mode && mode.kind === "task") stop("You have the helm: the task goes on with you")
+        else if (mode && mode.kind === "task") {
+            // from here on it is your run, scored as yours
+            if (missions.run) missions.run.auto = false
+            stop("You have the helm: the task goes on with you")
+        }
     })
 
     // ================= modes =================
@@ -503,7 +497,6 @@ export function createAutopilot({ scene, drive, missions, places, score, getColl
     let stateName = "Planning"
     let replans = 0
     let goal = null // { x, z, stop, label }
-    let flowT = 0
     let noteEl = null
     function say(text) {
         if (!noteEl) {
@@ -784,6 +777,8 @@ export function createAutopilot({ scene, drive, missions, places, score, getColl
             panel.classList.remove("is-on")
             return
         }
+        // a task Argus sails on its own started again from its result ("Again", "Next"): Argus takes it
+        if (!mode && missions.run && missions.run.auto && missions.run.phase !== "done") engage({ kind: "task" })
         if (!mode) return
         const p = drive.pos
         let inputs = { th: 0, st: 0, spin: 0 }
@@ -799,13 +794,13 @@ export function createAutopilot({ scene, drive, missions, places, score, getColl
                 path = null
                 layPath(null)
                 goalMesh.visible = false
-                stateEl.textContent = "Task done: the result is up"
+                put(stateEl, "state", "Task done: the result is up")
                 // a next task in a full run starts with its briefing; wait for it
                 return
             }
             if (r.phase !== "go") {
                 drive.state.auto = { th: 0, st: 0 }
-                stateEl.textContent = r.phase === "count" ? "Ready" : "Waiting for the start"
+                put(stateEl, "state", r.phase === "count" ? "Ready" : "Waiting for the start")
                 return
             }
             const tg = taskTarget(r)
@@ -837,9 +832,7 @@ export function createAutopilot({ scene, drive, missions, places, score, getColl
                         path = pl
                     }
                     // a mark: plan only up to the next one, so it goes through the point first
-                    if (tg.mark) replanT = 2.5
-                    replanT = 0.6
-                    drawMap(p.x, p.z)
+                    replanT = tg.mark ? 2.5 : 0.6
                 }
                 inputs = follow(dt, { stopAtEnd: false, cap: tg.mark ? 0.85 : 1 })
                 label = tg.state
@@ -881,7 +874,6 @@ export function createAutopilot({ scene, drive, missions, places, score, getColl
                     if (pl) path = pl
                     else label = "No way through: waiting"
                     replanT = mode.kind === "player" ? 0.5 : 0.8
-                    drawMap(p.x, p.z)
                 }
                 inputs = follow(dt, { stopAtEnd: true, cap: 1 })
                 const ru = rules(inputs.th, inputs.st)
@@ -911,11 +903,28 @@ export function createAutopilot({ scene, drive, missions, places, score, getColl
         stateName = label
 
         // ---- what you see ----
-        layPath(path)
+        // the line on the water is laid out again only when the plan changed (or its end moved a little)
+        const end = path && path.length ? path[path.length - 1] : null
+        if (path !== laid.path || (end && Math.hypot(end[0] - laid.x, end[1] - laid.z) > 1)) {
+            layPath(path)
+            laid.path = path
+            if (end) {
+                laid.x = end[0]
+                laid.z = end[1]
+            }
+        }
         for (let i = 0; i < pathSamples.length; i++) {
-            const [x, z, sx, sz] = pathSamples[i]
+            const q = pathSamples[i]
+            const x = q[0]
+            const z = q[1]
             const y = waveHeight(x, z, t, 1) * 0.85 + 0.22
-            pathPos.set([x + sx * 0.5, y, z + sz * 0.5, x - sx * 0.5, y, z - sz * 0.5], i * 6)
+            const o = i * 6
+            pathPos[o] = x + q[2] * 0.5
+            pathPos[o + 1] = y
+            pathPos[o + 2] = z + q[3] * 0.5
+            pathPos[o + 3] = x - q[2] * 0.5
+            pathPos[o + 4] = y
+            pathPos[o + 5] = z - q[3] * 0.5
         }
         pathGeo.attributes.position.needsUpdate = true
         if (goal) {
@@ -923,22 +932,26 @@ export function createAutopilot({ scene, drive, missions, places, score, getColl
             goalMesh.position.set(goal.x, waveHeight(goal.x, goal.z, t, 1) * 0.85 + 0.3, goal.z)
             goalMesh.scale.setScalar(1 + 0.15 * Math.sin(t * 4))
         }
-        // what the sensors see close by (counted for the panel; the LiDAR view shows them)
-        let n = 0
-        const near = 70
-        for (const list of getColliders())
-            for (const b of list) if (Math.abs(b.x - p.x) < near && Math.abs(b.z - p.z) < near && Math.hypot(b.x - p.x, b.z - p.z) < near) n++
-        for (const b of getBuoys()) if (Math.hypot(b.x - p.x, b.z - p.z) < near) n++
-
-        // ---- the panel ----
-        stateEl.textContent = stateName
-        const where = goal ? `${esc(goal.label)} · ${Math.round(Math.hypot(goal.x - p.x, goal.z - p.z) * 0.3)} m` : ""
-        goalEl.innerHTML = where ? `<span>To</span> ${where}` : ""
-        statsEl.textContent = `${n} things seen · plan ${replans} · ${(Math.abs(drive.speed) * 0.3 * 1.944).toFixed(1)} kn`
-        // the data runs down the pipeline
-        flowT += dt * 6
-        const lit = Math.floor(flowT) % PIPE.length
-        pipeEls.forEach((el, i) => el.classList.toggle("is-lit", i === lit))
+        // ---- the panel: where to, how far, how long, and what it does now ----
+        put(stateEl, "state", stateName)
+        if (goal) {
+            const d = Math.hypot(goal.x - p.x, goal.z - p.z)
+            const key = goal.label + "|" + (mode.kind === "task" ? mode.step : "")
+            if (key !== legKey || d > legFrom) {
+                legKey = key
+                legFrom = Math.max(d, 1)
+            }
+            const m = Math.round(d * 0.3)
+            const v = Math.abs(drive.speed)
+            const secs = v > 0.8 ? d / v : 0
+            const eta = !secs ? "" : secs < 60 ? ` · about ${Math.max(5, Math.round(secs / 5) * 5)} s` : ` · about ${Math.round(secs / 60)} min`
+            put(destEl, "dest", goal.label)
+            put(etaEl, "eta", `${m >= 1000 ? (m / 1000).toFixed(1) + " km" : m + " m"} to go${eta}`)
+            put(barEl, "bar", `${Math.round(clamp(1 - d / legFrom, 0, 1) * 100)}%`, "width")
+        } else {
+            put(destEl, "dest", "…")
+            put(etaEl, "eta", "")
+        }
     }
 
     return {

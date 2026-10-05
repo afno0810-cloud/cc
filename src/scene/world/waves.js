@@ -40,3 +40,22 @@ vec3 waveH(vec2 p, float t, float amp) {
     return vec3(h, sx, sz) * amp;
 }
 `
+
+/* the same swells for a mesh that gets coarser further out: a swell shorter than a few grid
+   steps is faded out there (it cannot be drawn by so few points, and would only flicker and
+   crawl as the grid follows the camera). sp = the distance between grid points */
+export const WAVE_GLSL_FILTERED = `
+vec3 waveHF(vec2 p, float t, float amp, float sp) {
+    float h = 0.0; float sx = 0.0; float sz = 0.0; float ph; float c; float k;
+    ${WAVES.map((w) => {
+        const L = (Math.PI * 2) / w.k
+        return `
+    k = 1.0 - smoothstep(${(L * 0.12).toFixed(3)}, ${(L * 0.3).toFixed(3)}, sp);
+    ph = (${w.dx.toFixed(3)} * p.x + ${w.dz.toFixed(3)} * p.y) * ${w.k.toFixed(3)} + t * ${w.s.toFixed(3)};
+    h += ${w.a.toFixed(3)} * k * sin(ph);
+    c = ${(w.a * w.k).toFixed(4)} * k * cos(ph);
+    sx += c * ${w.dx.toFixed(3)}; sz += c * ${w.dz.toFixed(3)};`
+    }).join("")}
+    return vec3(h, sx, sz) * amp;
+}
+`

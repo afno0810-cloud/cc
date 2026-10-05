@@ -99,17 +99,22 @@ export function createProps({ lowPower = false, base = "/media/models/world/" } 
         return r * 0.42 * 0.85
     }
 
+    // one soft white dot for every lamp (each lamp tints it with its own colour)
+    let glowTex = null
     function glowSprite(color, size) {
-        const c = document.createElement("canvas")
-        c.width = c.height = 64
-        const g = c.getContext("2d")
-        const grd = g.createRadialGradient(32, 32, 0, 32, 32, 32)
-        grd.addColorStop(0, "rgba(255,255,255,1)")
-        grd.addColorStop(0.2, "rgba(255,255,255,0.5)")
-        grd.addColorStop(1, "rgba(255,255,255,0)")
-        g.fillStyle = grd
-        g.fillRect(0, 0, 64, 64)
-        const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), color, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }))
+        if (!glowTex) {
+            const c = document.createElement("canvas")
+            c.width = c.height = 64
+            const g = c.getContext("2d")
+            const grd = g.createRadialGradient(32, 32, 0, 32, 32, 32)
+            grd.addColorStop(0, "rgba(255,255,255,1)")
+            grd.addColorStop(0.2, "rgba(255,255,255,0.5)")
+            grd.addColorStop(1, "rgba(255,255,255,0)")
+            g.fillStyle = grd
+            g.fillRect(0, 0, 64, 64)
+            glowTex = new THREE.CanvasTexture(c)
+        }
+        const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }))
         s.scale.setScalar(size)
         return s
     }
@@ -233,6 +238,7 @@ export function createProps({ lowPower = false, base = "/media/models/world/" } 
     const SHIP_B = new THREE.Vector3(...[polar(128, 7400)[0], 0, polar(128, 7400)[1]])
 
     // put one more of a model in the water (for the missions and the boats going about the harbour)
+    const spawnMats = new Map()
     async function spawn(file, { x = 0, z = 0, size = 10, sink = 0.3, yaw = 0, buoy = null, lift = 0 } = {}) {
         let gltf
         try {
@@ -241,12 +247,18 @@ export function createProps({ lowPower = false, base = "/media/models/world/" } 
             return null
         }
         const obj = gltf.scene.clone(true)
+        // the same look for every copy: one material per original, shared (a task spawns many buoys, often)
         obj.traverse((o) => {
             if (!o.isMesh) return
-            const m = o.material.clone()
-            m.metalness = 0
-            m.roughness = 0.82
-            o.material = withAir(m)
+            let m = spawnMats.get(o.material)
+            if (!m) {
+                m = o.material.clone()
+                m.metalness = 0
+                m.roughness = 0.82
+                m = withAir(m)
+                spawnMats.set(o.material, m)
+            }
+            o.material = m
         })
         const box = new THREE.Box3().setFromObject(obj)
         const sz = box.getSize(new THREE.Vector3())
@@ -281,7 +293,7 @@ export function createProps({ lowPower = false, base = "/media/models/world/" } 
         holder.position.set(x, 0, z)
         holder.rotation.y = yaw
         group.add(holder)
-        const item = { obj: holder, x, z, lift, yaw, k }
+        const item = { obj: holder, x, z, lift, yaw, k, adopted: true }
         floaters.push(item)
         if (buoy) {
             item.buoy = { obj: holder, x, z, r, kind: buoy, vx: 0, vz: 0, ox: x, oz: z }
@@ -298,7 +310,10 @@ export function createProps({ lowPower = false, base = "/media/models/world/" } 
         }
         drop(floaters, item)
         if (item.buoy) drop(buoys, item.buoy)
-        if (item.lamp) drop(lamps, item.lamp)
+        if (item.lamp) {
+            drop(lamps, item.lamp)
+            item.lamp.sprite.material.dispose() // its own (the dot it shows is shared)
+        }
     }
 
     // life in the harbour: two small boats going round on slow loops (they are solid too)

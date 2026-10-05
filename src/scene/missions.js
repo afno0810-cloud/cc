@@ -431,6 +431,7 @@ export function createMissions({ scene, props, drive, isGame = false }) {
     function openPanel(on, focus = true) {
         if (on && run && run.phase !== "go" && run.phase !== "count") clear()
         renderPanel()
+        if (on) drive.closeOthers(panel)
         panel.classList.toggle("is-on", on)
         if (on) result.classList.remove("is-on")
         if (on && focus) {
@@ -460,7 +461,7 @@ export function createMissions({ scene, props, drive, isGame = false }) {
         if (act === "close") result.classList.remove("is-on")
     })
     addEventListener("keydown", (e) => {
-        if (!drive.active || e.target.closest?.("input, textarea")) return
+        if (!drive.active || e.ctrlKey || e.metaKey || e.altKey || e.target.closest?.("input, textarea")) return
         if (e.key.toLowerCase() === "m" && !e.repeat) openPanel(!panel.classList.contains("is-on"))
         if (e.key === "Enter" && run && run.phase === "brief" && !e.target.closest?.("button")) {
             e.preventDefault()
@@ -487,10 +488,33 @@ export function createMissions({ scene, props, drive, isGame = false }) {
     let last = null
     const prev = new THREE.Vector2()
 
+    // what a task built for itself (marks, Otters, the dock) is thrown away with it, GPU memory too
+    // (the shared materials stay; the buoys from the props share theirs with the props)
+    function dispose(obj) {
+        const keep = new Set(Object.values(materials()))
+        obj.traverse((o) => {
+            if (o.geometry) o.geometry.dispose()
+            const ms = Array.isArray(o.material) ? o.material : o.material ? [o.material] : []
+            for (const m of ms) {
+                if (keep.has(m)) continue
+                if (m.map) m.map.dispose()
+                m.dispose()
+            }
+        })
+    }
+    function dropRun(r) {
+        for (const it of r.items) {
+            props.despawn(it)
+            if (it.adopted) dispose(it.obj)
+        }
+        for (const o of r.objs) {
+            group.remove(o)
+            dispose(o)
+        }
+    }
     function clear() {
         if (!run) return
-        for (const it of run.items) props.despawn(it)
-        for (const o of run.objs) group.remove(o)
+        dropRun(run)
         colliders.length = 0
         run = null
         marker.visible = false
@@ -525,8 +549,7 @@ export function createMissions({ scene, props, drive, isGame = false }) {
         await { manoeuvring: buildManoeuvring, pathfinding: buildPathfinding, collision: buildCollision, docking: buildDocking }[id](r)
         if (run !== r) {
             // stopped (or another one started) while the models loaded
-            for (const it of r.items) props.despawn(it)
-            for (const o of r.objs) group.remove(o)
+            dropRun(r)
             return
         }
         r.buoys = r.items.filter((it) => it.buoy).map((it) => it.buoy)
@@ -905,6 +928,12 @@ export function createMissions({ scene, props, drive, isGame = false }) {
         if (!run || !run.start) return
         const r = run
         const p = drive.pos
+        // paused (the game menu is open): the clock, the countdown and the Otters wait
+        if (drive.state.menu) {
+            prev.set(p.x, p.z)
+            lastHeading = drive.heading
+            return
+        }
 
         // the Otters move once they have been sent off (also after the finish)
         for (const o of r.otters) {
@@ -947,7 +976,8 @@ export function createMissions({ scene, props, drive, isGame = false }) {
         }
 
         r.time += dt
-        barTime.textContent = fmt(r.time)
+        const tt = fmt(r.time)
+        if (barTime.textContent !== tt) barTime.textContent = tt
 
         // buoys touched
         for (const b of r.buoys) {

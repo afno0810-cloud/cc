@@ -100,7 +100,6 @@ export function createGameMenu({ drive, get }) {
     const kickText = el.querySelector(".gm-kick-text")
     const escText = el.querySelector(".gm-esc-text")
     let started = false // the first time it is the title screen, after that a pause menu
-    let saved = null // what the menu changed on the boat, to give back
 
     const isOpen = () => el.classList.contains("is-on")
     const fmt = (n) => Math.round(n).toLocaleString("en-US").replace(/,/g, " ")
@@ -171,9 +170,7 @@ export function createGameMenu({ drive, get }) {
             playLabel.textContent = started ? ITEMS[0].resume : ITEMS[0].label
             kickText.textContent = started ? "Paused" : "Marinor NTNU · The harbour game"
             escText.textContent = started ? "back to the water" : "start sailing"
-            saved = { locked: drive.state.locked, orbit: drive.state.orbit }
-            drive.state.locked = true
-            drive.state.orbit = true
+            // (the helm reads state.menu: the boat holds still and the camera swings round while it is open)
             drive.state.menu = true
             drive.showKeys(false)
             renderStats()
@@ -184,11 +181,6 @@ export function createGameMenu({ drive, get }) {
             if (!started) setTimeout(() => drive.active && !isOpen() && drive.showKeys(true), 200)
             started = true
             drive.state.menu = false
-            if (saved) {
-                drive.state.locked = saved.locked
-                drive.state.orbit = saved.orbit
-                saved = null
-            }
         }
     }
 

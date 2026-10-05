@@ -398,9 +398,13 @@ export function createOnline({ scene, drive, camera, getModel }) {
     }
 
     // ---- the microphone: only on when you turn it on ----
+    let micAsk = 0 // the latest ask for the microphone: an older answer that comes late is thrown away
+    let micSrc = null
     async function setMic(on) {
+        if (!on) micAsk++ // also stops an ask still waiting for the browser's answer
         if (on === micOn) return
         if (on) {
+            const ask = ++micAsk
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
                 toast("This browser has no microphone for the game")
                 return
@@ -409,17 +413,22 @@ export function createOnline({ scene, drive, camera, getModel }) {
             try {
                 s = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }, video: false })
             } catch (e) {
-                toast("The microphone was not allowed")
+                if (ask === micAsk) toast("The microphone was not allowed")
+                return
+            }
+            // turned off, gone offline or off the water meanwhile, or asked again: not this one
+            if (ask !== micAsk || micOn || !enabled || !drive.active) {
+                for (const t of s.getTracks()) t.stop()
                 return
             }
             micStream = s
             micOn = true
             if (ensureAudio()) {
-                const src = actx.createMediaStreamSource(s)
+                micSrc = actx.createMediaStreamSource(s)
                 micAn = actx.createAnalyser()
                 micAn.fftSize = 512
                 micBuf = new Uint8Array(micAn.fftSize)
-                src.connect(micAn)
+                micSrc.connect(micAn)
             }
             if (room) room.addStream(micStream)
             toast(peers.size ? "Mic on: boats close by can hear you" : "Mic on: boats that come close can hear you")
@@ -435,6 +444,13 @@ export function createOnline({ scene, drive, camera, getModel }) {
                 for (const t of micStream.getTracks()) t.stop()
             }
             micStream = null
+            if (micSrc)
+                try {
+                    micSrc.disconnect()
+                } catch (e) {
+                    /* gone */
+                }
+            micSrc = null
             micAn = null
             micLevel = 0
             micBtn.style.removeProperty("--mic")

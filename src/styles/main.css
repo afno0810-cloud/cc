@@ -3547,8 +3547,8 @@ ul.hr-rules li:first-child {
     z-index: 2;
     left: var(--gut);
     top: calc(var(--hud-top, 58px) + 64px);
-    width: min(300px, calc(100% - 2 * var(--gut)));
-    padding: 14px 16px;
+    width: min(260px, calc(100% - 2 * var(--gut)));
+    padding: 12px 14px;
     border-radius: 14px;
     background: linear-gradient(160deg, rgba(127, 240, 255, 0.1), rgba(10, 13, 20, 0.78) 50%);
     border: 1px solid rgba(127, 240, 255, 0.35);
@@ -3598,68 +3598,49 @@ ul.hr-rules li:first-child {
     padding: 6px 10px;
     font-size: 12px;
 }
-.ha-state {
-    margin: 12px 0 4px;
-    font: 700 20px/1.1 var(--display);
-    letter-spacing: 0.02em;
-    text-transform: uppercase;
+/* where Argus is going: the place, how far and how long, a bar for the way done, and what it does now */
+.ha-to {
+    margin: 12px 0 2px;
+    display: grid;
+    gap: 4px;
 }
-.ha-goal {
-    margin: 0 0 10px;
-    font-size: 13px;
-    color: rgba(232, 238, 248, 0.8);
-}
-.ha-goal span {
+.ha-to span {
     font: 500 10.5px/1 var(--mono);
-    letter-spacing: 0.12em;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
     color: rgba(127, 240, 255, 0.8);
 }
-.ha-pipe {
-    display: grid;
-    gap: 3px;
-    margin: 0 0 10px;
-    padding: 0;
-    list-style: none;
-    counter-reset: pipe;
+.ha-dest {
+    font: 700 19px/1.15 var(--display);
+    letter-spacing: 0.01em;
+    color: #fff;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
-.ha-pipe li {
-    position: relative;
-    padding: 4px 8px 4px 26px;
-    border-radius: 6px;
-    font: 500 11.5px/1.2 var(--mono);
-    color: rgba(232, 238, 248, 0.55);
-    counter-increment: pipe;
-    transition:
-        background-color 0.2s ease,
-        color 0.2s ease;
+.ha-eta {
+    margin: 0 0 9px;
+    font: 500 12.5px/1.3 var(--mono);
+    color: rgba(232, 238, 248, 0.82);
 }
-.ha-pipe li::before {
-    content: counter(pipe);
-    position: absolute;
-    left: 8px;
-    color: rgba(127, 240, 255, 0.6);
+.ha-bar {
+    height: 5px;
+    border-radius: 3px;
+    background: rgba(232, 238, 248, 0.12);
+    overflow: hidden;
 }
-.ha-pipe li.is-lit {
-    background: rgba(127, 240, 255, 0.14);
-    color: #e8fdff;
-}
-.ha-stats {
-    margin: 0;
-    font: 500 10.5px/1.4 var(--mono);
-    color: rgba(232, 238, 248, 0.5);
-}
-/* the cost map round the boat, north up (the canvas is drawn with +z down and +x right) */
-.ha-map {
+.ha-bar i {
     display: block;
-    width: 100%;
-    max-width: 168px;
-    aspect-ratio: 1;
-    margin: 10px 0 8px;
-    border-radius: 10px;
-    background: radial-gradient(circle at center, rgba(22, 34, 52, 0.92), rgba(8, 11, 18, 0.96));
-    border: 1px solid rgba(127, 240, 255, 0.18);
-    transform: rotate(180deg);
+    width: 0;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #7c469c, #7ff0ff);
+    transition: width 0.4s linear;
+}
+.ha-state {
+    margin: 8px 0 0;
+    font: 500 12px/1.3 var(--body);
+    color: rgba(232, 238, 248, 0.6);
 }
 .hud-autom .ha-ic {
     background: rgba(127, 240, 255, 0.08);
@@ -3692,20 +3673,18 @@ ul.hr-rules li:first-child {
     .hud-score .hs-lv {
         display: none;
     }
+    /* under the buttons, so the boat stays in view */
     .hud-auto {
-        top: auto;
-        bottom: calc(300px + env(safe-area-inset-bottom, 0px));
+        top: calc(var(--hud-top, 140px) + 8px);
+        bottom: auto;
         width: auto;
         right: var(--gut);
         padding: 10px 12px;
     }
-    .ha-pipe,
-    .ha-stats,
-    .ha-map {
-        display: none;
+    .ha-to {
+        margin-top: 8px;
     }
-    .ha-state {
-        margin: 6px 0 2px;
+    .ha-dest {
         font-size: 16px;
     }
     .hl-stats {
@@ -4790,6 +4769,98 @@ body[data-game] .menu {
     .hud-mic .hm-mic-text {
         display: none;
     }
+}
+
+/* ---- clearer menus ----
+   The panels open under the rows of buttons (not over them), on a darker glass so the
+   game behind does not show through the text, and long lists come in groups that fold open. */
+.hud-missions,
+.hud-result,
+.hud-keys {
+    background: rgba(10, 12, 19, 0.9);
+}
+@media (min-width: 641px) {
+    .hud-missions,
+    .hud-result,
+    .hud-keys {
+        top: calc(var(--hud-top, 58px) + 14px);
+        max-height: calc(100% - var(--hud-top, 58px) - 28px);
+        transform: translate(-50%, 10px);
+    }
+    .hud-missions.is-on,
+    .hud-result.is-on,
+    .hud-keys.is-on {
+        transform: translate(-50%, 0);
+    }
+}
+.ha-sec {
+    margin: 18px 0 8px;
+    font: 600 11px/1 var(--mono);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(232, 238, 248, 0.55);
+}
+.hp-group.is-fold {
+    margin-top: 8px;
+    border-radius: 12px;
+    background: rgba(232, 238, 248, 0.035);
+    border: 1px solid rgba(232, 238, 248, 0.08);
+}
+.hp-group.is-fold h3 {
+    margin: 0;
+    padding: 0;
+    border-left: 0;
+}
+.hp-fold {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 12px 14px;
+    border: 0;
+    border-left: 3px solid var(--gc, #c39cf0);
+    border-radius: 12px;
+    background: none;
+    color: inherit;
+    font: 600 15px/1.2 var(--body);
+    text-align: left;
+    cursor: pointer;
+}
+.hp-fold > span {
+    flex: 1;
+    min-width: 0;
+}
+.hp-fold small {
+    font: 500 11px/1 var(--mono);
+    letter-spacing: 0.06em;
+    color: rgba(232, 238, 248, 0.55);
+    white-space: nowrap;
+}
+.hp-chev {
+    width: 8px;
+    height: 8px;
+    border-right: 2px solid rgba(232, 238, 248, 0.7);
+    border-bottom: 2px solid rgba(232, 238, 248, 0.7);
+    transform: rotate(-45deg);
+    transition: transform 0.2s ease;
+}
+.hp-group.is-open .hp-chev {
+    transform: rotate(45deg);
+}
+.hp-fold:hover,
+.hp-fold:focus-visible {
+    background: rgba(232, 238, 248, 0.06);
+    outline: none;
+}
+.hp-fold:focus-visible {
+    box-shadow: inset 0 0 0 2px rgba(195, 156, 240, 0.8);
+}
+.hp-fold-body {
+    display: none;
+    padding: 0 10px 10px;
+}
+.hp-group.is-open .hp-fold-body {
+    display: block;
 }
 
 /* phones on their side (low screens): the menus run from under the buttons right down to the bottom,

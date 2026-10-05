@@ -169,6 +169,7 @@ export function createScore({ drive, island = null }) {
     }
     function open(on) {
         if (on) render()
+        if (on) drive.closeOthers(panel)
         panel.classList.toggle("is-on", on)
         if (on) {
             panel.scrollTop = 0
@@ -181,7 +182,7 @@ export function createScore({ drive, island = null }) {
         if (e.target.closest("[data-close]")) open(false)
     })
     addEventListener("keydown", (e) => {
-        if (!drive.active || e.target.closest?.("input, textarea")) return
+        if (!drive.active || e.ctrlKey || e.metaKey || e.altKey || e.target.closest?.("input, textarea")) return
         if (e.key.toLowerCase() === "b" && !e.repeat) open(!panel.classList.contains("is-on"))
     })
     drive.onEscape(() => {

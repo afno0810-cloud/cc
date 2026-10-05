@@ -722,8 +722,12 @@ export function createPlaces({ scene, props, drive, missions }) {
         const dz = p.item.z - drive.pos.z
         return `${Math.round(Math.hypot(dx, dz) * 0.3)} m ${bearingName(dx, dz)}`
     }
+    // the groups fold open and shut (a long list is easier to take in a group at a time);
+    // the one with the next place not yet seen starts open, and what you open or shut stays so
+    const folded = new Map()
     function renderPanel() {
         const n = items.filter((p) => visited.has(p.id)).length
+        const next = items.find((p) => !visited.has(p.id))
         panel.innerHTML = `
             <div class="hm-head">
                 <div><span class="hm-kicker">Around the harbour</span><h2>Places</h2></div>
@@ -733,8 +737,10 @@ export function createPlaces({ scene, props, drive, missions }) {
             ${GROUPS.map((gr) => {
                 const mine = items.filter((p) => p.group === gr.id)
                 const k = mine.filter((p) => visited.has(p.id)).length
-                return `<section class="hp-group" style="--gc: ${gr.color}">
-                    <h3><span>${esc(gr.name)}</span><small>${k === mine.length ? "All seen ✓" : `${k} of ${mine.length}`}</small></h3>
+                const isOpen = folded.has(gr.id) ? folded.get(gr.id) : !!next && next.group === gr.id
+                return `<section class="hp-group is-fold${isOpen ? " is-open" : ""}" style="--gc: ${gr.color}" data-group="${gr.id}">
+                    <h3><button type="button" class="hp-fold" data-fold aria-expanded="${isOpen}"><span>${esc(gr.name)}</span><small>${k === mine.length ? "All seen ✓" : `${k} of ${mine.length}`}</small><i class="hp-chev" aria-hidden="true"></i></button></h3>
+                    <div class="hp-fold-body">
                     <p class="hp-intro">${esc(gr.intro)}</p>
                     <ol class="hm-list hp-list">
                         ${mine
@@ -748,6 +754,7 @@ export function createPlaces({ scene, props, drive, missions }) {
                             )
                             .join("")}
                     </ol>
+                    </div>
                 </section>`
             }).join("")}
             <div class="hm-foot">${KEYS_HINT}<button type="button" class="hud-btn" data-close>Close</button></div>`
@@ -760,12 +767,13 @@ export function createPlaces({ scene, props, drive, missions }) {
         if (on) {
             renderPanel()
             closeCard()
+            drive.closeOthers(panel)
             panel.scrollTop = 0
         }
         panel.classList.toggle("is-on", on)
         if (on && focus) {
-            // the first place not yet seen, or the first one
-            const first = panel.querySelector(".hm-item:not(.is-done)") || panel.querySelector(".hm-item")
+            // the first place not yet seen (in its open group), or the first group
+            const first = panel.querySelector(".is-open .hm-item:not(.is-done)") || panel.querySelector(".hp-fold")
             if (first) {
                 first.focus({ preventScroll: true })
                 first.scrollIntoView({ block: "nearest" })
@@ -774,6 +782,15 @@ export function createPlaces({ scene, props, drive, missions }) {
     }
     btn.addEventListener("click", () => openPanel(!panel.classList.contains("is-on")))
     panel.addEventListener("click", (e) => {
+        const f = e.target.closest("[data-fold]")
+        if (f) {
+            const sec = f.closest(".hp-group")
+            const on = !sec.classList.contains("is-open")
+            sec.classList.toggle("is-open", on)
+            f.setAttribute("aria-expanded", on)
+            folded.set(sec.dataset.group, on)
+            return
+        }
         const b = e.target.closest("[data-place]")
         if (b) {
             const p = items.find((q) => q.id === b.dataset.place)
@@ -857,7 +874,7 @@ export function createPlaces({ scene, props, drive, missions }) {
     }
 
     addEventListener("keydown", (e) => {
-        if (!drive.active || e.target.closest?.("input, textarea")) return
+        if (!drive.active || e.ctrlKey || e.metaKey || e.altKey || e.target.closest?.("input, textarea")) return
         if (e.key.toLowerCase() === "p" && !e.repeat) openPanel(!panel.classList.contains("is-on"))
         // Enter steps into the card that popped up, so the arrows can choose in it
         if (e.key === "Enter" && open && !drive.menuOpen && !card.contains(document.activeElement)) {
@@ -916,6 +933,8 @@ export function createPlaces({ scene, props, drive, missions }) {
             panel.classList.remove("is-on")
             if (open) closeCard()
             for (const p of items) p.armed = true
+            // a course to a place is forgotten off the water: its mark goes from the compass and the radar too
+            if (course && drive.state.target && drive.state.target.x === course.item.x) drive.state.target = null
             course = null
             return
         }
@@ -947,11 +966,34 @@ export function createPlaces({ scene, props, drive, missions }) {
         for (const tr of trails) {
             tr.mat.uniforms.uTime.value = t
             tr.mat.uniforms.uGain.value = 0.32 * gain * (busy ? 0.3 : 1)
-            // the line rides the waves
+            // the line rides the waves (only where you can see it ride them: far off it lies still)
+            if (tr.cx === undefined) {
+                let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity
+                for (const q of tr.samples) {
+                    x0 = Math.min(x0, q[0])
+                    x1 = Math.max(x1, q[0])
+                    z0 = Math.min(z0, q[1])
+                    z1 = Math.max(z1, q[1])
+                }
+                tr.cx = (x0 + x1) / 2
+                tr.cz = (z0 + z1) / 2
+                tr.r = Math.hypot(x1 - x0, z1 - z0) / 2
+            }
+            if (tr.laid && Math.hypot(tr.cx - look.x, tr.cz - look.z) - tr.r > 260) continue
+            tr.laid = true
+            const pos = tr.pos
             for (let i = 0; i < tr.samples.length; i++) {
-                const [x, z, sx, sz] = tr.samples[i]
+                const q = tr.samples[i]
+                const x = q[0]
+                const z = q[1]
                 const y = waveHeight(x, z, t, 1) * 0.85 + 0.12
-                tr.pos.set([x + sx * 0.8, y, z + sz * 0.8, x - sx * 0.8, y, z - sz * 0.8], i * 6)
+                const o = i * 6
+                pos[o] = x + q[2] * 0.8
+                pos[o + 1] = y
+                pos[o + 2] = z + q[3] * 0.8
+                pos[o + 3] = x - q[2] * 0.8
+                pos[o + 4] = y
+                pos[o + 5] = z - q[3] * 0.8
             }
             tr.mesh.geometry.attributes.position.needsUpdate = true
         }
@@ -977,7 +1019,7 @@ export function createPlaces({ scene, props, drive, missions }) {
             }
         }
         // a course set to a place follows its post, and goes when you are there
-        if (course && drive.state.target) drive.state.target = { x: course.item.x, z: course.item.z }
+        if (course && drive.state.target && (drive.state.target.x !== course.item.x || drive.state.target.z !== course.item.z)) drive.state.target = { x: course.item.x, z: course.item.z }
         // sailing on closes the card
         if (open && open.d > NEAR + 30) closeCard()
         // keep the distances in the list fresh
