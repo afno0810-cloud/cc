@@ -660,10 +660,12 @@ export function createDrive({ camera, getBoat, getElev, landHeight, groundHeight
         return true
     }
     // take the part of the velocity that goes into the thing away, keep the sliding part
-    function bounce(n, t) {
-        const into = state.vel.dot(n)
+    // (a thing that moves, another player's boat, counts with its own speed: it can bump you too)
+    function bounce(n, t, o) {
+        const into = o && o.vx != null ? (state.vel.x - o.vx) * n.x + (state.vel.z - o.vz) * n.z : state.vel.dot(n)
         if (into < 0) {
-            state.vel.addScaledVector(n, -into * 1.15)
+            // each player's game moves its own boat, so a boat on boat bump shares it out (about half each)
+            state.vel.addScaledVector(n, -into * (o && o.peer ? 0.85 : 1.15))
             if (-into > 2.5) state.shake = Math.min(1, state.shake + -into / 14)
             if (-into > 3 && spray && t - lastHit > 0.25) {
                 lastHit = t
@@ -702,7 +704,7 @@ export function createDrive({ camera, getBoat, getElev, landHeight, groundHeight
                     if (Math.abs(b.x - state.pos.x) > b.hx + b.hz + 8 || Math.abs(b.z - state.pos.z) > b.hx + b.hz + 8) continue
                     if (!boxPush(b, push)) continue
                     state.pos.add(push)
-                    bounce(nrm.copy(push).normalize(), t)
+                    bounce(nrm.copy(push).normalize(), t, b)
                     moved = true
                 }
             }
@@ -1018,6 +1020,7 @@ export function createDrive({ camera, getBoat, getElev, landHeight, groundHeight
         g.fillStyle = "rgba(232,238,248,0.55)"
         for (const list of colliders ? colliders() : []) {
             for (const b of list) {
+                if (b.peer) continue // another player: their own coloured dot below
                 const [px, py] = toRadar(b.x, b.z)
                 if (px * px + py * py > R * R * 1.2) continue
                 g.save()

@@ -3672,6 +3672,19 @@ ul.hr-rules li:first-child {
     font: 500 11px/1 var(--mono);
     color: rgba(127, 240, 255, 0.75);
 }
+/* the players online in the autopilot menu: their own colour, and a line when no one is there */
+.hp-dot.ha-player {
+    width: 16px;
+    height: 16px;
+    margin: 0 5px;
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.12);
+}
+.ha-none {
+    margin: 0;
+    padding: 10px 12px;
+    font: 400 13px/1.45 var(--body);
+    color: rgba(232, 238, 248, 0.62);
+}
 @media (max-width: 640px) {
     .hud-score {
         padding: 6px 9px;
@@ -4776,5 +4789,25 @@ body[data-game] .menu {
     }
     .hud-mic .hm-mic-text {
         display: none;
+    }
+}
+
+/* phones on their side (low screens): the menus run from under the buttons right down to the bottom,
+   over the throttle and the radar, instead of a thin strip in between */
+@media (max-height: 500px) and (orientation: landscape) {
+    .hud-missions,
+    .hud-result,
+    .hud-keys {
+        z-index: 6;
+        top: calc(var(--hud-top, 110px) + 8px);
+        bottom: auto;
+        padding: 14px 16px;
+        max-height: calc(100% - var(--hud-top, 110px) - 16px - env(safe-area-inset-bottom, 0px));
+        transform: translate(-50%, 10px);
+    }
+    .hud-missions.is-on,
+    .hud-result.is-on,
+    .hud-keys.is-on {
+        transform: translate(-50%, 0);
     }
 }

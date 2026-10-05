@@ -75,7 +75,7 @@ class Heap {
     }
 }
 
-export function createAutopilot({ scene, drive, missions, places, score, getColliders, getObstacles, getBuoys, getMovers, landHeight, lowPower = false }) {
+export function createAutopilot({ scene, drive, missions, places, score, getColliders, getObstacles, getBuoys, getMovers, getPlayers = () => null, landHeight, lowPower = false }) {
     const group = new THREE.Group()
     scene.add(group)
 
@@ -426,6 +426,7 @@ export function createAutopilot({ scene, drive, missions, places, score, getColl
                     <li><button type="button" class="hm-item" data-auto="full"><span class="hp-dot">★</span><span class="hm-body"><b>Full Njord run</b></span></button></li>
                 </ol>
             </section>
+            ${playersMenu()}
             ${groups
                 .map(
                     (gr) => `<section class="hp-group" style="--gc: ${gr.color}"><h3><span>Go to: ${esc(gr.name)}</span></h3>
@@ -436,6 +437,19 @@ export function createAutopilot({ scene, drive, missions, places, score, getColl
                 )
                 .join("")}
             <div class="hm-foot"><span class="hud-keyhint" aria-hidden="true"><kbd>↑</kbd><kbd>↓</kbd> choose <kbd>Enter</kbd> go <kbd>Esc</kbd> close</span><span class="ha-note">Any drive key takes the helm back</span></div>`
+    }
+    // the other players online: sail over to one of them
+    function playersMenu() {
+        const list = getPlayers()
+        if (!list) return ""
+        const p0 = drive.pos
+        const items = list
+            .map((pl) => ({ pl, d: Math.hypot(pl.x - p0.x, pl.z - p0.z) }))
+            .sort((a, b) => a.d - b.d)
+            .map(({ pl, d }) => `<li><button type="button" class="hm-item" data-auto="player:${esc(pl.id)}"><span class="hp-dot ha-player" style="background:${esc(pl.color)}" aria-hidden="true"></span><span class="hm-body"><b>${esc(pl.name)}</b><span>${Math.round(d * 0.3)} m away</span></span></button></li>`)
+            .join("")
+        return `<section class="hp-group" style="--gc: #7cc4ff"><h3><span>Go to: players online</span><small>${list.length || "none"}</small></h3>
+                <ol class="hm-list hp-list">${items || `<li><p class="ha-none">No one else is on the water right now. When someone comes online, they show up here.</p></li>`}</ol></section>`
     }
     const ICON = {
         tour: `<svg class="ti-svg" viewBox="0 0 40 40" aria-hidden="true"><path d="M8 30c0-8 8-6 12-12s12-6 12-12" fill="none" stroke="#7ff0ff" stroke-width="2" stroke-dasharray="3 3"/><circle cx="8" cy="31" r="3" fill="#c39cf0"/><circle cx="20" cy="18" r="3" fill="#f2c230"/><circle cx="32" cy="7" r="3" fill="#9fd4ff"/></svg>`,
@@ -464,6 +478,7 @@ export function createAutopilot({ scene, drive, missions, places, score, getColl
         if (a === "full") return startTask(missions.tasks[0].id, true)
         if (a.startsWith("task:")) return startTask(a.slice(5), false)
         if (a.startsWith("go:")) return startGo(places.list.find((p) => p.id === a.slice(3)))
+        if (a.startsWith("player:")) return startPlayer(a.slice(7))
     })
     addEventListener("keydown", (e) => {
         if (!drive.active || e.target.closest?.("input, textarea")) return
@@ -548,6 +563,21 @@ export function createAutopilot({ scene, drive, missions, places, score, getColl
         engage({ kind: "go", place: p })
         goal = placeGoal(p)
     }
+    // another player: stop alongside, a little short of them on this side (they may be moving)
+    const findPlayer = (id) => (getPlayers() || []).find((pl) => pl.id === id)
+    function playerGoal(pl) {
+        const dx = drive.pos.x - pl.x
+        const dz = drive.pos.z - pl.z
+        const d = Math.hypot(dx, dz) || 1
+        return { x: pl.x + (dx / d) * 14, z: pl.z + (dz / d) * 14, stop: true, label: pl.name, player: pl }
+    }
+    function startPlayer(id) {
+        const pl = findPlayer(id)
+        if (!pl) return say("That player is no longer online")
+        if (taskBusy()) return
+        engage({ kind: "player", id, name: pl.name })
+        goal = playerGoal(pl)
+    }
     function nextUnseen(from) {
         let bestP = null
         let bestD = Infinity
@@ -594,7 +624,9 @@ export function createAutopilot({ scene, drive, missions, places, score, getColl
 
     // the boats on the move near us (for the give-way rules)
     function traffic() {
-        return getMovers()
+        // not the player we are sailing over to: we mean to come close to that one
+        const all = getMovers()
+        return mode && mode.kind === "player" ? all.filter((m) => m.peer !== mode.id) : all
     }
     // the rules of the road: a boat from starboard on a collision course → give way; head on → to starboard
     function rules(th, st) {
@@ -828,6 +860,19 @@ export function createAutopilot({ scene, drive, missions, places, score, getColl
                 label = "Reading the place"
                 if (mode.wait <= 0) tourNext()
             } else if (goal) {
+                // a player moves: the goal goes with them, and the plan is made again more often
+                if (mode.kind === "player") {
+                    const pl = findPlayer(mode.id)
+                    // not heard from for a moment (their tab in the background, a slow line): keep on a little
+                    if (!pl) {
+                        mode.lost = (mode.lost || 0) + dt
+                        if (mode.lost > 8) return stop(`${mode.name} is no longer online`)
+                    } else {
+                        mode.lost = 0
+                        goal = playerGoal(pl)
+                        if (path && path.length) path[path.length - 1] = [goal.x, goal.z]
+                    }
+                }
                 const dGoal = Math.hypot(goal.x - p.x, goal.z - p.z)
                 replanT -= dt
                 if (!path || replanT <= 0) {
@@ -835,7 +880,7 @@ export function createAutopilot({ scene, drive, missions, places, score, getColl
                     replans++
                     if (pl) path = pl
                     else label = "No way through: waiting"
-                    replanT = 0.8
+                    replanT = mode.kind === "player" ? 0.5 : 0.8
                     drawMap(p.x, p.z)
                 }
                 inputs = follow(dt, { stopAtEnd: true, cap: 1 })
@@ -846,7 +891,10 @@ export function createAutopilot({ scene, drive, missions, places, score, getColl
                     label = ru.label
                 } else label = aroundLabel(p)
                 // there
-                const reached = (goal.place && places.isVisited(goal.place.id) && Math.hypot(goal.place.item.x - p.x, goal.place.item.z - p.z) < 18) || dGoal < 5
+                const reached =
+                    (goal.place && places.isVisited(goal.place.id) && Math.hypot(goal.place.item.x - p.x, goal.place.item.z - p.z) < 18) ||
+                    (goal.player && Math.hypot(goal.player.x - p.x, goal.player.z - p.z) < 20) ||
+                    dGoal < 5
                 if (reached && Math.abs(drive.speed) < 1.5) {
                     if (mode.kind === "tour") {
                         mode.wait = 5
@@ -897,6 +945,10 @@ export function createAutopilot({ scene, drive, missions, places, score, getColl
         group,
         update,
         openMenu,
+        // the menu again, if it is open (the players online changed)
+        refreshMenu() {
+            if (panel.classList.contains("is-on")) openMenu(true, false)
+        },
         stop,
         get active() {
             return !!mode

@@ -47,6 +47,9 @@ const RELAYS = (() => {
     }
     return ["wss://relay.damus.io", "wss://nos.lol", "wss://relay.primal.net", "wss://nostr.mom", "wss://relay.snort.social", "wss://offchain.pub"]
 })()
+// the other boats are Argus too: the same outline as ours (half length, half width) for bumping into
+const HULL_L = 3.1
+const HULL_W = 2.7
 const COLORS = ["#c39cf0", "#7cc4ff", "#9fe3b5", "#ff8a6c", "#ffd36b", "#ff7fbf", "#7ff0ff", "#b8f27c"]
 
 const store = {
@@ -489,6 +492,9 @@ export function createOnline({ scene, drive, camera, getModel }) {
     }
     const right = new THREE.Vector3()
     const others = []
+    // the other boats as things to bump into (oriented boxes that move) and as traffic for the autopilot
+    const colliders = []
+    const movers = []
 
     return {
         get enabled() {
@@ -509,6 +515,16 @@ export function createOnline({ scene, drive, camera, getModel }) {
         get name() {
             return myName
         },
+        // the boats you cannot drive through (drive and autopilot), and the ones on the move
+        colliders,
+        movers,
+        // everyone else on the water now, for the autopilot (where they were last heard of)
+        get players() {
+            const now = performance.now() / 1000
+            const out = []
+            for (const p of peers.values()) if (p.seen && now - p.at < STALE) out.push({ id: p.id, name: p.name, color: p.color, x: p.obj && p.obj.visible ? p.x : p.tx, z: p.obj && p.obj.visible ? p.z : p.tz })
+            return out
+        },
         // for tests: what is known of the others
         get peers() {
             return [...peers.values()].map((p) => ({ name: p.name, x: Math.round(p.x), z: Math.round(p.z), voice: !!p.src, talking: p.talking, shown: !!(p.obj && p.obj.visible), model: !!p.model }))
@@ -528,6 +544,8 @@ export function createOnline({ scene, drive, camera, getModel }) {
             }
             if (!room) {
                 drive.state.others = null
+                colliders.length = 0
+                movers.length = 0
                 return
             }
             // where I am, ten times a second
@@ -542,6 +560,8 @@ export function createOnline({ scene, drive, camera, getModel }) {
             const k = 1 - Math.exp(-dt * 8)
             right.setFromMatrixColumn(camera.matrixWorld, 0)
             others.length = 0
+            colliders.length = 0
+            movers.length = 0
             for (const p of peers.values()) {
                 if (!p.obj) continue
                 if (!p.model) addModel(p)
@@ -579,6 +599,9 @@ export function createOnline({ scene, drive, camera, getModel }) {
                 // the name tag stays upright and readable
                 p.tag.material.color.setScalar(gain)
                 others.push({ x: p.x, z: p.z, color: p.color })
+                // a boat you bump into, not a ghost you drive through (each player's game pushes its own boat out)
+                colliders.push({ x: p.x, z: p.z, hx: HULL_L, hz: HULL_W, rot: p.h, vx: p.vx, vz: p.vz, peer: p.id })
+                movers.push({ x: p.x, z: p.z, vx: p.vx, vz: p.vz, r: HULL_L, peer: p.id })
                 // the voice: full close by, fading out with distance, from the side the boat is on
                 if (p.gain) {
                     const d = Math.hypot(p.x - drive.pos.x, p.z - drive.pos.z)

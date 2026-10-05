@@ -219,7 +219,9 @@ export async function startScene({ reduced = false } = {}) {
                 places,
                 score,
                 lowPower,
-                getColliders: () => [terrainMod ? terrainMod.COLLIDERS : [], props.colliders, missions.colliders],
+                getColliders: () => [terrainMod ? terrainMod.COLLIDERS : [], props.colliders, missions.colliders, online ? online.colliders : []],
+                // the other players online, to sail to
+                getPlayers: () => (online && online.enabled ? online.players : null),
                 getObstacles: () => props.obstacles,
                 getBuoys: () => props.buoys,
                 landHeight: (x, z) => terrainMod.landHeight(x, z),
@@ -229,12 +231,15 @@ export async function startScene({ reduced = false } = {}) {
                     for (const tr of props.traffic) if (tr.vx != null) out.push({ x: tr.it.x, z: tr.it.z, vx: tr.vx, vz: tr.vz, r: Math.max(tr.it.hx, tr.it.hz) })
                     const r = missions.run
                     if (r && r.otters) for (const o of r.otters) if (o.on && !o.gone) out.push({ x: o.x, z: o.z, vx: Math.cos(o.h) * o.v, vz: -Math.sin(o.h) * o.v, r: 3.6 })
+                    if (online) for (const m of online.movers) out.push(m)
                     return out
                 },
             })
             // online: everyone who plays is in the same harbour, with proximity voice chat
             const { createOnline } = await import("./online.js")
             online = createOnline({ scene, drive, camera, getModel: () => (model.children.length ? model : null) })
+            // the autopilot's list of players stays current while its menu is open
+            online.onChange(() => autopilot && autopilot.refreshMenu())
             if (gameMenu) gameMenu.refresh()
         }
         if (!reduced) {
@@ -598,7 +603,7 @@ export async function startScene({ reduced = false } = {}) {
     ]
     const lidLabels = []
     const lidV = new THREE.Vector3()
-    const colliderLists = [[], [], []]
+    const colliderLists = [[], [], [], []]
     drive = createDrive({
         camera,
         reduced,
@@ -613,6 +618,8 @@ export async function startScene({ reduced = false } = {}) {
             colliderLists[0] = terrainMod ? terrainMod.COLLIDERS : []
             colliderLists[1] = props ? props.colliders : []
             colliderLists[2] = missions ? missions.colliders : []
+            // the other players' boats: you bump into them, not through them
+            colliderLists[3] = online ? online.colliders : []
             return colliderLists
         },
         buoys: () => (props ? props.buoys : []),
