@@ -1,0 +1,177 @@
+About us
+Projects
+Team
+Competitions
+Sponsor us
+Join Marinor
+COMPETITIONS · NJORD
+The Njord Challenge
+
+A student competition for autonomous boats, held every August in Trondheim. Teams from several countries bring boats they have built and let them sail on their own.
+
+NYHAVNA, TRONDHEIM
+FIVE DAYS IN AUGUST
+STUDENT TEAMS FROM MANY COUNTRIES
+Njord's website
+Meet Argus
+4
+tasks on the water: manoeuvring, path finding, collision avoidance and docking
+5 days
+of competition in Nyhavna, Trondheim
+2019
+the year Njord was started by students at NTNU
+23
+teams signed up for the 2026 challenge – Marinor is one of them
+WHAT IT IS
+What Njord is.
+
+Njord: The Autonomous Ship Challenge is run by Njord NTNU, a student organisation started in Trondheim in 2019. Every August student teams come to Nyhavna in Trondheim.
+
+Each team builds and runs its own autonomous boat. During the week the boats solve tasks on the water with no one steering. In 2025 eleven teams from eight countries took part, and Navier USN from Norway won.
+
+ON THE WATER
+The four tasks.
+
+The boats sail a course in the harbour and get one task at a time. The team is not allowed to steer.
+
+TASK 01
+Manoeuvring
+
+The boat has to steer through a marked course on the water and show that it can control its own movement.
+
+TASK 02
+Path finding
+
+The boat has to read the sea markers and find its own way through the course, without help from the team.
+
+TASK 03
+Collision avoidance
+
+Another vessel crosses the path. The boat has to see it in time and go around it safely.
+
+TASK 04
+Docking
+
+The last task is to find the right spot at the dock and park the boat there on its own.
+
+What is out on the course.
+
+The course has the same kind of marks a boat meets at sea, and the boat has to read them.
+
+01
+Buoys
+
+Floating markers that show where the course goes and where the boat must not sail.
+
+02
+Cardinal marks
+
+Sea marks that tell you which side is safe to pass, just like in real shipping.
+
+03
+AR tags
+
+Printed markers the boat reads with its camera to find the right dock or gate.
+
+04
+The Otter
+
+A small vessel from the organisers that moves across the course in the collision task.
+
+How the teams are judged.
+
+The jury also gives points for the report, the presentation and the inspection.
+
+01
+The four tasks
+
+Most points come from what the boat actually does on the water during the week.
+
+02
+Technical report
+
+The team writes about the design and the choices behind the boat.
+
+03
+Team presentation
+
+Every team presents their work for the jury and the other teams.
+
+04
+Technical inspection
+
+The boat is checked against the rules for size, safety and power before it may sail.
+
+05
+Data and interface
+
+Teams show the data and the interface they use to follow the boat.
+
+06
+Special awards
+
+There are also prizes for team spirit, sportsmanship and best presentation.
+
+MARINOR AND NJORD
+Marinor at Njord.
+
+Marinor NTNU is on the team list for the Njord Challenge 2026. We built Argus for these four tasks: find the way, see what is around it, avoid other boats and dock.
+
+LINKS
+Follow Njord online.
+
+Rules, teams, results and news are on Njord's own website.
+
+NJORDCHALLENGE.COM
+njordchallenge.com
+
+The official website of Njord: The Autonomous Ship Challenge.
+
+NJORDCHALLENGE.COM
+The 2026 challenge
+
+Read more about this year's competition on Njord's own page.
+
+NJORDCHALLENGE.COM
+Teams 2026
+
+All the teams that signed up for 2026, Marinor included.
+
+PDF · DOWNLOAD
+Scores 2026
+
+The score list from the 2026 challenge, published by Njord (PDF).
+
+NJORD CHALLENGE
+Want to know more about Njord?
+
+The rules, the schedule and the team list are on Njord's website. You can also read how we built our boat.
+
+Go to njordchallenge.com
+Read about Argus
+
+A student organisation at NTNU in Trondheim that builds autonomous boats.
+
+marinorntnu@gmail.com
+Copy
+Høgskoleringen 1
+7034 Trondheim
+Instagram
+LinkedIn
+MARINOR
+Home
+About us
+Team
+Competitions
+OUR WORK
+Argus
+Proteus
+Njord Challenge
+RoboBoat
+GET INVOLVED
+Join the crew
+Sponsor us
+Email us
+© 2026 Marinor NTNU
+Org.nr. 936 064 809
+Back to top
